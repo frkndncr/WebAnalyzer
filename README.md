@@ -101,7 +101,6 @@ Ensure the following dependencies are installed:
 ├── requirements.txt        # Python dependencies
 ├── logs/                   # Directory to store analysis results
 ├── modules/                # Directory containing all analysis modules
-│   ├── __init__.py         # Marks the directory as a package
 │   ├── domain_dns.py       # DNS record analysis module
 │   ├── domain_info.py      # WHOIS information retrieval module
 │   ├── seo_analysis.py     # SEO and analytics analysis module
