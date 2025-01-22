@@ -117,8 +117,7 @@ Ensure the following dependencies are installed:
 
 ### Terminal Output:
 ```
-![resim](https://github.com/user-attachments/assets/85dcc3f9-d661-4812-bec6-fd8ac5688256)
-
+![WebAnalyzer Banner](screenshot.png)
 ```
 
 ### JSON Output:
