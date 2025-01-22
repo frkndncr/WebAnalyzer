@@ -117,7 +117,7 @@ Ensure the following dependencies are installed:
 
 ### Terminal Output:
 ```
-![resim](https://github.com/user-attachments/assets/f3e0912e-8e8a-4838-ad07-d3e0e409aedf)
+![resim](https://github.com/user-attachments/assets/85dcc3f9-d661-4812-bec6-fd8ac5688256)
 
 ```
 
