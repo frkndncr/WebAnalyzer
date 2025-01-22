@@ -115,7 +115,6 @@ Ensure the following dependencies are installed:
 
 ## Example Output
 
-### Terminal Output:
 ```
 ![WebAnalyzer Banner](screenshot.png)
 ```
