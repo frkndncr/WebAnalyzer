@@ -116,31 +116,9 @@ Ensure the following dependencies are installed:
 ## Example Output
 
 ### Terminal Output:
-```plaintext
-==================================================
->>>           MODULE CHECK STARTING          <<<
-==================================================
-[✔] Domain Info Module: Loaded successfully.
-[✔] DNS Records Module: Loaded successfully.
-[✔] Subfinder Tool Module: Loaded successfully.
-[✔] SEO Analysis Module: Loaded successfully.
-[✔] Web Technologies Module: Loaded successfully.
-[✔] Security Analysis Module: Loaded successfully.
-==================================================
-[✔] All required modules are successfully loaded!
+```
+![resim](https://github.com/user-attachments/assets/f3e0912e-8e8a-4838-ad07-d3e0e409aedf)
 
-What's Next: Get ready to analyze the domain for in-depth insights.
-
-Features to be analyzed:
-  - Domain WHOIS Information
-  - DNS Records
-  - Subdomains
-  - SEO and Analytics Tags
-  - Web Technologies
-  - Security Analysis
-
-==================================================
-Please enter a domain name (e.g., example.com):
 ```
 
 ### JSON Output:
