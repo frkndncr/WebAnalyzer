@@ -54,8 +54,8 @@ Ensure the following dependencies are installed:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/web-analysis-tool.git
-   cd web-analysis-tool
+   git clone https://github.com/frkndncr/WebAnalyzer.git
+   cd WebAnalyzer
    ```
 
 2. Run the setup script:
