@@ -116,7 +116,7 @@ Ensure the following dependencies are installed:
 ## Example Output
 
 ```
-![WebAnalyzer Banner](screenshot.png)
+[![WebAnalyzer Banner](screenshot.png)](https://github.com/frkndncr/WebAnalyzer/blob/02eb775dbe4254bb8204abeb5a6fd5ee151dcf58/screenshot.png)
 ```
 
 ### JSON Output:
