@@ -41,10 +41,10 @@ fi
 
 # 3. Install Python Dependencies
 echo "[3/6] Installing Python dependencies..."
-PYTHON_DEPENDENCIES=("requests" "bs4" "urllib3" "pyOpenSSL" "dnspython")
+PYTHON_DEPENDENCIES=("requests" "beautifulsoup4" "urllib3" "pyOpenSSL" "dnspython")
 for dep in "${PYTHON_DEPENDENCIES[@]}"; do
     echo "  [➤] Installing $dep..."
-    pip3 install $dep --break-system-packages || { echo "Error: Failed to install $dep."; exit 1; }
+    python3 -m pip install $dep --user || { echo "Error: Failed to install $dep."; exit 1; }
 done
 echo "  [✔] Python dependencies installed successfully!"
 
