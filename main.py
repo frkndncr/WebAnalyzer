@@ -2,6 +2,12 @@
 import os
 # Used to handle JSON data for saving and reading results
 import json
+# Import the datetime class for handling dates and times
+from datetime import datetime
+# Import the importlib.util module to assist with dynamic module loading if necessary
+import importlib.util
+# Import is_dataclass and asdict from the dataclasses module to work with dataclass instances
+from dataclasses import is_dataclass, asdict
 # Importing the module for fetching domain-related information using WHOIS services
 from modules.domain_info import get_domain_info
 # Importing the module for fetching DNS records such as A, MX, TXT, and NS
@@ -14,8 +20,8 @@ from modules.seo_analysis import analyze_advanced_seo
 from modules.web_technologies import detect_web_technologies
 # Importing the module for conducting advanced security analysis like WAF detection and SSL checks
 from modules.security_analysis import analyze_security
-
-import importlib.util
+# Import GlobalDomainScraper class from the 'contact_spy' module in the 'modules' package
+from modules.contact_spy import GlobalDomainScraper
 
 def clear_terminal():
     """
@@ -35,10 +41,19 @@ def save_results_to_json(domain, results, logs_dir="logs"):
     if not os.path.exists(domain_dir):
         os.makedirs(domain_dir)
 
+    # Custom encoder: if an object is a dataclass, convert it to a dict.
+    # Also convert sets to lists.
+    def custom_encoder(obj):
+        if is_dataclass(obj):
+            return asdict(obj)
+        if isinstance(obj, set):
+            return list(obj)
+        raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
     # Save results to JSON file
     output_file = os.path.join(domain_dir, "results.json")
-    with open(output_file, "w") as json_file:
-        json.dump(results, json_file, indent=4)
+    with open(output_file, "w", encoding="utf-8") as json_file:
+        json.dump(results, json_file, indent=4, default=custom_encoder)
     print("\n\033[92m" + "=" * 50 + "\033[0m")
     print("\033[92m[✔] Analysis results have been successfully saved!\033[0m")
     print(f"\033[94m[➤] Location:\033[0m \033[93m{output_file}\033[0m")
@@ -77,6 +92,7 @@ def check_modules():
         "SEO Analysis Module": "modules.seo_analysis",
         "Web Technologies Module": "modules.web_technologies",
         "Security Analysis Module": "modules.security_analysis",
+        "Contact Spy Module": "modules.contact_spy",  # Eklenen modül
     }
 
     print("\033[93m" + "=" * 50 + "\033[0m")
@@ -115,6 +131,8 @@ def main():
         "SEO and Analytics Tags",
         "Web Technologies",
         "Security Analysis",
+        "Contact Spy",
+
     ]
     for feature in features:
         print(f"  \033[96m- {feature}\033[0m")
@@ -283,6 +301,34 @@ def main():
     # CORS Policy
     print("\n\033[94mCORS Policy:\033[0m", security_info.get("CORS Policy", "Not Found"))
 
+    # Contact Scan – Yeni modülümüzün entegrasyonu
+    print("\n\033[93m" + "=" * 40 + "\033[0m")
+    print("\033[93m--- Contact Scan ---\033[0m")
+    print("\033[93m" + "=" * 40 + "\033[0m")
+    # GlobalDomainScraper, domain ve max_pages parametresiyle başlatılıyor
+    contact_scraper = GlobalDomainScraper(domain, max_pages=100)
+    contact_results = contact_scraper.crawl()
+    
+    # Özet bilgileri ekrana yazdırma
+    summary = contact_results.get('summary', {})
+    print("\nContact Scan Summary:")
+    print(f"Pages scanned: {contact_results.get('pages_scanned', 0)}")
+    print(f"Total emails found: {summary.get('total_emails', 0)}")
+    print(f"Total phone numbers found: {summary.get('total_phones', 0)}")
+    print(f"Total social media profiles found: {summary.get('total_social_media', 0)}")
+    
+    # Sonuçları dışa aktar
+    # (Export işlemi, modül içinde loglanıyor; JSON veya CSV formatı seçilebilir)
+    contact_scraper.export_results(contact_results, output_format='json')
+    
+    # Tüm sonuçları all_results sözlüğüne ekleyelim
+    all_results["Contact Scan"] = contact_results
+
+    # Diğer modüllerin sonuçlarını da all_results içine ekleyebilirsiniz...
+    
+    # Sonuçları kaydet (örneğin, JSON dosyasına)
+    save_results_to_json(domain, all_results)
+    print("\nScan completed.")
 
     # Subdomain Discovery
     print("\n\033[93m" + "="*40 + "\033[0m")
