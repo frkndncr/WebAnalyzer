@@ -57,7 +57,11 @@ Ensure the following dependencies are installed:
    git clone https://github.com/frkndncr/WebAnalyzer.git
    cd WebAnalyzer
    ```
-
+2. Run the Install Python Dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   
 2. Run the setup script:
    ```bash
    ./setup.sh
@@ -65,7 +69,6 @@ Ensure the following dependencies are installed:
    This script will:
    - Install required system packages.
    - Install and configure **Subfinder**.
-   - Install Python dependencies from `requirements.txt`.
 
 3. Verify the installation:
    - Ensure `subfinder` is available in your PATH.
@@ -77,7 +80,7 @@ Ensure the following dependencies are installed:
 
 1. Run the main script:
    ```bash
-   python3 main.py
+   python main.py
    ```
 
 2. Enter the domain name when prompted:
