@@ -187,20 +187,25 @@ def main():
             print(f"\033[94m{key}:\033[0m {value}")
 
 
-    # DNS and Email Information
+    # DNS Information
     print("\n\033[93m" + "="*40 + "\033[0m")
-    print("\033[93m--- DNS AND EMAIL INFORMATION ---\033[0m")
+    print("\033[93m--- DNS INFORMATION ---\033[0m")
     print("\033[93m" + "="*40 + "\033[0m")
-    dns_records = get_dns_records(domain)
-    all_results["DNS Information"] = dns_records
-    for record_type, records in dns_records.items():
-        if record_type == "Response Time (ms)":
-            print(f"\033[94m{record_type}:\033[0m {records} ms")
-        else:
-            print(f"\033[94m{record_type}:\033[0m")
-            for record in records:
-                print(f"  - {record}")
 
+    analyzer = DNSAnalyzer() # Speed Mood
+    start_time = time.time()
+    dns_records = analyzer.get_dns_records(domain)
+    print("DNS Records:")
+    for record_type, records in dns_records["records"].items():
+        print(f"{record_type}:")
+        for record in records:
+            print(f"  - {record}")
+
+    print("\nFull Report:")
+    print(analyzer.generate_report(domain, color=True))
+    # Print response time
+    print(f"\033[94mResponse Time:\033[0m {dns_records['response_time_ms']} ms")
+    print(f"Total execution time: {round((time.time() - start_time) * 1000, 2)} ms")
 
     # SEO and Analytics Tag Analysis
     print("\n\033[93m" + "=" * 40 + "\033[0m")
