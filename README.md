@@ -123,6 +123,8 @@ Ensure the following dependencies are installed:
 │   ├── security_analysis.py# Security analysis module
 │   ├── subfinder_tool.py   # Subdomain discovery module
 │   ├── web_technologies.py # Web technology detection module
+│   ├── subdomain_takeover.py # Subdomain takeover vulnerability detection module
+│   ├── advanced_content_scanner.py # Advanced web content scanning module
 └── tests/                  # Test scripts for the project
     └── test_main.py        # Unit tests for main.py
 ```
