@@ -167,6 +167,52 @@ The results are saved as `results.json` in the corresponding domain folder:
   "Security Analysis": {
     "Web Application Firewall": "Cloudflare",
     "SSL Info": {"Issuer": "Let's Encrypt"}
+  },
+  "Subdomain Takeover": {
+    "Vulnerable Subdomains": [
+      {
+        "subdomain": "dev.example.com",
+        "vulnerability_type": "Heroku Subdomain Takeover",
+        "confidence": "High",
+        "service": "Heroku",
+        "exploitation_difficulty": "Medium",
+        "mitigation": "Claim the subdomain or remove the DNS record"
+      }
+    ],
+    "Statistics": {
+      "total_subdomains_checked": 10,
+      "high_confidence_vulnerabilities": 1,
+      "medium_confidence_vulnerabilities": 0,
+      "low_confidence_vulnerabilities": 0
+    }
+  },
+  "Advanced Content Scan": {
+    "summary": {
+      "total_urls_crawled": 50,
+      "total_js_files": 20,
+      "total_api_endpoints": 15
+    },
+    "secrets": [
+      {
+        "type": "API Key",
+        "source_url": "https://example.com/js/config.js",
+        "severity": "High"
+      }
+    ],
+    "js_vulnerabilities": [
+      {
+        "type": "Cross-Site Scripting (XSS)",
+        "source_url": "https://example.com/main.js",
+        "severity": "Medium"
+      }
+    ],
+    "ssrf_vulnerabilities": [
+      {
+        "type": "Potential SSRF Endpoint",
+        "source_url": "https://example.com/proxy",
+        "severity": "High"
+      }
+    ]
   }
 }
 ```
