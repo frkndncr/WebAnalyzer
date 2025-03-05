@@ -39,7 +39,20 @@ The **Web Analyzer Tool** is a comprehensive Python-based application designed f
    - Analyzes HTTPS enforcement and SSL certificates.
    - Examines security headers (CSP, HSTS, etc.).
    - Checks Cross-Origin Resource Sharing (CORS) policy.
-
+7. **Subdomain Takeover Detection**
+   * Scans discovered subdomains for potential vulnerability to subdomain takeover attacks.
+   * Categorizes vulnerabilities by confidence level (High, Medium, Low).
+   * Identifies specific services and potential exploitation methods.
+   * Provides mitigation recommendations for vulnerable subdomains.
+   * Highlights critical vulnerabilities that require immediate attention.
+8. **Advanced Content Scanner**
+   * Performs deep web content analysis across multiple pages.
+   * Discovers and analyzes sensitive information leakage.
+   * Detects potential JavaScript-based vulnerabilities.
+   * Identifies Server-Side Request Forgery (SSRF) risks.
+   * Scans for exposed secrets, API keys, and credentials.
+   * Provides detailed reporting on high-severity findings.
+   * Supports configurable scanning depth and page limits.
 ---
 
 ## Installation
