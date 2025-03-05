@@ -133,7 +133,7 @@ Ensure the following dependencies are installed:
 
 ## Example Output Screenshot
 
-![image](https://github.com/user-attachments/assets/e5cf93ee-6ce9-45f4-9e20-63d8222f5526)
+![resim](https://github.com/user-attachments/assets/61580f3c-741b-46b3-aefb-5590f895f856)
 
 ### JSON Output:
 The results are saved as `results.json` in the corresponding domain folder:
