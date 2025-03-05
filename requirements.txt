@@ -10,3 +10,4 @@ pycountry>=20.7.3
 phonenumbers>=8.12.0
 timezonefinder>=5.2.0
 langdetect>=1.0.9
+python-whois==0.8.5
