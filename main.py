@@ -31,6 +31,7 @@ from modules.contact_spy import GlobalDomainScraper
 from modules.subdomain_takeover import SubdomainTakeover
 # Import AdvancedContentScanner class from the 'advanced_content_scanner' module in the 'modules' package
 from modules.advanced_content_scanner import AdvancedContentScanner
+from modules.cloudflare_bypass import CloudflareBypass
 
 def clear_terminal():
     """
@@ -78,37 +79,34 @@ def display_banner():
     """
     print(banner)
 
-def check_modules():
+def _check_modules(silent=True):
     """
     Check if all required modules are available and importable.
     Returns True if all modules are loaded successfully, False otherwise.
     """
     modules = {
-        "Domain Info Module": "modules.domain_info",
-        "DNS Records Module": "modules.domain_dns",
-        "Subfinder Tool Module": "modules.subfinder_tool",
-        "SEO Analysis Module": "modules.seo_analysis",
-        "Web Technologies Module": "modules.web_technologies",
-        "Security Analysis Module": "modules.security_analysis",
-        "Contact Spy Module": "modules.contact_spy",
-        "Subdomain Takeover Module": "modules.subdomain_takeover",
-        "Advanced Content Scanner": "modules.advanced_content_scanner"
+        "Domain Information": "modules.domain_info",
+        "DNS Records": "modules.domain_dns",
+        "SEO Analysis": "modules.seo_analysis",
+        "Web Technologies": "modules.web_technologies",
+        "Security Analysis": "modules.security_analysis",
+        "Advanced Content Scan": "modules.advanced_content_scanner",
+        "Subdomain Discovery": "modules.subfinder_tool",
+        "Subdomain Takeover": "modules.subdomain_takeover",
+        "CloudFlare Bypass": "modules.cloudflare_bypass"
     }
-
-    print("\033[93m" + "=" * 50 + "\033[0m")
-    print("\033[93m>>>           MODULE CHECK STARTING          <<<\033[0m")
-    print("\033[93m" + "=" * 50 + "\033[0m")
-
+    
     all_modules_loaded = True
     for module_name, module_path in modules.items():
         try:
             __import__(module_path)
-            print(f"\033[92m[✔] {module_name}: Loaded successfully.\033[0m")
+            if not silent:
+                print(f"\033[92m[✔] {module_name}: Loaded successfully.\033[0m")
         except ImportError:
-            print(f"\033[91m[✘] {module_name}: Not found or failed to load.\033[0m")
+            if not silent:
+                print(f"\033[91m[✘] {module_name}: Not found or failed to load.\033[0m")
             all_modules_loaded = False
 
-    print("\033[93m" + "=" * 50 + "\033[0m")
     return all_modules_loaded
 
 def run_subdomain_takeover_module(domain, subdomains, output_dir=None):
@@ -287,7 +285,7 @@ def run_advanced_content_scanner(domain, output_dir=None):
         # Log ve warning ayarlarını geri yükle
         logging.disable(logging.NOTSET)
         warnings.resetwarnings()
-        
+
 def select_modules():
     """
     Allows user to select which modules to run or choose to run all modules.
@@ -298,42 +296,43 @@ def select_modules():
         "DNS Records",
         "SEO Analysis",
         "Web Technologies",
-        "Security Analysis", 
+        "Security Analysis",
         "Advanced Content Scan",
         "Subdomain Discovery",
-        "Subdomain Takeover"
+        "Subdomain Takeover",
+        "CloudFlare Bypass"
     ]
-    
+   
     print("\033[93m" + "=" * 50 + "\033[0m")
     print("\033[93m>>>        MODULE SELECTION MENU        <<<\033[0m")
     print("\033[93m" + "=" * 50 + "\033[0m")
-    
+   
     # Display module options
     for i, module in enumerate(modules, 1):
         print(f"\033[94m[{i}] {module}\033[0m")
-    
+   
     print("\033[94m[A] Run ALL Modules\033[0m")
     print("\033[94m[Q] Quit\033[0m")
-    
+   
     while True:
         # Get user input
         choice = input("\033[92mEnter module numbers (comma-separated) or 'A' for all, 'Q' to quit: \033[0m").upper().strip()
-        
+       
         # Quit option
         if choice == 'Q':
             print("\033[91mExiting module selection.\033[0m")
             return [], False
-        
+       
         # All modules option
         if choice == 'A':
             print("\033[92m[✔] All modules selected!\033[0m")
             return modules, True
-        
+       
         # Individual module selection
         try:
             # Split input and remove any whitespace
             selected_numbers = [num.strip() for num in choice.split(',')]
-            
+           
             # Validate and collect selected modules
             selected_modules = []
             for num in selected_numbers:
@@ -354,16 +353,81 @@ def select_modules():
                     for module in selected_modules:
                         print(f"\033[94m- {module}\033[0m")
                     return selected_modules, False
-        
+       
         except Exception:
             print("\033[91m[✘] Invalid input. Please enter valid module numbers.\033[0m")
+
+def run_cloudflare_bypass(domain):
+    """
+    Run the CloudFlare Bypass module to find real IP addresses behind CloudFlare.
+    
+    Args:
+        domain (str): The domain to analyze
+    """
+    from modules.cloudflare_bypass import CloudflareBypass
+    print("\n")
+    print("\033[93m" + "=" * 50 + "\033[0m")
+    print("\033[93m>>>           CLOUDFLARE BYPASS           <<<\033[0m")
+    print("\033[93m" + "=" * 50 + "\033[0m")
+    
+    print(f"\033[94m[*] Scanning {domain} for real IPs behind CloudFlare\033[0m")
+    
+    # CloudFlare Bypass modülünü başlat
+    bypass = CloudflareBypass(target=domain, verbose=True)
+    results = bypass.run()
+    
+    # Sonuçları göster
+    print("\033[93m" + "=" * 50 + "\033[0m")
+    print(f"\033[93m>>> RESULTS FOR {results['target']} <<<\033[0m")
+    print(f"\033[94mScan time: {results['scan_time']:.1f} seconds\033[0m")
+    print(f"\033[94mCloudFlare protected: {'Yes' if results['cloudflare_protected'] else 'No'}\033[0m")
+    print("\033[93m" + "=" * 50 + "\033[0m")
+    
+    if results['real_ips']:
+        print("\033[92m[+] REAL IP ADDRESSES:\033[0m")
+        for i, ip_info in enumerate(results['real_ips'], 1):
+            status = "✓" if ip_info.get('status') == "active" else "✗" if ip_info.get('status') == "inactive" else "?"
+            desc = f" - {ip_info['description']}" if 'description' in ip_info else ""
+            confidence = ip_info.get('confidence', 'Unknown')
+            
+            # Confidence rengini belirle
+            if confidence == 'Very High':
+                confidence_color = "\033[92m"  # Yeşil
+            elif confidence == 'High':
+                confidence_color = "\033[93m"  # Sarı
+            elif confidence == 'Medium':
+                confidence_color = "\033[33m"  # Turuncu
+            else:
+                confidence_color = "\033[91m"  # Kırmızı
+            
+            status_color = "\033[92m" if status == "✓" else "\033[91m" if status == "✗" else "\033[93m"
+            
+            print(f"\033[94m{i}. \033[97m{ip_info['ip']} {status_color}[{status}]\033[0m {confidence_color}({confidence})\033[0m{desc}")
+        
+        print("\n\033[92m[+] TEST COMMANDS:\033[0m")
+        
+        # Sadece aktif IP'leri göster
+        active_ips = [ip for ip in results['real_ips'] if ip.get('status') == "active"]
+        
+        if active_ips:
+            for ip_info in active_ips[:3]:  # İlk 3 aktif IP'yi göster
+                print(f"\033[94mcurl -H 'Host: {results['target']}' http://{ip_info['ip']}/\033[0m")
+        else:
+            # Aktif IP yoksa tüm sonuçlardan ilk 3'ünü göster
+            for ip_info in results['real_ips'][:3]:
+                print(f"\033[94mcurl -H 'Host: {results['target']}' http://{ip_info['ip']}/\033[0m")
+    else:
+        print("\033[91m[-] No real IPs found. The target has strong CloudFlare protection.\033[0m")
+    
+    print("\033[93m" + "=" * 50 + "\033[0m")
+    input("\033[92mPress Enter to continue...\033[0m")
 
 def main():
     # Clear terminal and display banner
     clear_terminal()
     display_banner()
 
-    if not check_modules():
+    if not _check_modules():
         print("\033[91m[✘] Some modules are missing. Please install the required modules and try again.\033[0m")
         return
 
@@ -448,6 +512,9 @@ def main():
         print(f"\033[94mResponse Time:\033[0m {dns_records['response_time_ms']} ms")
         print(f"Total execution time: {round((time.time() - start_time) * 1000, 2)} ms")
         all_results["DNS Records"] = dns_records
+
+    if "CloudFlare Bypass" in selected_modules or run_all:
+            run_cloudflare_bypass(domain)
 
     # SEO and Analytics Tag Analysis
     if run_all or "SEO Analysis" in selected_modules:
@@ -549,3 +616,16 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+        # Önce modüllerin yüklenebilir olup olmadığını kontrol et (kullanıcıya göstermeden)
+    _check_modules(silent=True)
+    
+    # Kullanıcıdan çalıştırmak istediği modülleri seçmesini iste
+    selected_modules, run_all = select_modules()
+
+    if run_all:
+        print("\033[92m[✔] Running all modules...\033[0m")
+    elif selected_modules:
+        print("\033[92m[✔] Running selected modules...\033[0m")
+    else:
+        print("\033[91m[✘] No modules selected. Exiting.\033[0m")
