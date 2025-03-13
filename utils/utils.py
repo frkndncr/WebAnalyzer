@@ -44,10 +44,8 @@ def display_banner():
     banner = """
         \033[92m
         ╔══════════════════════════════════════════════════════╗
-        ║                                                      ║
-        ║         Welcome to the Web Analysis Tool             ║
+        ║     [-] Analysis Tool                                ║ 
         ║         Analyze domains with precision and style!    ║
-        ║                                                      ║
         ╠══════════════════════════════════════════════════════╣
         ║         Coder: Furkan DINCER @f3rrkan                ║
         ║         Contributor: Keyvan Arasteh @keyvanarasteh   ║
