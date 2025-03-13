@@ -42,11 +42,16 @@ def display_banner():
     Display the welcome banner for the Web Analysis Tool.
     """
     banner = """
-    \033[92m
-        Welcome to the Web Analysis Tool                                  
-        Analyze domains with precision and style!    
-            Coder Furkan DINCER @f3rrkan
-            Contributor Keyvan Arasteh @keyvanarasteh
-    \033[0m
+        \033[92m
+        ╔══════════════════════════════════════════════════════╗
+        ║                                                      ║
+        ║         Welcome to the Web Analysis Tool             ║
+        ║         Analyze domains with precision and style!    ║
+        ║                                                      ║
+        ╠══════════════════════════════════════════════════════╣
+        ║         Coder: Furkan DINCER @f3rrkan                ║
+        ║         Contributor: Keyvan Arasteh @keyvanarasteh   ║
+        ╚══════════════════════════════════════════════════════╝
+        \033[0m
     """
     print(banner)
