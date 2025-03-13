@@ -1,0 +1,19 @@
+{
+    "scan_info": {
+        "domain": "c4softwarestudio.com",
+        "subdomains_scanned": 1,
+        "vulnerable_subdomains": 0,
+        "scan_time_seconds": 0.93,
+        "timestamp": "2025-03-12 21:43:05",
+        "services_checked": 43
+    },
+    "statistics": {
+        "vulnerable_subdomains_count": 0,
+        "high_confidence": 0,
+        "medium_confidence": 0,
+        "low_confidence": 0,
+        "by_vulnerability_type": {},
+        "by_service": {}
+    },
+    "vulnerable_subdomains": []
+}

@@ -1,0 +1,227 @@
+{
+    "Domain Information": {
+        "Domain": "furkandincer.com",
+        "Registrar Company (Registrar)": "Hostinger Operations, UAB",
+        "Creation Date": "2023-06-19T10:46:43Z",
+        "End Date": "2025-06-19T10:46:43Z",
+        "Last Updated Date": "2024-05-23T11:46:20Z",
+        "Domain Status": "clientTransferProhibited",
+        "Privacy Protection": "Inactive",
+        "DNSSEC Status": "Unsigned",
+        "SSL \u0130nformation": {
+            "IP Address": "2a02:4780:27:1034:0:2806:fef3:3",
+            "SSL Status": "Ready"
+        },
+        "Blacklist Check": "Not on the blacklist",
+        "IP Address": "89.116.147.73",
+        "Server Provider": "AS47583 Hostinger International Limited",
+        "Physical Location": "Paris, FR"
+    },
+    "DNS Records": {
+        "timestamp": "2025-03-12T21:35:18.004055",
+        "domain": "furkandincer.com",
+        "records": {
+            "SOA (Authority)": [
+                "ns1.dns-parking.com. dns.hostinger.com. 2025030601 10000 2400 604800 600"
+            ],
+            "MX (Mail Servers)": [
+                "5 mx1.hostinger.com.",
+                "10 mx2.hostinger.com."
+            ],
+            "AAAA (IPv6)": [
+                "2a02:4780:27:1034:0:2806:fef3:3"
+            ],
+            "A (IPv4)": [
+                "89.116.147.73"
+            ],
+            "NS (Name Servers)": [
+                "ns1.dns-parking.com.",
+                "ns2.dns-parking.com."
+            ]
+        },
+        "response_time_ms": 7.01
+    },
+    "SEO Analysis": {
+        "Meta Tags": {
+            "Description": "furkan din\u00c3\u00a7er",
+            "Keywords": "furkan din\u00c3\u00a7er",
+            "Canonical": "Not Found"
+        },
+        "Open Graph Tags": {
+            "og:title": "Not Found",
+            "og:description": "Not Found",
+            "og:image": "Not Found",
+            "og:url": "Not Found",
+            "og:locale": "Not Found"
+        },
+        "Twitter Tags": {
+            "twitter:card": "Not Found",
+            "twitter:title": "Not Found",
+            "twitter:description": "Not Found",
+            "twitter:image": "Not Found"
+        },
+        "Verification Tags": {
+            "Google": "Not Found",
+            "Bing": "Not Found",
+            "Yandex": "Not Found"
+        },
+        "Analytics Tools": {
+            "Google Analytics IDs": [
+                "G-K0SLX6VQYQ",
+                "UA-258735170-4"
+            ],
+            "Google Tag Manager": true,
+            "Facebook Pixel": false,
+            "LinkedIn Insight Tag": false,
+            "TikTok Pixel": false
+        },
+        "JavaScript Frameworks": [
+            "jQuery"
+        ],
+        "Structured Data": [],
+        "Performance Metrics": {
+            "Page Load Time (seconds)": 0.39,
+            "Total Request Size (KB)": 2.45
+        },
+        "Security Headers": {
+            "Content-Security-Policy": "upgrade-insecure-requests",
+            "Strict-Transport-Security": "Not Found",
+            "X-Content-Type-Options": "Not Found"
+        },
+        "Robots.txt": "Found",
+        "Sitemap.xml": "Found"
+    },
+    "Web Technologies": {
+        "Web Server": "LiteSpeed",
+        "Backend Technologies": [
+            "WordPress"
+        ],
+        "Frontend Technologies": [
+            "Bootstrap"
+        ],
+        "Content Delivery Network (CDN)": "Not Detected",
+        "Compression": "gzip",
+        "Caching": "Not Detected",
+        "Set-Cookie Header": "Not Detected",
+        "X-Cache Header": "Not Detected"
+    },
+    "Security Analysis": {
+        "Web Application Firewall": "Not Detected",
+        "Security Headers": {
+            "Strict-Transport-Security": "Not Found",
+            "Content-Security-Policy": "upgrade-insecure-requests",
+            "X-Frame-Options": "Not Found",
+            "X-XSS-Protection": "Not Found",
+            "X-Content-Type-Options": "Not Found",
+            "Referrer-Policy": "Not Found",
+            "Permissions-Policy": "Not Found"
+        },
+        "SSL Info": {
+            "Issuer": "Sectigo RSA Domain Validation Secure Server CA",
+            "Validity Start": "20241029000000Z",
+            "Validity End": "20250904235959Z",
+            "Version": 2
+        },
+        "CORS Policy": {
+            "Access-Control-Allow-Origin": "Not Found",
+            "Access-Control-Allow-Methods": "Not Found",
+            "Access-Control-Allow-Headers": "Not Found"
+        }
+    },
+    "Advanced Content Scan": {
+        "secrets": [],
+        "js_vulnerabilities": [
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com/index",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com/about",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com/portfolio",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com/services",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com/contact",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://furkandincer.com/",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            }
+        ],
+        "ssrf_vulnerabilities": [
+            {
+                "type": "Potential SSRF in Form",
+                "source_url": "https://furkandincer.com/contact",
+                "form_action": "https://furkandincer.com/contact",
+                "form_method": "post",
+                "vulnerable_parameters": [
+                    "name",
+                    "website"
+                ],
+                "hash": "8e11c035eb8076248e58fa3b522607fa",
+                "severity": "Medium",
+                "description": "The form contains fields that could be used for Server-Side Request Forgery attacks.",
+                "recommendation": "Validate and sanitize all user inputs, especially URL parameters. Implement allowlists for accepted domains and protocols."
+            }
+        ],
+        "summary": {
+            "secrets_count": 0,
+            "js_vulnerabilities_count": 7,
+            "ssrf_vulnerabilities_count": 1,
+            "total_urls_crawled": 7,
+            "total_js_files": 15,
+            "total_api_endpoints": 0,
+            "scan_duration_seconds": 17.91,
+            "scan_speed_pages_per_second": 0.39
+        }
+    },
+    "Subdomains": [
+        "www.furkandincer.com",
+        "blog.furkandincer.com"
+    ],
+    "Subdomain Takeover": {
+        "scan_info": {
+            "domain": "furkandincer.com",
+            "subdomains_scanned": 2,
+            "vulnerable_subdomains": 0,
+            "scan_time_seconds": 3.15,
+            "timestamp": "2025-03-12 21:36:04",
+            "services_checked": 43
+        },
+        "statistics": {
+            "vulnerable_subdomains_count": 0,
+            "high_confidence": 0,
+            "medium_confidence": 0,
+            "low_confidence": 0,
+            "by_vulnerability_type": {},
+            "by_service": {}
+        },
+        "vulnerable_subdomains": []
+    }
+}

@@ -1,0 +1,230 @@
+{
+    "Domain Information": {
+        "Domain": "c4softwarestudio.com",
+        "Registrar Company (Registrar)": "NICS Telekomunikasyon A.S.",
+        "Creation Date": "2024-05-11T17:00:11Z",
+        "End Date": "2025-05-11T17:00:11Z",
+        "Last Updated Date": "2024-06-14T17:40:50Z",
+        "Domain Status": "ok",
+        "Privacy Protection": "Effective",
+        "DNSSEC Status": "Unsigned",
+        "SSL \u0130nformation": {
+            "IP Address": "172.67.198.166",
+            "SSL Status": "Ready"
+        },
+        "Blacklist Check": "Not on the blacklist",
+        "IP Address": "188.114.97.7",
+        "Server Provider": "AS13335 Cloudflare, Inc.",
+        "Physical Location": "Munich, DE"
+    },
+    "DNS Records": {
+        "timestamp": "2025-03-12T21:41:28.200895",
+        "domain": "c4softwarestudio.com",
+        "records": {
+            "SOA (Authority)": [
+                "clara.ns.cloudflare.com. dns.cloudflare.com. 2364304852 10000 2400 604800 1800"
+            ],
+            "AAAA (IPv6)": [
+                "2606:4700:3030::6815:5cd2",
+                "2606:4700:3030::ac43:c6a6"
+            ],
+            "NS (Name Servers)": [
+                "clara.ns.cloudflare.com.",
+                "colin.ns.cloudflare.com."
+            ],
+            "A (IPv4)": [
+                "Error: The resolution lifetime expired after 1.103 second..."
+            ],
+            "MX (Mail Servers)": [
+                "Error: The resolution lifetime expired after 1.102 second..."
+            ]
+        },
+        "response_time_ms": 10.24
+    },
+    "SEO Analysis": {
+        "Meta Tags": {
+            "Description": "C4 Software Studio, yenilik\u00e7i \u00e7\u00f6z\u00fcmleri ve yarat\u0131c\u0131 yakla\u015f\u0131m\u0131yla yaz\u0131l\u0131m d\u00fcnyas\u0131na y\u00f6n veriyor. Profesyonel ekiplerimizle i\u015fletmenizin dijital d\u00f6n\u00fc\u015f\u00fcm\u00fcn\u00fc h\u0131zland\u0131r\u0131n ve rekabet avantaj\u0131 elde edin.",
+            "Keywords": "Not Found",
+            "Canonical": "Not Found"
+        },
+        "Open Graph Tags": {
+            "og:title": "Not Found",
+            "og:description": "Not Found",
+            "og:image": "Not Found",
+            "og:url": "Not Found",
+            "og:locale": "Not Found"
+        },
+        "Twitter Tags": {
+            "twitter:card": "Not Found",
+            "twitter:title": "Not Found",
+            "twitter:description": "Not Found",
+            "twitter:image": "Not Found"
+        },
+        "Verification Tags": {
+            "Google": "Not Found",
+            "Bing": "Not Found",
+            "Yandex": "Not Found"
+        },
+        "Analytics Tools": {
+            "Google Analytics IDs": [
+                "G-71THP1SYXR"
+            ],
+            "Google Tag Manager": true,
+            "Facebook Pixel": false,
+            "LinkedIn Insight Tag": false,
+            "TikTok Pixel": false
+        },
+        "JavaScript Frameworks": [
+            "jQuery"
+        ],
+        "Structured Data": [],
+        "Performance Metrics": {
+            "Page Load Time (seconds)": 0.31,
+            "Total Request Size (KB)": null
+        },
+        "Security Headers": {
+            "Content-Security-Policy": "upgrade-insecure-requests",
+            "Strict-Transport-Security": "Not Found",
+            "X-Content-Type-Options": "Not Found"
+        },
+        "Robots.txt": "Not Found",
+        "Sitemap.xml": "Found"
+    },
+    "Web Technologies": {
+        "Web Server": "cloudflare",
+        "Backend Technologies": [
+            "PHP",
+            "WordPress",
+            "Shopify"
+        ],
+        "Frontend Technologies": [
+            "Bootstrap"
+        ],
+        "Content Delivery Network (CDN)": "Cloudflare",
+        "Compression": "gzip",
+        "Caching": "Not Detected",
+        "Set-Cookie Header": "Not Detected",
+        "X-Cache Header": "Not Detected"
+    },
+    "Security Analysis": {
+        "Web Application Firewall": "Not Detected",
+        "Security Headers": {
+            "Strict-Transport-Security": "Not Found",
+            "Content-Security-Policy": "upgrade-insecure-requests",
+            "X-Frame-Options": "Not Found",
+            "X-XSS-Protection": "Not Found",
+            "X-Content-Type-Options": "Not Found",
+            "Referrer-Policy": "Not Found",
+            "Permissions-Policy": "Not Found"
+        },
+        "SSL Info": {
+            "Error": "[('SSL routines', '', 'sslv3 alert handshake failure')]"
+        },
+        "CORS Policy": {
+            "Access-Control-Allow-Origin": "Not Found",
+            "Access-Control-Allow-Methods": "Not Found",
+            "Access-Control-Allow-Headers": "Not Found"
+        }
+    },
+    "Advanced Content Scan": {
+        "secrets": [],
+        "js_vulnerabilities": [
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://c4softwarestudio.com",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://c4softwarestudio.com/",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://c4softwarestudio.com/iletisim",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://c4softwarestudio.com/hakkimizda",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://c4softwarestudio.com/projeler",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            },
+            {
+                "type": "Missing CSRF Protection",
+                "source_url": "https://c4softwarestudio.com/hizmetler",
+                "details": "Forms found without CSRF tokens",
+                "severity": "Medium"
+            }
+        ],
+        "ssrf_vulnerabilities": [
+            {
+                "type": "Potential SSRF in Form",
+                "source_url": "https://www.c4softwarestudio.com/iletisim",
+                "form_action": "https://www.c4softwarestudio.com/iletisim",
+                "form_method": "post",
+                "vulnerable_parameters": [
+                    "name"
+                ],
+                "hash": "848f74d6c337a9fc56c14452f5cf25a4",
+                "severity": "Medium",
+                "description": "The form contains fields that could be used for Server-Side Request Forgery attacks.",
+                "recommendation": "Validate and sanitize all user inputs, especially URL parameters. Implement allowlists for accepted domains and protocols."
+            },
+            {
+                "type": "Potential SSRF in Form",
+                "source_url": "https://c4softwarestudio.com/iletisim",
+                "form_action": "https://c4softwarestudio.com/iletisim",
+                "form_method": "post",
+                "vulnerable_parameters": [
+                    "name"
+                ],
+                "hash": "d0a2ab9ed91fe85acc05b54e91d34445",
+                "severity": "Medium",
+                "description": "The form contains fields that could be used for Server-Side Request Forgery attacks.",
+                "recommendation": "Validate and sanitize all user inputs, especially URL parameters. Implement allowlists for accepted domains and protocols."
+            }
+        ],
+        "summary": {
+            "secrets_count": 0,
+            "js_vulnerabilities_count": 6,
+            "ssrf_vulnerabilities_count": 2,
+            "total_urls_crawled": 37,
+            "total_js_files": 83,
+            "total_api_endpoints": 0,
+            "scan_duration_seconds": 37.45,
+            "scan_speed_pages_per_second": 0.99
+        }
+    },
+    "Subdomains": [
+        "www.c4softwarestudio.com"
+    ],
+    "Subdomain Takeover": {
+        "scan_info": {
+            "domain": "c4softwarestudio.com",
+            "subdomains_scanned": 1,
+            "vulnerable_subdomains": 0,
+            "scan_time_seconds": 0.93,
+            "timestamp": "2025-03-12 21:43:05",
+            "services_checked": 43
+        },
+        "statistics": {
+            "vulnerable_subdomains_count": 0,
+            "high_confidence": 0,
+            "medium_confidence": 0,
+            "low_confidence": 0,
+            "by_vulnerability_type": {},
+            "by_service": {}
+        },
+        "vulnerable_subdomains": []
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "scan_info": {
+        "domain": "furkandincer.com",
+        "subdomains_scanned": 2,
+        "vulnerable_subdomains": 0,
+        "scan_time_seconds": 3.15,
+        "timestamp": "2025-03-12 21:36:04",
+        "services_checked": 43
+    },
+    "statistics": {
+        "vulnerable_subdomains_count": 0,
+        "high_confidence": 0,
+        "medium_confidence": 0,
+        "low_confidence": 0,
+        "by_vulnerability_type": {},
+        "by_service": {}
+    },
+    "vulnerable_subdomains": []
+}

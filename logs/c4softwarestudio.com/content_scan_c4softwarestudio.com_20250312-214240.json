@@ -1,0 +1,10 @@
+{
+  "high_severity_secrets": [],
+  "high_severity_js_vulnerabilities": [],
+  "high_severity_ssrf_vulnerabilities": [],
+  "scan_info": {
+    "domain": "c4softwarestudio.com",
+    "scan_date": "2025-03-12 21:42:40",
+    "scan_duration_seconds": 37.45
+  }
+}
