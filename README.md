@@ -72,7 +72,7 @@ Ensure the following dependencies are installed:
    ```
 2. Run the Install Python Dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.txt --break-system-packages
    ```
    
 2. Run the setup script:
