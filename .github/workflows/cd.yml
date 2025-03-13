@@ -1,0 +1,17 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Deploy
+      run: |
+        echo "Deploying application..."
+        # Add your deployment script here
