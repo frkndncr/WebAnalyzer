@@ -10,7 +10,7 @@ def detect_web_technologies(domain):
         # Ensure the protocol is valid and form the URL
         protocol = "https://" if not domain.startswith("http") else ""
         url = f"{protocol}{domain}"
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
 
         html_content = response.text.lower()
