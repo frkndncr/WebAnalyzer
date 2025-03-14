@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Optimize CloudflareBypass - Simple, effective real IP finder behind Cloudflare
-By: HittSys
 """
 
 import requests
@@ -461,8 +460,7 @@ class CloudflareBypass:
             'real_ips': verified_results,
             'scan_time': scan_time
         }
-
-
+        
 def main():
     parser = argparse.ArgumentParser(description='CloudflareBypass - Find real IPs behind Cloudflare')
     parser.add_argument('target', help='Target domain or URL')
@@ -525,7 +523,6 @@ def main():
     except Exception as e:
         print(f"\nError: {str(e)}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
