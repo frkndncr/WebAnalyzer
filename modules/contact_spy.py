@@ -9,6 +9,7 @@ import validators
 import tldextract
 import iso3166
 import pycountry
+import warnings
 import phonenumbers
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -23,6 +24,7 @@ from langdetect import detect, LangDetectException
 
 # Uyarıları bastır
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 @dataclass
 class PhoneInfo:
@@ -77,27 +79,45 @@ class ScrapedInfo:
     language: str
     region: str
 
+def setup_logging(log_dir="logs", log_file="scraper.log", show_info=False):
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    log_path = os.path.join(log_dir, log_file)
+    logger = logging.getLogger('modules.contact_spy')
+    logger.setLevel(logging.INFO)
+    
+    # Mevcut handler'ları kapat ve temizle
+    for handler in logger.handlers[:]:  # Kopya liste üzerinde döngü
+        if isinstance(handler, logging.FileHandler):
+            handler.close()  # Dosyayı kapat
+        logger.removeHandler(handler)
+    
+    # FileHandler
+    file_handler = logging.FileHandler(log_path, mode='a', encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(file_handler)
+    
+    # ConsoleHandler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+    console_handler.setLevel(logging.INFO if show_info else logging.ERROR)
+    logger.addHandler(console_handler)
+    
+    return logger
+    
 class GlobalDomainScraper:
-    def __init__(self, domain: str, max_pages: int = 100):
+    def __init__(self, domain: str, max_pages: int = 100, log_dir: str = "logs"):
         self.domain = domain
         self.max_pages = max_pages
         self.visited_urls: Set[str] = set()
         self.found_info: List[ScrapedInfo] = []
         self.session = requests.Session()
-        self.setup_logging()
+        self.session.verify = False  
+        self.logger = setup_logging(log_dir=log_dir, log_file=f"scraper_{self.domain}.log", show_info=False)
         self.setup_patterns()
-        
-    def setup_logging(self):
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('scraper.log', encoding='utf-8'),
-                logging.StreamHandler()
-            ]
-        )
-        self.logger = logging.getLogger(__name__)
-
+    
     def setup_patterns(self):
         """Çok dilli regex pattern'lerini hazırla"""
         # Global email patterns
