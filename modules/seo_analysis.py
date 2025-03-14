@@ -11,7 +11,7 @@ def analyze_advanced_seo(domain):
     try:
         url = f"http://{domain}"
         start_time = time.time()
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
         load_time = time.time() - start_time
         html_content = response.text
