@@ -450,7 +450,7 @@ class GlobalDomainScraper:
             # 2) İstek gönder
             response = self.session.get(
                 url,
-                timeout=10,
+                timeout=30,
                 verify=False,
                 headers={
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -922,7 +922,7 @@ class GlobalDomainScraper:
                         self.found_info.append(scraped_info)
 
                     # Yeni linkleri bul
-                    response = self.session.get(current_url, timeout=10, verify=False)
+                    response = self.session.get(current_url, timeout=30, verify=False)
                     soup = BeautifulSoup(response.text, 'html.parser')
                     links = soup.find_all('a', href=True)
 
@@ -959,7 +959,7 @@ class GlobalDomainScraper:
                         self.found_info.append(scraped_info)
 
                     # Yeni linkleri bul
-                    response = self.session.get(current_url, timeout=10, verify=False)
+                    response = self.session.get(current_url, timeout=30, verify=False)
                     if response.status_code == 404:
                         continue  # 404 sayfasını atla
 
