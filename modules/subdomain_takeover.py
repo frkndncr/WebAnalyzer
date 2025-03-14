@@ -4,6 +4,7 @@ import dns.resolver
 import socket
 import logging
 import json
+import certifi 
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -236,7 +237,7 @@ class SubdomainTakeover:
                 f"http://{subdomain}", 
                 headers=self.headers, 
                 timeout=self.timeout,
-                verify=self.verify_ssl,
+                verify=certifi.where(),
                 allow_redirects=True
             )
             response_time = time.time() - start_time
@@ -263,7 +264,7 @@ class SubdomainTakeover:
                 f"https://{subdomain}", 
                 headers=self.headers, 
                 timeout=self.timeout,
-                verify=self.verify_ssl,
+                verify=certifi.where(),
                 allow_redirects=True
             )
             
