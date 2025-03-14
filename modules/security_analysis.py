@@ -13,10 +13,10 @@ def analyze_security(domain):
         https_url = f"https://{domain}"
 
         # HTTP and HTTPS requests
-        response_http = requests.get(http_url, timeout=15, allow_redirects=False)
+        response_http = requests.get(http_url, timeout=30, allow_redirects=False)
         response_https = None
         try:
-            response_https = requests.get(https_url, timeout=15)
+            response_https = requests.get(https_url, timeout=30)
         except requests.exceptions.RequestException:
             pass
         
