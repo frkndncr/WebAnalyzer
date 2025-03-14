@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 import time
 import logging
+import asyncio
 import sys
 import io
 import warnings
@@ -33,8 +34,10 @@ from modules.contact_spy import GlobalDomainScraper
 from modules.subdomain_takeover import SubdomainTakeover
 # Import AdvancedContentScanner class from the 'advanced_content_scanner' module in the 'modules' package
 from modules.advanced_content_scanner import AdvancedContentScanner
+# Import CloudflareBypass class from the 'cloudflare_bypass' module in the 'modules' package
 from modules.cloudflare_bypass import CloudflareBypass
-
+# Import AdvancedNetworkScanner class from the 'nmap_zero_day' module in the 'modules' package
+from modules.nmap_zero_day import UltraAdvancedNetworkScanner
 
 def _check_modules(silent=True):
     """
@@ -43,11 +46,13 @@ def _check_modules(silent=True):
     """
     modules = {
         "Domain Information": "modules.domain_info",
+        "Nmap Zero Day Scan": "modules.nmap_zero_day",
         "DNS Records": "modules.domain_dns",
         "SEO Analysis": "modules.seo_analysis",
         "Web Technologies": "modules.web_technologies",
         "Security Analysis": "modules.security_analysis",
         "Advanced Content Scan": "modules.advanced_content_scanner",
+        "Contact Spy": "modules.contact_spy",
         "Subdomain Discovery": "modules.subfinder_tool",
         "Subdomain Takeover": "modules.subdomain_takeover",
         "CloudFlare Bypass": "modules.cloudflare_bypass"
@@ -65,7 +70,6 @@ def _check_modules(silent=True):
             all_modules_loaded = False
 
     return all_modules_loaded
-
 
 def run_subdomain_takeover_module(domain, subdomains, output_dir=None):
     """
@@ -127,7 +131,6 @@ def run_subdomain_takeover_module(domain, subdomains, output_dir=None):
 
     return results
 
-
 def run_advanced_content_scanner(domain, output_dir=None):
     """
     Run the Advanced Content Scanner
@@ -139,11 +142,9 @@ def run_advanced_content_scanner(domain, output_dir=None):
     Returns:
         dict: Scan results
     """
-    # Tüm log ve warning mesajlarını bastır
     logging.disable(logging.CRITICAL)
     warnings.filterwarnings('ignore')
 
-    # Stdout ve stderr'i yakalama
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     stdout_capture = io.StringIO()
@@ -165,46 +166,32 @@ def run_advanced_content_scanner(domain, output_dir=None):
 
         # Run the scan
         results = scanner.run()
-
-        # Stdout ve stderr'i geri yükle
         sys.stdout = old_stdout
         sys.stderr = old_stderr
 
-        # Sadece önemli bulguları göster
         high_secrets = [s for s in results["secrets"] if s["severity"] == "High"]
         high_js_vulns = [v for v in results["js_vulnerabilities"] if v["severity"] == "High"]
         high_ssrf = [v for v in results["ssrf_vulnerabilities"] if v["severity"] == "High"]
 
-        # Benzersiz kaynakları say
         unique_secret_sources = len(set(s["source_url"] for s in high_secrets))
         unique_js_vuln_sources = len(set(v["source_url"] for v in high_js_vulns))
         unique_ssrf_sources = len(set(v["source_url"] for v in high_ssrf))
 
-        print("\n\033[93m" + "=" * 50 + "\033[0m")
-        print("\033[93m--- ADVANCED CONTENT SCAN RESULTS ---\033[0m")
-        print("\033[93m" + "=" * 50 + "\033[0m")
         print(f"\033[94mTotal URLs Crawled:\033[0m {results['summary']['total_urls_crawled']}")
         print(f"\033[94mTotal JS Files Analyzed:\033[0m {results['summary']['total_js_files']}")
         print(f"\033[94mTotal API Endpoints Found:\033[0m {results['summary']['total_api_endpoints']}")
-
-        # Sadece önemli bulguları göster
         print(f"\033[91mHigh Severity Secrets Found:\033[0m {len(high_secrets)} (in {unique_secret_sources} files)")
-        print(
-            f"\033[91mHigh Severity JS Vulnerabilities:\033[0m {len(high_js_vulns)} (in {unique_js_vuln_sources} files)")
-        print(
-            f"\033[91mHigh Severity SSRF Vulnerabilities:\033[0m {len(high_ssrf)} (in {unique_ssrf_sources} endpoints)")
+        print(f"\033[91mHigh Severity JS Vulnerabilities:\033[0m {len(high_js_vulns)} (in {unique_js_vuln_sources} files)")
+        print(f"\033[91mHigh Severity SSRF Vulnerabilities:\033[0m {len(high_ssrf)} (in {unique_ssrf_sources} endpoints)")
 
-        # En çok 5 yüksek seviyeli bulgu göster (her kategoriden)
         if high_secrets:
             print("\n\033[91mTop High Severity Secrets:\033[0m")
-            # Benzersiz kaynaklara göre grupla
             by_source = {}
             for s in high_secrets:
                 if s["source_url"] not in by_source:
                     by_source[s["source_url"]] = []
                 by_source[s["source_url"]].append(s)
 
-            # En çok gizli bilgi içeren 3 kaynağı göster
             for i, (source, secrets) in enumerate(sorted(by_source.items(), key=lambda x: len(x[1]), reverse=True)[:3]):
                 count = len(secrets)
                 types = ", ".join(set(s["type"] for s in secrets[:3]))
@@ -214,14 +201,12 @@ def run_advanced_content_scanner(domain, output_dir=None):
 
         if high_js_vulns:
             print("\n\033[91mTop High Severity JS Vulnerabilities:\033[0m")
-            # Benzersiz türlere göre grupla
             by_type = {}
             for v in high_js_vulns:
                 if v["type"] not in by_type:
                     by_type[v["type"]] = []
                 by_type[v["type"]].append(v)
 
-            # En çok bulunan 3 zafiyet türünü göster
             for i, (vuln_type, vulns) in enumerate(sorted(by_type.items(), key=lambda x: len(x[1]), reverse=True)[:3]):
                 count = len(vulns)
                 sources = ", ".join(set(v["source_url"] for v in vulns[:3]))
@@ -233,21 +218,17 @@ def run_advanced_content_scanner(domain, output_dir=None):
             print("\n\033[91mSSRF Vulnerabilities:\033[0m")
             for i, vuln in enumerate(high_ssrf[:3]):
                 print(f"  \033[91m{i + 1}. {vuln['type']}\033[0m in {vuln['source_url']}")
-
         print(f"\n\033[94mDetailed findings saved to:\033[0m {scanner._save_findings()}")
 
         return results
     except Exception as e:
-        # Hata durumunda bile stdout ve stderr'i geri yükle
         sys.stdout = old_stdout
         sys.stderr = old_stderr
         print(f"\033[91mError during scan: {str(e)}\033[0m")
         return None
     finally:
-        # Log ve warning ayarlarını geri yükle
         logging.disable(logging.NOTSET)
         warnings.resetwarnings()
-
 
 def select_modules():
     """
@@ -257,10 +238,12 @@ def select_modules():
     modules = [
         "Domain Information",
         "DNS Records",
+        "Nmap Zero Day Scan",
         "SEO Analysis",
         "Web Technologies",
         "Security Analysis",
         "Advanced Content Scan",
+        "Contact Spy",
         "Subdomain Discovery",
         "Subdomain Takeover",
         "CloudFlare Bypass"
@@ -320,7 +303,6 @@ def select_modules():
 
         except Exception:
             print("\033[91m[✘] Invalid input. Please enter valid module numbers.\033[0m")
-
 
 def run_cloudflare_bypass(domain):
     """
@@ -385,11 +367,7 @@ def run_cloudflare_bypass(domain):
     else:
         print("\033[91m[-] No real IPs found. The target has strong CloudFlare protection.\033[0m")
 
-    print("\033[93m" + "=" * 50 + "\033[0m")
-    input("\033[92mPress Enter to continue...\033[0m")
-
-
-def main():
+async def main():
     # Clear terminal and display banner
     clear_terminal()
     display_banner()
@@ -408,10 +386,6 @@ def main():
     # Select modules to run
     selected_modules, run_all = select_modules()
 
-    # Exit if no modules selected
-    if not selected_modules:
-        return
-
     # Collect results in a dictionary
     all_results = {}
     print(f"\n\033[94m[➤] Starting analysis for: {domain}\033[0m")
@@ -421,9 +395,9 @@ def main():
 
     # Domain Information
     if run_all or "Domain Information" in selected_modules:
-        print("\n\033[93m" + "=" * 40 + "\033[0m")
+        print("\n\033[93m" + "="*40 + "\033[0m")
         print("\033[93m--- DOMAIN INFORMATION ---\033[0m")
-        print("\033[93m" + "=" * 40 + "\033[0m")
+        print("\033[93m" + "="*40 + "\033[0m")
         domain_info = get_domain_info(domain, api_key)
         all_results["Domain Information"] = domain_info
 
@@ -457,14 +431,14 @@ def main():
                     print(f"  - {item}")
             elif value not in ["Unknown", "Not available"]:
                 print(f"\033[94m{key}:\033[0m {value}")
-
+    
     # DNS Information
     if run_all or "DNS Records" in selected_modules:
-        print("\n\033[93m" + "=" * 40 + "\033[0m")
+        print("\n\033[93m" + "="*40 + "\033[0m")
         print("\033[93m--- DNS INFORMATION ---\033[0m")
-        print("\033[93m" + "=" * 40 + "\033[0m")
+        print("\033[93m" + "="*40 + "\033[0m")
 
-        analyzer = DNSAnalyzer()  # Speed Mood
+        analyzer = DNSAnalyzer() # Speed Mood
         start_time = time.time()
         dns_records = analyzer.get_dns_records(domain)
         print("DNS Records:")
@@ -480,8 +454,40 @@ def main():
         print(f"Total execution time: {round((time.time() - start_time) * 1000, 2)} ms")
         all_results["DNS Records"] = dns_records
 
+    #Nmap & Zero Day Scanner
+    if run_all or "Nmap Zero Day Scan" in selected_modules:
+        print("\n\033[93m" + "="*40 + "\033[0m")
+        print("\033[93m--- ADVANCED NETWORK & ZERO-DAY SCAN ---\033[0m")
+        print("\033[93m" + "="*40 + "\033[0m")
+        print("Starting scan...")
+       
+        try:
+            scanner = UltraAdvancedNetworkScanner(domain=domain, timeout=10, aggressive_mode=False)
+            start_time = time.time()
+           
+            scan_results = await scanner.run_comprehensive_scan(domain)
+           
+            # Open Ports and Services
+            print("\nOpen Ports and Services:")
+            for port in scan_results['port_scan'].get('open_ports', []):
+                service = scan_results['port_scan']['services'][port]
+                print(f"  - Port: {port}, Service: {service['service']}, Version: {service['version']}, State: {service.get('state', 'open')}")
+           
+            # Zero-Day Vulnerabilities
+            print("\nZero-Day Vulnerabilities:")
+            for vuln in scan_results['zero_day_vulnerabilities']:
+                print(f"  - {vuln.get('id', 'N/A')}: {vuln.get('description', 'No details available')} (Severity: {vuln.get('severity', {}).get('level', 'Unknown')})")
+           
+            execution_time = time.time() - start_time
+            print(f"\nScan completed in {execution_time:.2f} seconds")
+            all_results["Nmap Zero Day Scan"] = scan_results
+
+        except Exception as e:
+            print(f"[ERROR] An error occurred: {str(e)}")
+
+    #Cloud Flare Bypass
     if "CloudFlare Bypass" in selected_modules or run_all:
-        run_cloudflare_bypass(domain)
+            run_cloudflare_bypass(domain)
 
     # SEO and Analytics Tag Analysis
     if run_all or "SEO Analysis" in selected_modules:
@@ -543,21 +549,55 @@ def main():
             print(f"  {key}: {value}")
         # CORS Policy
         print("\n\033[94mCORS Policy:\033[0m", security_info.get("CORS Policy", "Not Found"))
-
+            
     # Advanced Content Scan
     if run_all or "Advanced Content Scan" in selected_modules:
-        print("\n\033[93m" + "=" * 40 + "\033[0m")
+        print("\n\033[93m" + "="*40 + "\033[0m")
         print("\033[93m--- ADVANCED CONTENT SCAN ---\033[0m")
-        print("\033[93m" + "=" * 40 + "\033[0m")
+        print("\033[93m" + "="*40 + "\033[0m")
         print(f"Starting advanced content scan for {domain} wait please")
         content_scan_results = run_advanced_content_scanner(domain, output_dir=f"logs/{domain}")
         all_results["Advanced Content Scan"] = content_scan_results
 
+    # Contact Scan
+    if run_all or "Contact Spy" in selected_modules:
+        print("\n\033[93m" + "=" * 40 + "\033[0m")
+        print("\033[93m--- Contact Scan ---\033[0m")
+        print("\033[93m" + "=" * 40 + "\033[0m")
+        
+        try:
+            contact_scraper = GlobalDomainScraper(domain, max_pages=100, log_dir="logs")
+            contact_results = contact_scraper.crawl()
+            
+            if "error" in contact_results:
+                print(f"\033[91m[ERROR] Contact scan failed: {contact_results['error']}\033[0m")
+            else:
+                summary = contact_results.get('summary', {})
+                print("\nContact Scan Summary:")
+                print(f"Pages scanned: {contact_results.get('pages_scanned', 0)}")
+                print(f"Total emails found: {summary.get('total_emails', 0)}")
+                print(f"Total phone numbers found: {summary.get('total_phones', 0)}")
+                print(f"Total social media profiles found: {summary.get('total_social_media', 0)}")
+                
+                contact_scraper.export_results(contact_results, output_format='json')
+                print(f"\033[94mResults saved to: logs/{domain}/contact_scan.json\033[0m")
+                print(f"\033[94mLog file: logs/scraper.log\033[0m")
+            
+            all_results["Contact Scan"] = contact_results
+        
+        except Exception as e:
+            print(f"\033[91m[ERROR] Unexpected error in Contact Scan: {str(e)}\033[0m")
+            all_results["Contact Scan"] = {"error": str(e)}
+
+        save_results_to_json(domain, all_results)
+        print("\nScan completed.")
+
+    # Subdomain Discovery
     subdomains = []
     if run_all or "Subdomain Takeover" in selected_modules or "Subdomain Discovery" in selected_modules:
-        print("\n\033[93m" + "=" * 40 + "\033[0m")
+        print("\n\033[93m" + "="*40 + "\033[0m")
         print("\033[93m--- SUBDOMAIN DISCOVERY ---\033[0m")
-        print("\033[93m" + "=" * 40 + "\033[0m")
+        print("\033[93m" + "="*40 + "\033[0m")
         subdomains = run_subfinder(domain)
         all_results["Subdomains"] = subdomains
 
@@ -567,11 +607,12 @@ def main():
         else:
             print("\033[91mNo subdomains found or Subfinder could not be executed.\033[0m")
 
+    # Subdomain Takeover
     if run_all or "Subdomain Takeover" in selected_modules:
-        print("\n\033[93m" + "=" * 40 + "\033[0m")
+        print("\n\033[93m" + "="*40 + "\033[0m")
         print("\033[93m--- SUBDOMAIN TAKEOVER ANALYSIS ---\033[0m")
-        print("\033[93m" + "=" * 40 + "\033[0m")
-
+        print("\033[93m" + "="*40 + "\033[0m")
+        
         if subdomains:
             takeover_results = run_subdomain_takeover_module(domain, subdomains)
             all_results["Subdomain Takeover"] = takeover_results
@@ -581,6 +622,5 @@ def main():
     # Save results
     save_results_to_json(domain, all_results)
 
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
