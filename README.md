@@ -1,59 +1,45 @@
 # Web Analyzer Tool
 
 ## Overview
-The **Web Analyzer Tool** is a comprehensive Python-based application designed for domain analysis, including WHOIS information retrieval, DNS records, subdomain discovery, SEO analysis, web technology detection, and advanced security analysis.
+The **Web Analyzer Tool** is a comprehensive Python-based application designed for domain analysis, including WHOIS information retrieval, DNS records, subdomain discovery, SEO analysis, web technology detection, and advanced security analysis. The tool also features Cloudflare bypass capabilities, contact information discovery, zero-day vulnerability scanning, and subdomain takeover detection.
 
 ---
 
-## Features
+## Modules
 
-1. **Domain Information Retrieval**
-   - Fetches WHOIS information (registrar, creation date, expiry date, etc.)
-   - Detects privacy protection, DNSSEC status, and SSL details.
-   - Retrieves server provider and physical location information.
+The Web Analyzer features the following modules:
 
-2. **DNS Records Analysis**
-   - Resolves A (IPv4), AAAA (IPv6), MX (Mail Servers), TXT (Verification), and NS (Name Server) records.
-   - Measures DNS response time.
+### Core Analysis Modules
 
-3. **Subdomain Discovery**
-   - Uses **Subfinder** to discover subdomains of a given domain.
-   - Saves results in the corresponding domain folder under `logs/`.
+- **Domain Info** - Retrieves comprehensive WHOIS information and registration details for domains.
 
-4. **SEO and Analytics Analysis**
-   - Extracts meta tags (description, keywords, canonical links).
-   - Identifies Open Graph and Twitter tags.
-   - Detects verification tags (Google, Bing, Yandex).
-   - Recognizes analytics tools (Google Analytics, Tag Manager, Facebook Pixel, etc.).
-   - Evaluates JavaScript frameworks and structured data.
-   - Measures page load time and checks performance metrics.
-   - Analyzes `robots.txt` and `sitemap.xml` files.
+- **Domain DNS** - Analyzes DNS records including A, AAAA, MX, NS, TXT and other record types.
 
-5. **Web Technology Detection**
-   - Detects backend technologies (PHP, Django, Node.js, etc.).
-   - Identifies frontend frameworks (React, Angular, Bootstrap, etc.).
-   - Recognizes CDN services and checks for compression and caching policies.
+- **Subfinder Tool** - Powerful subdomain discovery and enumeration capabilities.
 
-6. **Advanced Security Analysis**
-   - Detects Web Application Firewalls (WAFs).
-   - Analyzes HTTPS enforcement and SSL certificates.
-   - Examines security headers (CSP, HSTS, etc.).
-   - Checks Cross-Origin Resource Sharing (CORS) policy.
-7. **Subdomain Takeover Detection**
-   * Scans discovered subdomains for potential vulnerability to subdomain takeover attacks.
-   * Categorizes vulnerabilities by confidence level (High, Medium, Low).
-   * Identifies specific services and potential exploitation methods.
-   * Provides mitigation recommendations for vulnerable subdomains.
-   * Highlights critical vulnerabilities that require immediate attention.
-8. **Advanced Content Scanner**
-   * Performs deep web content analysis across multiple pages.
-   * Discovers and analyzes sensitive information leakage.
-   * Detects potential JavaScript-based vulnerabilities.
-   * Identifies Server-Side Request Forgery (SSRF) risks.
-   * Scans for exposed secrets, API keys, and credentials.
-   * Provides detailed reporting on high-severity findings.
-   * Supports configurable scanning depth and page limits.
----
+- **SEO Analysis** - Evaluates search engine optimization factors including meta tags and content analysis.
+
+- **Web Technologies** - Detects frontend and backend technologies, frameworks, and services.
+
+### Security Modules
+
+- **Security Analysis** - Performs comprehensive security checks for common vulnerabilities and misconfigurations.
+
+- **Cloudflare Bypass** - Bypasses Cloudflare and other WAF protections to enable analysis of protected websites.
+
+- **Nmap Zero Day** - Advanced vulnerability scanning to identify potential zero-day vulnerabilities.
+
+- **Subdomain Takeover** - Detects vulnerable subdomains that are susceptible to takeover attacks.
+
+### Advanced Modules
+
+- **Advanced Content Scanner** - Deep analysis of web content to discover sensitive information and potential risks.
+
+- **Contact Spy** - Discovers and extracts contact information from websites.
+
+### Service Integration
+
+- **Socket Service** - Run Web Analyzer as a service, enabling remote access and API-like functionality.
 
 ## Installation
 
