@@ -95,10 +95,10 @@ Ensure the following dependencies are installed:
 ---
 
 ## Project Structure
-
 ```plaintext
 .
 ├── main.py                 # Entry point of the application
+├── socket.py               # Socket server implementation for remote access
 ├── setup.sh                # Installation script
 ├── requirements.txt        # Python dependencies
 ├── logs/                   # Directory to store analysis results
@@ -111,6 +111,9 @@ Ensure the following dependencies are installed:
 │   ├── web_technologies.py # Web technology detection module
 │   ├── subdomain_takeover.py # Subdomain takeover vulnerability detection module
 │   ├── advanced_content_scanner.py # Advanced web content scanning module
+│   ├── cloudflare_bypass.py # Cloudflare and WAF bypass module
+│   ├── contact_spy.py      # Contact information discovery module
+│   ├── nmap_zero_day.py    # Zero-day vulnerability scanning module
 └── tests/                  # Test scripts for the project
     └── test_main.py        # Unit tests for main.py
 ```
@@ -123,7 +126,6 @@ Ensure the following dependencies are installed:
 
 ### JSON Output:
 The results are saved as `results.json` in the corresponding domain folder:
-
 ```json
 {
   "Domain Information": {
@@ -199,30 +201,99 @@ The results are saved as `results.json` in the corresponding domain folder:
         "severity": "High"
       }
     ]
+  },
+  "Cloudflare Bypass": {
+    "status": "success",
+    "original_url": "https://example.com",
+    "clean_url": "https://203.0.113.1",
+    "method_used": "direct_ip",
+    "headers_used": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "X-Forwarded-For": "203.0.113.1"
+    },
+    "time_taken": 3.5
+  },
+  "Contact Information": {
+    "emails": [
+      {
+        "address": "contact@example.com",
+        "source": "Contact page",
+        "confidence": "High"
+      },
+      {
+        "address": "support@example.com",
+        "source": "Footer",
+        "confidence": "High"
+      }
+    ],
+    "phone_numbers": [
+      {
+        "number": "+1-123-456-7890",
+        "source": "Contact page",
+        "confidence": "High"
+      }
+    ],
+    "social_media": [
+      {
+        "platform": "Twitter",
+        "username": "@example",
+        "url": "https://twitter.com/example"
+      },
+      {
+        "platform": "LinkedIn",
+        "url": "https://linkedin.com/company/example"
+      }
+    ],
+    "contact_forms": [
+      {
+        "url": "https://example.com/contact",
+        "fields": ["name", "email", "message"]
+      }
+    ]
+  },
+  "Zero Day Vulnerabilities": {
+    "scan_summary": {
+      "total_ports_scanned": 1000,
+      "open_ports": 5,
+      "potential_vulnerabilities": 3,
+      "scan_duration": 245.6
+    },
+    "potential_zero_days": [
+      {
+        "service": "HTTP",
+        "port": 8080,
+        "vulnerability_type": "Buffer Overflow",
+        "confidence": "Medium",
+        "details": "Non-standard HTTP implementation with potential memory corruption in header parsing",
+        "cve_similar": ["CVE-2021-34567"]
+      }
+    ],
+    "open_services": [
+      {
+        "port": 80,
+        "service": "HTTP",
+        "version": "nginx/1.18.0"
+      },
+      {
+        "port": 443,
+        "service": "HTTPS",
+        "version": "nginx/1.18.0"
+      }
+    ]
   }
 }
 ```
-
 ---
-
 ## Contribution
-
 Feel free to contribute to this project by:
 - Reporting issues.
 - Suggesting features.
 - Submitting pull requests.
-
 ---
-
 ## License
-
 This project is licensed under the MIT License.
-
 ## Contact
-
 - İnstagram: https://www.instagram.com/f3rrkan/
 - LinkedIn: https://www.linkedin.com/in/furkan-dincer/
 - Mail: hi@c4softwarestudio.com
-
 ---
-
