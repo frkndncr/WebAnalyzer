@@ -122,7 +122,8 @@ Ensure the following dependencies are installed:
 
 ## Example Output Screenshot
 
-![resim](https://github.com/user-attachments/assets/61580f3c-741b-46b3-aefb-5590f895f856)
+![image](https://github.com/user-attachments/assets/09c9912b-55dd-448a-91d5-544fd92baede)
+
 
 ### JSON Output:
 The results are saved as `results.json` in the corresponding domain folder:
