@@ -454,37 +454,6 @@ async def main():
         print(f"Total execution time: {round((time.time() - start_time) * 1000, 2)} ms")
         all_results["DNS Records"] = dns_records
 
-    #Nmap & Zero Day Scanner
-    if run_all or "Nmap Zero Day Scan" in selected_modules:
-        print("\n\033[93m" + "="*40 + "\033[0m")
-        print("\033[93m--- ADVANCED NETWORK & ZERO-DAY SCAN ---\033[0m")
-        print("\033[93m" + "="*40 + "\033[0m")
-        print("Starting scan...")
-       
-        try:
-            scanner = UltraAdvancedNetworkScanner(domain=domain, timeout=10, aggressive_mode=False)
-            start_time = time.time()
-           
-            scan_results = await scanner.run_comprehensive_scan(domain)
-           
-            # Open Ports and Services
-            print("\nOpen Ports and Services:")
-            for port in scan_results['port_scan'].get('open_ports', []):
-                service = scan_results['port_scan']['services'][port]
-                print(f"  - Port: {port}, Service: {service['service']}, Version: {service['version']}, State: {service.get('state', 'open')}")
-           
-            # Zero-Day Vulnerabilities
-            print("\nZero-Day Vulnerabilities:")
-            for vuln in scan_results['zero_day_vulnerabilities']:
-                print(f"  - {vuln.get('id', 'N/A')}: {vuln.get('description', 'No details available')} (Severity: {vuln.get('severity', {}).get('level', 'Unknown')})")
-           
-            execution_time = time.time() - start_time
-            print(f"\nScan completed in {execution_time:.2f} seconds")
-            all_results["Nmap Zero Day Scan"] = scan_results
-
-        except Exception as e:
-            print(f"[ERROR] An error occurred: {str(e)}")
-
     #Cloud Flare Bypass
     if "CloudFlare Bypass" in selected_modules or run_all:
             run_cloudflare_bypass(domain)
@@ -619,6 +588,37 @@ async def main():
         else:
             print("\033[91mSkipping subdomain takeover scan as no subdomains were found.\033[0m")
 
+    #Nmap & Zero Day Scanner
+    if run_all or "Nmap Zero Day Scan" in selected_modules:
+        print("\n\033[93m" + "="*40 + "\033[0m")
+        print("\033[93m--- ADVANCED NETWORK & ZERO-DAY SCAN ---\033[0m")
+        print("\033[93m" + "="*40 + "\033[0m")
+        print("Starting scan...")
+       
+        try:
+            scanner = UltraAdvancedNetworkScanner(domain=domain, timeout=10, aggressive_mode=False)
+            start_time = time.time()
+           
+            scan_results = await scanner.run_comprehensive_scan(domain)
+           
+            # Open Ports and Services
+            print("\nOpen Ports and Services:")
+            for port in scan_results['port_scan'].get('open_ports', []):
+                service = scan_results['port_scan']['services'][port]
+                print(f"  - Port: {port}, Service: {service['service']}, Version: {service['version']}, State: {service.get('state', 'open')}")
+           
+            # Zero-Day Vulnerabilities
+            print("\nZero-Day Vulnerabilities:")
+            for vuln in scan_results['zero_day_vulnerabilities']:
+                print(f"  - {vuln.get('id', 'N/A')}: {vuln.get('description', 'No details available')} (Severity: {vuln.get('severity', {}).get('level', 'Unknown')})")
+           
+            execution_time = time.time() - start_time
+            print(f"\nScan completed in {execution_time:.2f} seconds")
+            all_results["Nmap Zero Day Scan"] = scan_results
+
+        except Exception as e:
+            print(f"[ERROR] An error occurred: {str(e)}")
+            
     # Save results
     save_results_to_json(domain, all_results)
 
