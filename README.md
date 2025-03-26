@@ -125,171 +125,90 @@ Ensure the following dependencies are installed:
 ![image](https://github.com/user-attachments/assets/09c9912b-55dd-448a-91d5-544fd92baede)
 
 
-### JSON Output:
-The results are saved as `results.json` in the corresponding domain folder:
-```json
-{
-  "Domain Information": {
-    "Domain": "example.com",
-    "Registrar Company": "Registrar Name",
-    "Creation Date": "2020-01-01",
-    "End Date": "2025-01-01",
-    "Privacy Protection": "Effective",
-    "Server Provider": "Cloudflare",
-    "Physical Location": "San Francisco, US"
-  },
-  "DNS Records": {
-    "A Records (IPv4)": ["192.168.0.1"],
-    "MX Records (Mail Servers)": ["mail.example.com"],
-    "Response Time (ms)": 35.5
-  },
-  "Subdomains": ["www.example.com", "blog.example.com"],
-  "SEO Analysis": {
-    "Meta Tags": {"Description": "Example description"},
-    "Analytics Tools": {"Google Analytics IDs": ["UA-123456-7"]}
-  },
-  "Web Technologies": {
-    "Backend Technologies": ["PHP", "WordPress"],
-    "Frontend Technologies": ["Bootstrap"],
-    "Content Delivery Network (CDN)": "Cloudflare"
-  },
-  "Security Analysis": {
-    "Web Application Firewall": "Cloudflare",
-    "SSL Info": {"Issuer": "Let's Encrypt"}
-  },
-  "Subdomain Takeover": {
-    "Vulnerable Subdomains": [
-      {
-        "subdomain": "dev.example.com",
-        "vulnerability_type": "Heroku Subdomain Takeover",
-        "confidence": "High",
-        "service": "Heroku",
-        "exploitation_difficulty": "Medium",
-        "mitigation": "Claim the subdomain or remove the DNS record"
-      }
-    ],
-    "Statistics": {
-      "total_subdomains_checked": 10,
-      "high_confidence_vulnerabilities": 1,
-      "medium_confidence_vulnerabilities": 0,
-      "low_confidence_vulnerabilities": 0
-    }
-  },
-  "Advanced Content Scan": {
-    "summary": {
-      "total_urls_crawled": 50,
-      "total_js_files": 20,
-      "total_api_endpoints": 15
-    },
-    "secrets": [
-      {
-        "type": "API Key",
-        "source_url": "https://example.com/js/config.js",
-        "severity": "High"
-      }
-    ],
-    "js_vulnerabilities": [
-      {
-        "type": "Cross-Site Scripting (XSS)",
-        "source_url": "https://example.com/main.js",
-        "severity": "Medium"
-      }
-    ],
-    "ssrf_vulnerabilities": [
-      {
-        "type": "Potential SSRF Endpoint",
-        "source_url": "https://example.com/proxy",
-        "severity": "High"
-      }
-    ]
-  },
-  "Cloudflare Bypass": {
-    "status": "success",
-    "original_url": "https://example.com",
-    "clean_url": "https://203.0.113.1",
-    "method_used": "direct_ip",
-    "headers_used": {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      "X-Forwarded-For": "203.0.113.1"
-    },
-    "time_taken": 3.5
-  },
-  "Contact Information": {
-    "emails": [
-      {
-        "address": "contact@example.com",
-        "source": "Contact page",
-        "confidence": "High"
-      },
-      {
-        "address": "support@example.com",
-        "source": "Footer",
-        "confidence": "High"
-      }
-    ],
-    "phone_numbers": [
-      {
-        "number": "+1-123-456-7890",
-        "source": "Contact page",
-        "confidence": "High"
-      }
-    ],
-    "social_media": [
-      {
-        "platform": "Twitter",
-        "username": "@example",
-        "url": "https://twitter.com/example"
-      },
-      {
-        "platform": "LinkedIn",
-        "url": "https://linkedin.com/company/example"
-      }
-    ],
-    "contact_forms": [
-      {
-        "url": "https://example.com/contact",
-        "fields": ["name", "email", "message"]
-      }
-    ]
-  },
-  "Zero Day Vulnerabilities": {
-    "scan_summary": {
-      "total_ports_scanned": 1000,
-      "open_ports": 5,
-      "potential_vulnerabilities": 3,
-      "scan_duration": 245.6
-    },
-    "potential_zero_days": [
-      {
-        "service": "HTTP",
-        "port": 8080,
-        "vulnerability_type": "Buffer Overflow",
-        "confidence": "Medium",
-        "details": "Non-standard HTTP implementation with potential memory corruption in header parsing",
-        "cve_similar": ["CVE-2021-34567"]
-      }
-    ],
-    "open_services": [
-      {
-        "port": 80,
-        "service": "HTTP",
-        "version": "nginx/1.18.0"
-      },
-      {
-        "port": 443,
-        "service": "HTTPS",
-        "version": "nginx/1.18.0"
-      }
-    ]
-  }
-}
-```
 ---
-## Contribution
-Feel free to contribute to this project by:
-- Reporting issues.
-- Suggesting features.
-- Submitting pull requests.
+## 🤝 Contributing to Web Analyzer Tool
+
+We welcome contributions from the community to make the Web Analyzer Tool even more powerful and effective! This guide will help you understand how you can contribute to the project.
+
+### Ways to Contribute
+
+1. **Reporting Bugs**: If you encounter any issues while using the tool, please open an issue with:
+   - A clear description of the bug
+   - Steps to reproduce the issue
+   - Your environment details (OS, Python version, etc.)
+   - Error messages or screenshots if applicable
+
+2. **Feature Requests**: Have an idea to enhance the tool? Open an issue describing:
+   - The feature you'd like to see
+   - How it would benefit users
+   - Any implementation ideas you might have
+
+3. **Code Contributions**: Want to write code for the project? Here's how:
+
+### Development Workflow
+
+1. **Fork the Repository**:
+   - Click the "Fork" button at the top of this repository
+   - Clone your fork locally: `git clone https://github.com/YOUR_USERNAME/web-analyzer-tool.git`
+
+2. **Set Up Your Environment**:
+   ```bash
+   cd web-analyzer-tool
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   pip install -e .  # Install the package in development mode
+   ```
+
+3. **Create a Branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b bugfix/issue-you-are-fixing
+   ```
+
+4. **Make Your Changes**:
+   - Follow the project's coding style and conventions
+   - Add comprehensive comments and docstrings
+   - Write clear, descriptive commit messages
+
+5. **Write/Update Tests**:
+   - Add tests for new features
+   - Ensure existing tests pass with your changes
+
+6. **Submit a Pull Request**:
+   - Push your changes to your fork: `git push origin feature/your-feature-name`
+   - Create a pull request from your fork to the main repository
+   - Provide a clear description of your changes and reference any related issues
+
+### Development Guidelines
+
+- **Code Style**: Follow PEP 8 standards and the existing code style in the project
+- **Documentation**: Document all functions, classes, and complex logic
+- **Modularity**: Keep functions focused on a single task
+- **Error Handling**: Implement proper error handling and provide informative error messages
+- **Security**: Be mindful of security implications, especially when handling sensitive information
+- **Dependencies**: Minimize external dependencies; justify any new ones
+
+### Ideas for Contributions
+
+- **New Analysis Modules**: Add support for additional types of web analysis
+- **Performance Optimizations**: Improve scan speed and resource usage
+- **Reporting Enhancements**: Create better visualization and export options for analysis results
+- **API Integration**: Add integrations with relevant security or SEO APIs
+- **Detection Rules**: Expand the ruleset for detecting technologies, vulnerabilities, etc.
+- **User Interface**: Improve CLI experience or develop a web interface
+- **Documentation**: Enhance user and developer documentation
+- **Internationalization**: Add support for multiple languages
+
+### Code Review Process
+
+- All pull requests will be reviewed by project maintainers
+- Feedback may be provided for necessary changes
+- Once approved, your contribution will be merged into the main codebase
+
+We value all contributions and will ensure proper credit is given to contributors. Thank you for helping improve the Web Analyzer Tool!
+
 ---
 ## License
 This project is licensed under the MIT License.
