@@ -149,7 +149,7 @@ We welcome contributions from the community to make the Web Analyzer Tool even m
 
 1. **Fork the Repository**:
    - Click the "Fork" button at the top of this repository
-   - Clone your fork locally: `git clone https://github.com/YOUR_USERNAME/web-analyzer-tool.git`
+   - Clone your fork locally: `git clone https://github.com/frkndncr/web-analyzer-tool.git`
 
 2. **Set Up Your Environment**:
    ```bash
