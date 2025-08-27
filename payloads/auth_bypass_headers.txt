@@ -1,0 +1,26 @@
+X-Originating-IP: 127.0.0.1
+X-Forwarded-For: 127.0.0.1
+X-Forwarded-For: localhost
+X-Forwarded-For: 10.0.0.0
+X-Forwarded-For: 172.16.0.0
+X-Forwarded-For: 192.168.1.0
+X-Real-IP: 127.0.0.1
+X-Remote-IP: 127.0.0.1
+X-Remote-Addr: 127.0.0.1
+X-Client-IP: 127.0.0.1
+X-Host: 127.0.0.1
+X-Forwarded-Host: localhost
+X-Forwarded-Host: 127.0.0.1
+X-Original-URL: /admin
+X-Rewrite-URL: /admin
+X-Override-URL: /admin
+X-HTTP-Method-Override: GET
+X-HTTP-Method-Override: POST
+X-Method-Override: GET
+X-Method-Override: POST
+Authorization: Bearer null
+Authorization: Bearer
+Authorization: Basic YWRtaW46YWRtaW4=
+Authorization: Basic dGVzdDp0ZXN0
+Authorization: Basic cm9vdDpyb290
+Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiJ9.

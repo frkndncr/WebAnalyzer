@@ -1,0 +1,82 @@
+{
+    "whois_api_key": "",
+    "output_dir": "logs",
+    "log_file": "webanalyzer.log",
+    "session": {
+        "min_delay": 2.0,
+        "max_delay": 5.0,
+        "max_retries": 3,
+        "max_requests_per_session": 15,
+        "timeout": 30,
+        "rotate_after_error": true
+    },
+    "modules": {
+        "inter_module_delay": {
+            "light": [
+                3.0,
+                7.0
+            ],
+            "medium": [
+                5.0,
+                10.0
+            ],
+            "heavy": [
+                10.0,
+                20.0
+            ]
+        },
+        "error_recovery_delay": [
+            15.0,
+            30.0
+        ],
+        "max_concurrent_modules": 1
+    },
+    "proxy": {
+        "enabled": false,
+        "proxy_list": [],
+        "rotation_enabled": true
+    },
+    "user_agent": {
+        "rotation_enabled": true,
+        "custom_agents": [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+            "Mozilla/5.0 (Android 14; Mobile; rv:109.0) Gecko/109.0 Firefox/121.0"
+        ],
+        "use_fake_useragent": true
+    },
+    "module_weights": {
+        "Domain Information": "light",
+        "DNS Records": "light",
+        "SEO Analysis": "medium",
+        "Web Technologies": "medium",
+        "Security Analysis": "heavy",
+        "Advanced Content Scan": "heavy",
+        "Contact Spy": "heavy",
+        "Subdomain Discovery": "heavy",
+        "Subdomain Takeover": "heavy",
+        "CloudFlare Bypass": "heavy",
+        "Nmap Zero Day Scan": "heavy"
+    },
+    "rate_limit_detection": {
+        "status_codes": [
+            429,
+            503,
+            502
+        ],
+        "keywords": [
+            "rate limit",
+            "too many requests",
+            "blocked"
+        ],
+        "retry_delay": [
+            10.0,
+            30.0
+        ]
+    }
+}
