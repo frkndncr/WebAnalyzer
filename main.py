@@ -353,55 +353,148 @@ def safe_advanced_content_scan(domain):
 
 @safe_module_execution(delay_type='heavy')
 def safe_elite_api_scan(domain):
-    """Elite Bug Bounty API Scanner wrapper"""
-    from modules.api_security_scanner import BugBountyScanner
-    import asyncio
-    import nest_asyncio
-    
-    # Event loop sorunlarını çöz
-    nest_asyncio.apply()
-    
-    print("\n" + "="*60)
-    print(" ELITE BUG BOUNTY SCANNER")
-    print(" Target: " + domain)
-    print("="*60)
-    
+    """Elite Bug Bounty API Scanner wrapper - Compatible with existing module"""
     try:
-        scanner = BugBountyScanner(domain, threads=30, aggressive=8)
+        # Import mevcut modülden - eski yapıya uyumlu
+        from modules.api_security_scanner import run_scanner
+        import asyncio
+        import nest_asyncio
         
-        # Yeni event loop oluştur
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Event loop sorunlarını çöz
+        nest_asyncio.apply()
+        
+        print("\n" + "="*60)
+        print(" ELITE BUG BOUNTY SCANNER")
+        print(" Using Custom Payload Collection")
+        print(" Target: " + domain)
+        print("="*60)
         
         try:
-            results = loop.run_until_complete(scanner.scan())
-        finally:
-            loop.close()
+            # Mevcut modül yapısını kullan
+            scanner = run_scanner(domain, threads=30, aggressive=8)
+            
+            # Check if scanner is async (new version) or sync (old version)
+            if hasattr(scanner, 'scan'):
+                # New version - scanner object returned
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    results = loop.run_until_complete(scanner.scan())
+                finally:
+                    loop.close()
+            else:
+                # Old version - results directly returned
+                results = scanner
+            
+        except Exception as e:
+            # Fallback: Try direct class instantiation
+            print(f"[INFO] Trying alternative approach...")
+            from modules.api_security_scanner import BugBountyScanner
+            
+            scanner_obj = BugBountyScanner(domain, threads=30, aggressive=8)
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                results = loop.run_until_complete(scanner_obj.scan())
+            finally:
+                loop.close()
         
-        # Özet bilgi
-        vulns = results.get('vulnerabilities', [])
+        # Handle results regardless of format
+        if isinstance(results, dict):
+            # New format
+            vulns = results.get('vulnerabilities', [])
+            endpoints_found = results.get('endpoints_found', 0)
+            endpoints_tested = results.get('endpoints_tested', 0)
+        else:
+            # Old format fallback
+            vulns = getattr(results, 'vulnerabilities', [])
+            endpoints_found = len(getattr(results, 'endpoints_found', []))
+            endpoints_tested = endpoints_found
+        
+        # Process vulnerabilities
         critical = [v for v in vulns if v.get('severity') == 'CRITICAL']
         high = [v for v in vulns if v.get('severity') == 'HIGH']
+        medium = [v for v in vulns if v.get('severity') == 'MEDIUM']
+        low = [v for v in vulns if v.get('severity') == 'LOW']
         
+        # Calculate risk metrics
+        risk_score = calculate_risk_score(len(critical), len(high), len(medium), len(low))
+        security_grade = get_security_grade(risk_score)
+        
+        # Enhanced summary
         print("\n" + "="*40)
         print(" SCAN SUMMARY")
         print("="*40)
-        print(f" Endpoints Found: {results.get('endpoints_found', 0)}")
-        print(f" Endpoints Tested: {results.get('endpoints_tested', 0)}")
+        print(f" Endpoints Found: {endpoints_found}")
+        print(f" Endpoints Tested: {endpoints_tested}")
         print(f" Total Vulnerabilities: {len(vulns)}")
+        print(f" Risk Score: {risk_score}/100")
+        print(f" Security Grade: {security_grade}")
         
+        # Vulnerability breakdown
         if critical:
             print(f"\n CRITICAL: {len(critical)} vulnerabilities")
+            for vuln in critical[:3]:
+                vuln_type = vuln.get('type', 'Unknown')
+                endpoint = vuln.get('endpoint', '')[:50]
+                print(f"  • {vuln_type}: {endpoint}")
+            if len(critical) > 3:
+                print(f"  • ... and {len(critical) - 3} more")
+                
         if high:
-            print(f" HIGH: {len(high)} vulnerabilities")
+            print(f"\n HIGH: {len(high)} vulnerabilities")
+            for vuln in high[:2]:
+                vuln_type = vuln.get('type', 'Unknown')
+                endpoint = vuln.get('endpoint', '')[:50]
+                print(f"  • {vuln_type}: {endpoint}")
+            if len(high) > 2:
+                print(f"  • ... and {len(high) - 2} more")
         
-        return results
+        if medium:
+            print(f"\n MEDIUM: {len(medium)} vulnerabilities")
+        
+        if low:
+            print(f"\n LOW: {len(low)} vulnerabilities")
+        
+        # Return standardized format
+        return {
+            'target': domain,
+            'endpoints_found': endpoints_found,
+            'endpoints_tested': endpoints_tested,
+            'vulnerabilities': vulns,
+            'risk_metrics': {
+                'risk_score': risk_score,
+                'security_grade': security_grade,
+                'vulnerability_breakdown': {
+                    'critical': len(critical),
+                    'high': len(high), 
+                    'medium': len(medium),
+                    'low': len(low)
+                }
+            }
+        }
+        
+    except ImportError as e:
+        error_msg = f"Module import failed: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        print("[INFO] Available functions in module:")
+        try:
+            import modules.api_security_scanner as scanner_module
+            available_functions = [name for name in dir(scanner_module) if not name.startswith('_')]
+            print(f"[INFO] Functions: {', '.join(available_functions)}")
+        except:
+            pass
+        return {"error": error_msg}
         
     except Exception as e:
-        print(f"[ERROR] Scanner failed: {str(e)}")
+        error_msg = f"Scanner execution failed: {str(e)}"
+        print(f"[ERROR] {error_msg}")
         import traceback
         traceback.print_exc()
-        return {"error": str(e)}
+        return {"error": error_msg}
 
 def calculate_risk_score(critical, high, medium, low):
     """Risk skoru hesapla"""
@@ -410,7 +503,9 @@ def calculate_risk_score(critical, high, medium, low):
 
 def get_security_grade(score):
     """Güvenlik notu belirle"""
-    if score <= 10:
+    if score == 0:
+        return "A+"
+    elif score <= 10:
         return "A"
     elif score <= 25:
         return "B"
@@ -420,7 +515,7 @@ def get_security_grade(score):
         return "D"
     else:
         return "F"
-    
+
 @safe_module_execution(delay_type='heavy')
 def safe_contact_spy(domain):
     """Safe wrapper for contact information discovery"""
