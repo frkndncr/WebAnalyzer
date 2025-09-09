@@ -1,0 +1,44 @@
+# Existing requirements
+mysql-connector-python
+requests
+beautifulsoup4
+dnspython
+python-whois
+builtwith
+wappalyzer
+selenium
+nmap
+httpx
+pyjwt
+python-nmap
+tldextract
+colorama
+tabulate
+asyncio
+aiohttp
+schedule
+redis
+tqdm
+pandas
+
+# New requirements for IP rotation and rate limiting
+fake-useragent>=1.4.0
+urllib3>=1.26.0
+requests-toolbelt>=0.10.0
+tenacity>=8.2.0
+
+# Optional proxy support
+requests[socks]>=2.28.0
+pysocks>=1.7.0
+
+# Enhanced logging and monitoring
+rich>=13.0.0
+click>=8.1.0
+
+# Security and validation
+pydantic>=1.10.0
+validators>=0.20.0
+
+# Performance monitoring
+psutil>=5.9.0
+memory-profiler>=0.60.0

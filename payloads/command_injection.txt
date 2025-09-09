@@ -1,0 +1,29 @@
+;id
+|id
+`id`
+$(id)
+;whoami
+|whoami
+`whoami`
+$(whoami)
+;ls
+|ls
+`ls`
+$(ls)
+;cat /etc/passwd
+|cat /etc/passwd
+`cat /etc/passwd`
+$(cat /etc/passwd)
+||ping -c 10 127.0.0.1
+&&ping -c 10 127.0.0.1
+;ping -c 10 127.0.0.1
+|ping -c 10 127.0.0.1
+`ping -c 10 127.0.0.1`
+$(ping -c 10 127.0.0.1)
+;sleep 5
+|sleep 5
+`sleep 5`
+$(sleep 5)
+\nid\n
+\n/bin/ls -al\n
+\n/usr/bin/id\n
