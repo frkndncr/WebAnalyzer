@@ -40,6 +40,7 @@ from modules.subdomain_takeover import SubdomainTakeover
 from modules.advanced_content_scanner import AdvancedContentScanner
 from modules.cloudflare_bypass import CloudflareBypass
 from modules.nmap_zero_day import UltraAdvancedNetworkScanner
+from modules.geo_analysis import analyze_geo
 
 # Configure logging
 logging.basicConfig(
@@ -65,7 +66,8 @@ def _check_modules(silent=True):
         "Contact Spy": "modules.contact_spy",
         "Subdomain Discovery": "modules.subfinder_tool",
         "Subdomain Takeover": "modules.subdomain_takeover",
-        "CloudFlare Bypass": "modules.cloudflare_bypass"
+        "CloudFlare Bypass": "modules.cloudflare_bypass",
+        "GEO Analysis": "modules.geo_analysis"
     }
 
     all_modules_loaded = True
@@ -253,6 +255,39 @@ def safe_security_analysis(domain):
         print(f"\033[91mError:\033[0m {security_info['Error']}")
     
     return security_info
+
+@safe_module_execution(delay_type='medium')
+def safe_geo_analysis(domain):
+    """Safe wrapper for GEO analysis"""
+    geo_results = analyze_geo(domain)
+    
+    if "Error" in geo_results:
+        print(f"\033[91mGEO Analysis Error: {geo_results['Error']}\033[0m")
+        return geo_results
+        
+    print("\n\033[94m📊 GEO SCORE:\033[0m")
+    geo_score = geo_results.get("GEO Score", {})
+    print(f"  Score: {geo_score.get('Score', 'N/A')}")
+    print(f"  Grade: {geo_score.get('Grade', 'N/A')}")
+    
+    print("\n\033[94m🤖 LLMs Optimization (llms.txt):\033[0m")
+    llms = geo_results.get("LLMs Optimization (llms.txt)", {})
+    print(f"  Status: {llms.get('status', 'Unknown')}")
+    if llms.get('status') == 'Found':
+        print(f"  Files: {llms.get('files', 'None')}")
+        
+    print("\n\033[94m⚙️ WebMCP Integration:\033[0m")
+    webmcp = geo_results.get("WebMCP Integration", {})
+    print(f"  Status: {webmcp.get('status', 'Unknown')}")
+    if webmcp.get('status') == 'Found':
+        print(f"  Endpoints: {webmcp.get('endpoints', 'None')}")
+        print(f"  HTML Features: {webmcp.get('html_features', 'None')}")
+        
+    print("\n\033[94m🕷️ AI Crawler Directives:\033[0m")
+    crawlers = geo_results.get("AI Crawler Directives", {})
+    print(f"  Status: {crawlers.get('status', 'Unknown')}")
+    
+    return geo_results
 
 @safe_module_execution(delay_type='heavy')
 def safe_cloudflare_bypass(domain):
@@ -707,7 +742,8 @@ def select_modules():
         "Contact Spy",
         "Subdomain Discovery",
         "Subdomain Takeover",
-        "CloudFlare Bypass"
+        "CloudFlare Bypass",
+        "GEO Analysis"
     ]
 
     print("\033[93m" + "=" * 50 + "\033[0m")
@@ -777,6 +813,7 @@ async def execute_modules_with_display(domain, selected_modules):
         "Subdomain Takeover": safe_subdomain_takeover,
         "CloudFlare Bypass": safe_cloudflare_bypass,
         "Nmap Zero Day Scan": safe_nmap_scan,
+        "GEO Analysis": safe_geo_analysis,
     }
     
     # Module weights for delay calculation
@@ -793,6 +830,7 @@ async def execute_modules_with_display(domain, selected_modules):
         'Subdomain Takeover': 'heavy',
         'CloudFlare Bypass': 'heavy',
         'Nmap Zero Day Scan': 'heavy',
+        'GEO Analysis': 'medium',
     }
     
     print(f"\n🚀 Starting analysis for: {domain}")
