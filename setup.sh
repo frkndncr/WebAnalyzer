@@ -101,6 +101,16 @@ pycountry>=20.7.3
 phonenumbers>=8.12.0
 timezonefinder>=5.2.0
 langdetect>=1.0.9
+aiohttp>=3.8.0
+fake_useragent>=1.1.0
+mysql-connector-python>=8.0.0
+nest_asyncio>=1.5.0
+psutil>=5.9.0
+PyJWT>=2.4.0
+python-whois>=0.8.0
+tabulate>=0.8.0
+tqdm>=4.60.0
+python-nmap>=0.7.1
 EOF
 echo "  [✔] requirements.txt created successfully!"
 
