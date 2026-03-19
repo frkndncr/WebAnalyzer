@@ -4,7 +4,8 @@ echo "========================================"
 echo "        Project Installation Script     "
 echo "========================================"
 
-LOG_FILE="installation_log.txt"
+mkdir -p logs
+LOG_FILE="logs/installation_log.txt"
 exec > >(tee -a $LOG_FILE) 2>&1
 
 # 1. Install Required System Packages
@@ -53,21 +54,27 @@ if command -v subfinder &>/dev/null; then
     echo "  [✔] Subfinder is already installed."
 else
     echo "  [➤] Installing Subfinder..."
+    # Store original directory
+    ORIG_DIR=$(pwd)
     
     # Clone repository
     git clone https://github.com/projectdiscovery/subfinder.git
     
     # Navigate to directory
-    cd subfinder/v2/cmd/subfinder
+    cd subfinder/cmd/subfinder || { echo "  [✖] Subfinder directory not found."; exit 1; }
     
     # Build
-    go build
+    go build || { echo "  [✖] Subfinder build failed."; exit 1; }
     
     # Move to bin folder
+    sudo rm -rf /usr/local/bin/subfinder
     sudo mv subfinder /usr/local/bin/
     
     # Go back to original directory
-    cd -
+    cd "$ORIG_DIR" || exit 1
+    
+    # Check if subfinder cloned directory exists and clean it up optionally
+    rm -rf "$ORIG_DIR/subfinder"
     
     # Verify installation
     if command -v subfinder &>/dev/null; then
@@ -99,38 +106,22 @@ echo "  [✔] requirements.txt created successfully!"
 
 # 4. Install Python Dependencies
 echo "[4/4] Installing Python dependencies..."
-# Determine the appropriate pip command (pip3 if available, else pip)
-if command -v pip3 >/dev/null 2>&1; then
-    PIP_CMD=pip3
-elif command -v pip >/dev/null 2>&1; then
-    PIP_CMD=pip
-else
-    echo "Error: pip is not installed." >&2
+echo "  [➤] Creating virtual environment..."
+python3 -m venv venv || {
+    echo "Error: Failed to create virtual environment. Do you have python3-venv installed?"
     exit 1
-fi
+}
 
-# Try installing with --user flag first (most portable)
-echo "  [➤] Attempting to install dependencies with --user flag..."
-$PIP_CMD install --user -r requirements.txt
-PIP_EXIT_CODE=$?
-
-# If the first installation method failed, try alternative methods
-if [ $PIP_EXIT_CODE -ne 0 ]; then
-    echo "  [➤] User installation failed, trying without --user flag..."
-    $PIP_CMD install -r requirements.txt
-    PIP_EXIT_CODE=$?
-    
-    # If still failing, try with sudo
-    if [ $PIP_EXIT_CODE -ne 0 ]; then
-        echo "  [➤] Standard installation failed, trying with sudo..."
-        sudo $PIP_CMD install -r requirements.txt || { 
-            echo "Error: All installation methods failed. Please check your Python environment."; 
-            exit 1; 
-        }
-    fi
-fi
-
-echo "  [✔] All Python dependencies installed successfully!"
+echo "  [➤] Activating virtual environment and installing dependencies..."
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt || {
+    echo "Error: Failed to install Python dependencies."
+    deactivate
+    exit 1
+}
+deactivate
+echo "  [✔] All Python dependencies installed successfully in venv!"
 
 # Update PATH settings if necessary
 if [ "$(uname)" = "Linux" ] || [ "$(uname)" = "Darwin" ]; then
@@ -155,5 +146,5 @@ echo " Installation Completed Successfully! "
 echo "========================================"
 echo "  Log file saved to $LOG_FILE"
 echo ""
-echo "  You can run the project using the following command:"
-echo "    python main.py"
+echo "  You can run the project using the following commands:"
+echo "    source venv/bin/activate && python main.py"
