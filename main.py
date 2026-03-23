@@ -332,20 +332,16 @@ def safe_cloudflare_bypass(domain):
 
 @safe_module_execution(delay_type='heavy')
 def safe_advanced_content_scan(domain):
-    """Safe wrapper for advanced content scanning"""
+    """Safe wrapper for Advanced Content Scanner v4.0 — Nirvana Edition"""
     logging.disable(logging.CRITICAL)
     warnings.filterwarnings('ignore')
 
     old_stdout = sys.stdout
     old_stderr = sys.stderr
-    stdout_capture = io.StringIO()
-    stderr_capture = io.StringIO()
-    sys.stdout = stdout_capture
-    sys.stderr = stderr_capture
+    sys.stdout = io.StringIO()
+    sys.stderr = io.StringIO()
 
     try:
-        print(f"Starting advanced content scan for {domain} wait please")
-        
         scanner = AdvancedContentScanner(
             domain,
             output_dir=f"logs/{domain}",
@@ -353,55 +349,155 @@ def safe_advanced_content_scan(domain):
             max_pages=100,
             timeout=10,
             max_workers=10,
-            verify_ssl=False
+            verify_ssl=False,
+            log_level="ERROR",
+            min_severity="Low",
+            active_scan=True,
+            fuzz_forms=True,
+            test_auth_bypass=True,
+            test_cors=True,
+            taint_tracking=True,
+            headless=False,
+            adaptive_waf=True,
+            build_exploit_chains=True,
         )
-
         results = scanner.run()
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
 
-        high_secrets = [s for s in results["secrets"] if s["severity"] == "High"]
-        high_js_vulns = [v for v in results["js_vulnerabilities"] if v["severity"] == "High"]
-        high_ssrf = [v for v in results["ssrf_vulnerabilities"] if v["severity"] == "High"]
-
-        unique_secret_sources = len(set(s["source_url"] for s in high_secrets))
-        unique_js_vuln_sources = len(set(v["source_url"] for v in high_js_vulns))
-        unique_ssrf_sources = len(set(v["source_url"] for v in high_ssrf))
-
-        print(f"\033[94mTotal URLs Crawled:\033[0m {results['summary']['total_urls_crawled']}")
-        print(f"\033[94mTotal JS Files Analyzed:\033[0m {results['summary']['total_js_files']}")
-        print(f"\033[94mTotal API Endpoints Found:\033[0m {results['summary']['total_api_endpoints']}")
-        print(f"\033[91mHigh Severity Secrets Found:\033[0m {len(high_secrets)} (in {unique_secret_sources} files)")
-        print(f"\033[91mHigh Severity JS Vulnerabilities:\033[0m {len(high_js_vulns)} (in {unique_js_vuln_sources} files)")
-        print(f"\033[91mHigh Severity SSRF Vulnerabilities:\033[0m {len(high_ssrf)} (in {unique_ssrf_sources} endpoints)")
-
-        if high_secrets:
-            print("\n\033[91mTop High Severity Secrets:\033[0m")
-            by_source = {}
-            for s in high_secrets:
-                if s["source_url"] not in by_source:
-                    by_source[s["source_url"]] = []
-                by_source[s["source_url"]].append(s)
-
-            for i, (source, secrets) in enumerate(sorted(by_source.items(), key=lambda x: len(x[1]), reverse=True)[:3]):
-                count = len(secrets)
-                types = ", ".join(set(s["type"] for s in secrets[:3]))
-                if len(set(s["type"] for s in secrets)) > 3:
-                    types += " and more"
-                print(f"  \033[91m{i + 1}. {source}\033[0m: {count} secrets ({types})")
-
-        print(f"\n\033[94mDetailed findings saved to:\033[0m {scanner._save_findings()}")
-
-        return results
-    
     except Exception as e:
         sys.stdout = old_stdout
         sys.stderr = old_stderr
         print(f"\033[91mError during scan: {str(e)}\033[0m")
         return {"error": str(e)}
     finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         logging.disable(logging.NOTSET)
         warnings.resetwarnings()
+
+    # ── helpers ──
+    def by_sev(lst, *sevs):
+        return [x for x in lst if x.get("severity", "").lower() in [s.lower() for s in sevs]]
+
+    def unique_sources(lst):
+        return len(set(x.get("source_url", "") for x in lst))
+
+    summary  = results.get("summary", {})
+    secrets  = results.get("secrets", [])
+    js_vulns = results.get("js_vulnerabilities", [])
+    ssrf     = results.get("ssrf_vulnerabilities", [])
+    active   = results.get("active_vulnerabilities", [])
+    headers  = results.get("security_headers", [])
+    exposed  = results.get("exposed_endpoints", [])
+    chains   = results.get("exploit_chains", [])
+
+    # ── Risk header ──
+    grade = summary.get("security_grade", "?")
+    risk  = summary.get("overall_risk_score", 0)
+    grade_color = "\033[91m" if grade in ("F","D") else "\033[93m" if grade == "C" else "\033[92m"
+    waf   = summary.get("detected_waf", "None")
+    print(f"\033[1m{'─'*50}\033[0m")
+    print(f"\033[1mSecurity Grade: {grade_color}{grade}\033[0m  Risk Score: {grade_color}{risk}/10\033[0m  WAF: \033[94m{waf}\033[0m")
+    print(f"\033[1m{'─'*50}\033[0m\n")
+
+    # ── L1 crawl stats ──
+    print(f"\033[94mURLs Crawled:\033[0m {summary.get('total_urls_crawled', 0)}   "
+          f"\033[94mJS Files:\033[0m {summary.get('total_js_files', 0)}   "
+          f"\033[94mAPI Endpoints:\033[0m {summary.get('total_api_endpoints', 0)}")
+
+    # ── Secrets ──
+    top_sec   = by_sev(secrets, "Critical") + by_sev(secrets, "High")
+    crit_s    = by_sev(secrets, "Critical")
+    crit_tag  = f" (\033[91m{len(crit_s)} Critical\033[0m)" if crit_s else ""
+    print(f"\033[91mSecrets Found:\033[0m {len(top_sec)}{crit_tag} (in {unique_sources(top_sec)} files)")
+
+    # ── JS vulns ──
+    top_js    = by_sev(js_vulns, "High", "Critical")
+    taint_ct  = sum(1 for v in js_vulns if "Taint" in v.get("type", ""))
+    print(f"\033[91mJS Vulnerabilities:\033[0m {len(top_js)} high+ ({taint_ct} taint flows)")
+
+    # ── Active vulns ──
+    crit_act  = by_sev(active, "Critical")
+    high_act  = by_sev(active, "High")
+    sqli_ct   = sum(1 for a in active if "SQL" in a.get("type", ""))
+    xss_ct    = sum(1 for a in active if "XSS" in a.get("type", ""))
+    ssti_ct   = sum(1 for a in active if "SSTI" in a.get("type", ""))
+    cors_ct   = sum(1 for a in active if "CORS" in a.get("type", ""))
+    bypass_ct = sum(1 for a in active if "Bypass" in a.get("type", ""))
+    nuclei_ct = sum(1 for a in active if "Nuclei" in a.get("type", ""))
+    act_tag   = f" (\033[91m{len(crit_act)} Critical\033[0m)" if crit_act else ""
+    print(f"\033[91mActive Vulnerabilities:\033[0m {len(active)}{act_tag}  "
+          f"SQLi:{sqli_ct}  XSS:{xss_ct}  SSTI:{ssti_ct}  CORS:{cors_ct}  403bp:{bypass_ct}  Nuclei:{nuclei_ct}")
+
+    # ── SSRF ──
+    confirmed_ssrf = [v for v in ssrf if v.get("confirmed")]
+    conf_tag = f" (\033[91m{len(confirmed_ssrf)} Confirmed\033[0m)" if confirmed_ssrf else ""
+    print(f"\033[91mSSRF:\033[0m {len(ssrf)}{conf_tag}")
+
+    # ── Exposed endpoints ──
+    crit_exp = by_sev(exposed, "Critical")
+    if exposed:
+        exp_tag = f" (\033[91m{len(crit_exp)} Critical\033[0m)" if crit_exp else ""
+        print(f"\033[91mExposed Endpoints:\033[0m {len(exposed)}{exp_tag}")
+
+    # ── Security headers ──
+    hdr_high = by_sev(headers, "High", "Critical")
+    print(f"\033[93mSecurity Header Issues:\033[0m {len(headers)} total, {len(hdr_high)} high/critical")
+
+    # ── Exploit chains ──
+    if chains:
+        print(f"\n\033[91m⚡ EXPLOIT CHAINS BUILT: {len(chains)}\033[0m")
+        for c in chains[:3]:
+            sev_c = "\033[91mCRITICAL\033[0m" if c.get("severity") == "Critical" else "\033[93mHIGH\033[0m"
+            print(f"  [{sev_c}] {c.get('title', '')}  (risk={c.get('risk_score', 0)})")
+            print(f"    MITRE: {c.get('mitre', 'N/A')}")
+
+    # ── Critical secrets detail ──
+    if top_sec:
+        print("\n\033[91mTop Secrets:\033[0m")
+        by_source = {}
+        for s in top_sec:
+            by_source.setdefault(s["source_url"], []).append(s)
+        for i, (src, items) in enumerate(
+            sorted(by_source.items(), key=lambda x: len(x[1]), reverse=True)[:3], 1
+        ):
+            types   = ", ".join(dict.fromkeys(s["type"] for s in items[:3]))
+            sev_lbl = "\033[91mCRITICAL\033[0m" if any(s["severity"] == "Critical" for s in items) else "\033[93mHIGH\033[0m"
+            print(f"  {i}. [{sev_lbl}] {src[:80]}")
+            print(f"     {len(items)} secret(s): {types}")
+
+    # ── Critical active vulns detail ──
+    if crit_act or high_act:
+        print("\n\033[91mTop Active Vulnerabilities:\033[0m")
+        for a in (crit_act + high_act)[:4]:
+            sev_lbl = "\033[91mCRITICAL\033[0m" if a.get("severity") == "Critical" else "\033[93mHIGH\033[0m"
+            print(f"  [{sev_lbl}] {a.get('type', '')} @ {a.get('source_url', '')[:60]}")
+            print(f"    Param: {a.get('parameter', '')}  Evidence: {a.get('evidence', '')[:60]}")
+
+    # ── Confirmed SSRF ──
+    if confirmed_ssrf:
+        print("\n\033[91m⚠  CONFIRMED SSRF:\033[0m")
+        for v in confirmed_ssrf[:2]:
+            print(f"  • {v['source_url'][:80]}")
+            print(f"    PoC: {v.get('poc', '')[:100]}")
+
+    # ── Critical exposed endpoints ──
+    if crit_exp:
+        print("\n\033[91mCritical Exposed Endpoints:\033[0m")
+        for e in crit_exp[:4]:
+            print(f"  • \033[91m{e.get('url', '')[:80]}\033[0m  [{e.get('endpoint_type', '')}]")
+            print(f"    {e.get('evidence', '')[:80]}")
+
+    # ── Missing security headers ──
+    if hdr_high:
+        print("\n\033[93mMissing Critical Security Headers:\033[0m")
+        for h in hdr_high[:4]:
+            print(f"  • \033[93m{h['header_name']}\033[0m — {h.get('recommendation', '')}")
+
+    saved_path = scanner._save_findings()
+    if saved_path:
+        print(f"\n\033[94mDetailed findings saved to:\033[0m {saved_path}")
+
+    return results
 
 @safe_module_execution(delay_type='heavy')
 def safe_elite_api_scan(domain):
