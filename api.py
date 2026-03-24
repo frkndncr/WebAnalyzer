@@ -266,13 +266,15 @@ def _run_chains(scanner):
     }
 
 def _run_waf(scanner):
-    resp = scanner._make_request("GET", scanner.base_url)
-    waf = scanner.waf_detector.detect(resp)
-    blocked = scanner.waf_detector.is_blocked(resp) if resp else False
+    # Must crawl first — WAF headers are often only on internal pages, not the base URL
+    scanner.crawl_website()
+    waf = getattr(scanner, '_detected_waf', None)
+    blocked = getattr(scanner, '_waf_triggered_count', 0) > 0
     return {
-        "detected_waf": waf or "None",
+        "detected_waf": waf or "Tespit edilmedi",
         "is_blocked": blocked,
         "rate_limit": scanner.rate_limit,
+        "pages_scanned": len(scanner.visited_urls),
         "status": "detected",
     }
 
