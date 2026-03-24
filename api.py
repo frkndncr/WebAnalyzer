@@ -280,3 +280,11 @@ def _run_full_flow(scanner):
     results = scanner.run()
     return results
 
+def _run_acs_full(domain: str, task_key: str):
+    """Background: run the entire ACS pipeline"""
+    try:
+        scanner = AdvancedContentScanner(domain)
+        results = scanner.run()
+        ACS_SECTION_TASKS[task_key] = {"status": "completed", "result": results, "error": None}
+    except Exception as e:
+        ACS_SECTION_TASKS[task_key] = {"status": "error", "result": None, "error": str(e)}

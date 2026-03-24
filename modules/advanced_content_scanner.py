@@ -896,7 +896,10 @@ class AdvancedContentScanner:
         if resume:
             self._load_state()
 
-        signal.signal(signal.SIGINT, self._on_sigint)
+        try:
+            signal.signal(signal.SIGINT, self._on_sigint)
+        except ValueError:
+            pass  # Not in main thread (e.g. FastAPI background task)
 
     # ──────────────────────────────────────────────────────────────────────
     # SETUP
