@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import ScanForm from './components/ScanForm';
 import ResultsPanel from './components/ResultsPanel';
+import AdvancedScannerPanel from './components/AdvancedScannerPanel';
 
 function App() {
   const [activeTab, setActiveTab] = useState('new_scan');
@@ -20,6 +21,9 @@ function App() {
           }
           {activeTab === 'results' && 
             <ResultsPanel domain={currentDomain} />
+          }
+          {activeTab === 'advanced_scanner' && 
+            <AdvancedScannerPanel domain={currentDomain} />
           }
         </div>
       </div>

@@ -395,3 +395,325 @@ h1, h2, h3, h4 {
   transition: width 0.5s ease-out;
   box-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
 }
+
+/* ========== Advanced Content Scanner Panel ========== */
+
+.acs-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.acs-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.acs-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.acs-card-expanded {
+  border-color: rgba(88, 166, 255, 0.3);
+  box-shadow: var(--shadow-glow);
+}
+
+.acs-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.acs-card-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.acs-card-body {
+  padding: 0 1.2rem 1.2rem;
+  border-top: 1px solid var(--panel-border);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.acs-card-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--panel-border);
+  margin-bottom: 1rem;
+}
+
+.acs-layer-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  letter-spacing: 0.5px;
+}
+
+.acs-section-content {
+  padding: 0.5rem 0;
+}
+
+.acs-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.acs-info-item {
+  background: rgba(13, 17, 23, 0.5);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0.8rem;
+}
+
+.acs-info-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.acs-info-value {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+/* Layers */
+.acs-layers-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.acs-layer-row {
+  border-left: 4px solid;
+  padding: 0.8rem 1rem;
+  background: rgba(13, 17, 23, 0.4);
+  border-radius: 0 8px 8px 0;
+  transition: background var(--transition-fast);
+}
+
+.acs-layer-row:hover {
+  background: rgba(13, 17, 23, 0.7);
+}
+
+.acs-layer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.acs-layer-icon { font-size: 1.1rem; }
+.acs-layer-id { font-family: var(--font-mono); font-weight: 700; font-size: 0.82rem; }
+.acs-layer-name { font-weight: 600; font-size: 0.9rem; }
+.acs-layer-desc { color: var(--text-secondary); font-size: 0.82rem; margin: 0; }
+
+/* Tables */
+.acs-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+}
+
+.acs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.acs-table th {
+  background: rgba(13, 17, 23, 0.6);
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.acs-table td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+  color: var(--text-primary);
+}
+
+.acs-table tr:last-child td {
+  border-bottom: none;
+}
+
+.acs-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Badges */
+.acs-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: rgba(88, 166, 255, 0.1);
+  color: var(--accent-blue);
+  border: 1px solid rgba(88, 166, 255, 0.15);
+}
+
+/* Flow Steps */
+.acs-flow-box {
+  background: rgba(13, 17, 23, 0.4);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 1.2rem;
+}
+
+.acs-flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.acs-flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.acs-flow-num {
+  min-width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--accent-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+/* Filter Chain */
+.acs-filter-chain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.acs-filter-node {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: rgba(13, 17, 23, 0.5);
+  font-size: 0.82rem;
+}
+
+.acs-filter-arrow {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Subtabs */
+.acs-subtabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.acs-subtab {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text-secondary);
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all var(--transition-fast);
+}
+
+.acs-subtab:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.acs-subtab.active {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+/* Data class cards */
+.acs-dataclass-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.acs-dataclass-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: rgba(13, 17, 23, 0.4);
+  transition: background var(--transition-fast);
+}
+
+.acs-dataclass-header:hover {
+  background: rgba(13, 17, 23, 0.7);
+}
+
+.acs-dataclass-body {
+  padding: 1rem;
+  border-top: 1px solid var(--panel-border);
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Results box */
+.acs-results-box {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(63, 185, 80, 0.2);
+  border-radius: 8px;
+  background: rgba(63, 185, 80, 0.05);
+}
+
+.acs-results-box h4 {
+  color: var(--accent-green);
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Doc modal wider */
+.acs-doc-modal {
+  max-width: 800px !important;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+/* Code styling in sections */
+.acs-section-content code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: rgba(88, 166, 255, 0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--accent-blue);
+}
+
