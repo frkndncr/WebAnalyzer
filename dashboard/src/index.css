@@ -629,75 +629,72 @@ h1, h2, h3, h4 {
   font-size: 0.9rem;
 }
 
-/* Subtabs */
-.acs-subtabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.2rem;
-  flex-wrap: wrap;
+/* Status badges */
+.acs-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.acs-subtab {
-  background: transparent;
-  border: 1px solid var(--panel-border);
-  color: var(--text-secondary);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  transition: all var(--transition-fast);
+.acs-status-idle {
+  background: rgba(139, 148, 158, 0.1);
+  color: #8b949e;
+  border: 1px solid rgba(139, 148, 158, 0.2);
 }
 
-.acs-subtab:hover {
-  color: var(--text-primary);
-  border-color: var(--text-secondary);
+.acs-status-running {
+  background: rgba(210, 153, 34, 0.12);
+  color: #d29922;
+  border: 1px solid rgba(210, 153, 34, 0.25);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
-.acs-subtab.active {
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
-  background: rgba(88, 166, 255, 0.1);
+.acs-status-completed {
+  background: rgba(63, 185, 80, 0.1);
+  color: #3fb950;
+  border: 1px solid rgba(63, 185, 80, 0.2);
 }
 
-/* Data class cards */
-.acs-dataclass-card {
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  overflow: hidden;
+.acs-status-error {
+  background: rgba(248, 81, 73, 0.1);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.2);
 }
 
-.acs-dataclass-header {
+/* Card result area */
+.acs-card-result {
+  border-top: 1px solid var(--panel-border);
+}
+
+.acs-card-result-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.8rem 1rem;
-  background: rgba(13, 17, 23, 0.4);
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
   transition: background var(--transition-fast);
 }
 
-.acs-dataclass-header:hover {
-  background: rgba(13, 17, 23, 0.7);
+.acs-card-result-header:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.acs-dataclass-body {
-  padding: 1rem;
-  border-top: 1px solid var(--panel-border);
+.acs-card-result-body {
+  padding: 0 1.2rem 1rem;
   animation: fadeIn 0.2s ease-out;
 }
 
-/* Results box */
-.acs-results-box {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border: 1px solid rgba(63, 185, 80, 0.2);
-  border-radius: 8px;
-  background: rgba(63, 185, 80, 0.05);
-}
-
-.acs-results-box h4 {
-  color: var(--accent-green);
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+.acs-card-result-body .json-view {
+  font-size: 0.78rem;
+  padding: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: rgba(13, 17, 23, 0.6);
 }
 
 /* Doc modal wider */
@@ -706,14 +703,3 @@ h1, h2, h3, h4 {
   max-height: 80vh;
   overflow-y: auto;
 }
-
-/* Code styling in sections */
-.acs-section-content code {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  background: rgba(88, 166, 255, 0.1);
-  padding: 1px 5px;
-  border-radius: 3px;
-  color: var(--accent-blue);
-}
-
