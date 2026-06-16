@@ -73,7 +73,7 @@ class UserAgentConfig:
 class AppConfig:
     """Main application configuration"""
     # API Keys
-    whois_api_key: str = "at_14sqNbh0sbZ61CY1Bl0meKYgVKrL8"  # WhoisXML API key
+    whois_api_key: str = ""  # WhoisXML API key, will be loaded from env or config file
     
     # Directories
     output_dir: str = "logs"

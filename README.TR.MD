@@ -95,7 +95,25 @@ graph TB
 - 🚀 **Go dili** (Subfinder entegrasyonu için)
 - 💾 **4GB+ RAM** toplu işleme için önerilen
 
-### ⚡ Hızlı Kurulum
+### 🐳 Docker Compose ile Kurulum (Hızlı ve Sorunsuz - Önerilen)
+
+Tüm platformu (MySQL veritabanı, FastAPI backend ve React dashboard) çalıştırmanın en hızlı yolu Docker Compose kullanmaktır. Bu yöntem tüm bağımlılıkları (Python, Go, Node, Nmap, Subfinder) otomatik olarak yapılandırır:
+
+```bash
+# 1. Depoyu klonlayın
+git clone https://github.com/frkndncr/WebAnalyzer.git
+cd WebAnalyzer
+
+# 2. Platformu çalıştırın
+docker compose up -d --build
+```
+
+- **React Dashboard**: http://localhost:8080
+- **FastAPI API Dokümantasyonu**: http://localhost:8000/docs
+
+---
+
+### ⚡ Manuel Kurulum (Geliştirici Modu)
 
 ```bash
 # 📥 Repository'yi klonla

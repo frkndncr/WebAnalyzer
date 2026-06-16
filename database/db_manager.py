@@ -8,11 +8,12 @@ import time
 
 class DatabaseManager:
     def __init__(self):
+        import os
         self.config = {
-            'host': 'IP_ADDRESS',
-            'database': 'DATABASE_NAME',
-            'user': 'USER_NAME',
-            'password': 'PASSWORD',
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'database': os.getenv('DB_NAME', 'webanalyzer'),
+            'user': os.getenv('DB_USER', 'root'),
+            'password': os.getenv('DB_PASSWORD', 'root'),
             'pool_name': 'webanalyzer_pool',
             'pool_size': 3,
             'connection_timeout': 60,

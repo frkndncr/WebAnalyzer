@@ -95,7 +95,25 @@ graph TB
 - 🚀 **Go language** (for Subfinder integration)
 - 💾 **4GB+ RAM** recommended for bulk processing
 
-### ⚡ Quick Installation
+### 🐳 Docker Compose Installation (Frictionless - Recommended)
+
+The fastest way to spin up the entire platform (MySQL database, FastAPI backend, and React dashboard) is using Docker Compose. This packages all dependencies (Python, Go, Node, Nmap, Subfinder) automatically:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/frkndncr/WebAnalyzer.git
+cd WebAnalyzer
+
+# 2. Run the platform
+docker compose up -d --build
+```
+
+- **React Dashboard**: http://localhost:8080
+- **FastAPI API Docs**: http://localhost:8000/docs
+
+---
+
+### ⚡ Manual Installation (Developer Mode)
 
 ```bash
 # 📥 Clone the repository

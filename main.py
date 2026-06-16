@@ -13,6 +13,16 @@ import warnings
 from utils.utils import clear_terminal, save_results_to_json, display_banner
 from utils.module_wrapper import ModuleExecutor, safe_module_execution
 
+try:
+    from rich import print as rprint
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
 # Session manager'ı opsiyonel yap
 try:
     from utils.session_manager import get_session_manager
@@ -89,9 +99,12 @@ def safe_get_domain_info(domain):
     """Safe wrapper for domain info retrieval"""
     if CONFIG_AVAILABLE:
         config = get_config()
-        api_key = config.whois_api_key or "at_14sqNbh0sbZ61CY1Bl0meKYgVKrL8"
+        api_key = config.whois_api_key or os.getenv('WHOIS_API_KEY')
     else:
-        api_key = os.getenv('WHOIS_API_KEY', 'at_14sqNbh0sbZ61CY1Bl0meKYgVKrL8')
+        api_key = os.getenv('WHOIS_API_KEY')
+        
+    if not api_key:
+        logger.warning("WHOIS_API_KEY is not set. Some API-based lookups might be limited.")
     
     result = get_domain_info(domain, api_key)
     
@@ -842,15 +855,41 @@ def select_modules():
         "GEO Analysis"
     ]
 
-    print("\033[93m" + "=" * 50 + "\033[0m")
-    print("\033[93m>>>        MODULE SELECTION MENU        <<<\033[0m")
-    print("\033[93m" + "=" * 50 + "\033[0m")
+    if RICH_AVAILABLE:
+        console = Console()
+        table = Table(show_header=True, header_style="bold magenta", border_style="dim")
+        table.add_column("ID", style="bold cyan", width=4, justify="center")
+        table.add_column("Module Name", style="bold white", width=25)
+        table.add_column("ID", style="bold cyan", width=4, justify="center")
+        table.add_column("Module Name", style="bold white", width=25)
+        
+        # Add side-by-side modules
+        for idx in range(0, len(modules), 2):
+            val1_id = str(idx + 1)
+            val1_name = modules[idx]
+            
+            if idx + 1 < len(modules):
+                val2_id = str(idx + 2)
+                val2_name = modules[idx + 1]
+            else:
+                val2_id = ""
+                val2_name = ""
+                
+            table.add_row(val1_id, val1_name, val2_id, val2_name)
+            
+        console.print(Panel(table, title="[bold yellow]🔍 WebAnalyzer Module Selection[/bold yellow]", border_style="bright_blue"))
+        rprint("[bold green][A][/bold green] Run [bold green]ALL[/bold green] Modules")
+        rprint("[bold red][Q][/bold red] Quit")
+    else:
+        print("\033[93m" + "=" * 50 + "\033[0m")
+        print("\033[93m>>>        MODULE SELECTION MENU        <<<\033[0m")
+        print("\033[93m" + "=" * 50 + "\033[0m")
 
-    for i, module in enumerate(modules, 1):
-        print(f"\033[94m[{i}] {module}\033[0m")
+        for i, module in enumerate(modules, 1):
+            print(f"\033[94m[{i}] {module}\033[0m")
 
-    print("\033[94m[A] Run ALL Modules\033[0m")
-    print("\033[94m[Q] Quit\033[0m")
+        print("\033[94m[A] Run ALL Modules\033[0m")
+        print("\033[94m[Q] Quit\033[0m")
 
     while True:
         choice = input(
@@ -961,12 +1000,21 @@ async def execute_modules_with_display(domain, selected_modules):
     
     # Final summary
     summary = executor.get_execution_summary()
-    print("\n" + "=" * 60)
-    print("📊 EXECUTION SUMMARY")
-    print("=" * 60)
-    print(f"✅ Successful modules: {summary.get('successful', len(selected_modules))}")
-    print(f"❌ Failed modules: {summary.get('failed', 0)}")
-    print(f"⏱️  Total modules: {len(selected_modules)}")
+    if RICH_AVAILABLE:
+        console = Console()
+        sum_table = Table(show_header=False, box=None)
+        sum_table.add_row("[bold green]✅ Successful modules:[/bold green]", f"[bold green]{summary.get('successful', len(selected_modules))}[/bold green]")
+        sum_table.add_row("[bold red]❌ Failed modules:[/bold red]", f"[bold red]{summary.get('failed', 0)}[/bold red]")
+        sum_table.add_row("[bold cyan]⏱️  Total modules:[/bold cyan]", f"[bold cyan]{len(selected_modules)}[/bold cyan]")
+        
+        console.print(Panel(sum_table, title="[bold yellow]📊 EXECUTION SUMMARY[/bold yellow]", border_style="green" if summary.get('failed', 0) == 0 else "yellow", expand=False))
+    else:
+        print("\n" + "=" * 60)
+        print("📊 EXECUTION SUMMARY")
+        print("=" * 60)
+        print(f"✅ Successful modules: {summary.get('successful', len(selected_modules))}")
+        print(f"❌ Failed modules: {summary.get('failed', 0)}")
+        print(f"⏱️  Total modules: {len(selected_modules)}")
     
     # Cleanup
     executor.cleanup()
@@ -1013,7 +1061,7 @@ async def main():
     print(f"\n🎉 Analysis completed for {domain}!")
     print("🛡️  IP rotation and rate limiting protection was active throughout the scan.")
 
-if __name__ == "__main__":
+def run_cli():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
@@ -1030,3 +1078,6 @@ if __name__ == "__main__":
             except Exception:
                 pass
         print("🧹 Cleanup completed.")
+
+if __name__ == "__main__":
+    run_cli()

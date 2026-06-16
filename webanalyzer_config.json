@@ -1,5 +1,5 @@
 {
-    "whois_api_key": "at_14sqNbh0sbZ61CY1Bl0meKYgVKrL8",
+    "whois_api_key": "",
     "output_dir": "logs",
     "log_file": "webanalyzer.log",
     "session": {

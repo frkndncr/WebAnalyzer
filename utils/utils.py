@@ -11,20 +11,38 @@ def clear_terminal():
 
 def display_banner():
     """
-    Display the welcome banner for the Web Analysis Tool.
+    Display the welcome banner for the Web Analysis Tool using Rich.
     """
-    banner = """
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.text import Text
+        console = Console()
+        
+        banner_text = Text()
+        banner_text.append(" ██╗    ██╗███████╗██████╗  █████╗ ███╗   ██╗ █████╗ ██╗  ██╗███████╗███████╗██████╗ \n", style="bold cyan")
+        banner_text.append(" ██║    ██║██╔════╝██╔══██╗██╔══██╗████╗  ██║██╔══██╗██║  ██║╚══███╔╝██╔════╝██╔══██╗\n", style="bold cyan")
+        banner_text.append(" ██║ █╗ ██║█████╗  ██████╔╝███████║██╔██╗ ██║███████║███████║  ███╔╝ █████╗  ██████╔╝\n", style="bold magenta")
+        banner_text.append(" ██║███╗██║██╔══╝  ██╔══██╗██╔══██║██║╚██╗██║██╔══██║╚════██║ ███╔╝  ██╔══╝  ██╔══██╗\n", style="bold magenta")
+        banner_text.append(" ╚███╔███╔╝███████╗██████╔╝██║  ██║██║ ╚████║██║  ██║      ██║███████╗███████╗██║  ██║\n", style="bold blue")
+        banner_text.append("  ╚══╝╚══╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝      ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝\n", style="bold blue")
+        banner_text.append("\n          🚀 Enterprise Domain Security & OSINT Analysis Platform v3.0\n", style="bold yellow")
+        banner_text.append("              Created by Furkan Dinçer & Course Contributors\n", style="italic white")
+        
+        console.print(Panel(banner_text, border_style="bright_blue", title="[bold white]WebAnalyzer v3.0[/bold white]", subtitle="[bold yellow]System Initialized[/bold yellow]"))
+    except ImportError:
+        banner = """
         \033[92m
         ╔══════════════════════════════════════════════════════╗
-        ║     [-] Analysis Tool     V3.0.0                     ║ 
+        ║     [-] WebAnalyzer     V3.0.0                       ║ 
         ║         Analyze domains with precision and style!    ║
         ╠══════════════════════════════════════════════════════╣
         ║         Coder: Furkan DINCER @f3rrkan                ║
         ║         Contributor: Keyvan Arasteh @keyvanarasteh   ║
         ╚══════════════════════════════════════════════════════╝
         \033[0m
-    """
-    print(banner)
+        """
+        print(banner)
 
 def save_results_to_json(domain, results, output_dir="logs"):
     """

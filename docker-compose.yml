@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: webanalyzer-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: webanalyzer
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: webanalyzer-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=webanalyzer
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - WHOIS_API_KEY=${WHOIS_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+
+  frontend:
+    build: ./dashboard
+    container_name: webanalyzer-frontend
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
