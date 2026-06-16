@@ -296,6 +296,6 @@ async def root():
     return {
         "status": "online",
         "name": "WebAnalyzer API",
-        "version": "3.0.0",
+        "version": "3.3.0",
         "docs_url": "/docs"
     }
