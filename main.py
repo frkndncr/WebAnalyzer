@@ -1023,48 +1023,150 @@ async def execute_modules_with_display(domain, selected_modules):
 
 async def main():
     """Main application entry point"""
-    # Clear terminal and display banner
-    clear_terminal()
-    display_banner()
-
-    # Check modules
-    if not _check_modules():
-        print("\033[91m[✘] Some modules are missing. Please install required modules.\033[0m")
-        return
-
-    print("\033[92m[✔] All required modules loaded successfully!\033[0m")
-    print("\033[94m🛡️  Advanced IP rotation and rate limiting protection enabled!\033[0m\n")
-
-    # Get domain input
-    domain = input("\033[92mPlease enter a domain name (e.g., example.com): \033[0m").strip()
+    import argparse
     
-    if not domain:
-        print("\033[91m[✘] No domain provided. Exiting.\033[0m")
-        return
+    available_modules = [
+        "Domain Information",
+        "DNS Records", 
+        "Nmap Zero Day Scan",
+        "SEO Analysis",
+        "Web Technologies",
+        "Security Analysis",
+        "Advanced Content Scan",
+        "API Security Scanner",
+        "Contact Spy",
+        "Subdomain Discovery",
+        "Subdomain Takeover",
+        "CloudFlare Bypass",
+        "GEO Analysis"
+    ]
 
-    # Select modules
-    selected_modules, run_all = select_modules()
-    if not selected_modules:
-        return
+    # Check if we should run in interactive mode
+    is_interactive = len(sys.argv) == 1 and sys.stdin.isatty()
+    
+    if is_interactive:
+        clear_terminal()
+        display_banner()
 
-    # Execute modules with inline display and IP rotation
-    print(f"\n🔒 Starting secure analysis with IP rotation protection...")
-    results = await execute_modules_with_display(domain, selected_modules)
+        if not _check_modules():
+            print("\033[91m[✘] Some modules are missing. Please install required modules.\033[0m")
+            return
+
+        print("\033[92m[✔] All required modules loaded successfully!\033[0m")
+        print("\033[94m🛡️  Advanced IP rotation and rate limiting protection enabled!\033[0m\n")
+
+        domain = input("\033[92mPlease enter a domain name (e.g., example.com): \033[0m").strip()
+        if not domain:
+            print("\033[91m[✘] No domain provided. Exiting.\033[0m")
+            return
+
+        selected_modules, run_all = select_modules()
+        if not selected_modules:
+            return
+
+        print(f"\n🔒 Starting secure analysis with IP rotation protection...")
+        results = await execute_modules_with_display(domain, selected_modules)
+        
+        try:
+            save_results_to_json(domain, results)
+            print(f"\n💾 Results saved to: logs/{domain}/results.json")
+        except Exception as e:
+            logger.error(f"Failed to save results: {e}")
+        
+        print(f"\n🎉 Analysis completed for {domain}!")
+        print("🛡️  IP rotation and rate limiting protection was active throughout the scan.")
+        if RICH_AVAILABLE:
+            rprint("\n[bold yellow]⭐ If you find WebAnalyzer helpful, please star us on GitHub: https://github.com/frkndncr/WebAnalyzer[/bold yellow]")
+        else:
+            print("\n⭐ If you find WebAnalyzer helpful, please star us on GitHub: https://github.com/frkndncr/WebAnalyzer")
     
-    # Save results to JSON
-    try:
-        save_results_to_json(domain, results)
-        print(f"\n💾 Results saved to: logs/{domain}/results.json")
-    except Exception as e:
-        logger.error(f"Failed to save results: {e}")
-    
-    print(f"\n🎉 Analysis completed for {domain}!")
-    print("🛡️  IP rotation and rate limiting protection was active throughout the scan.")
-    
-    if RICH_AVAILABLE:
-        rprint("\n[bold yellow]⭐ If you find WebAnalyzer helpful, please star us on GitHub: https://github.com/frkndncr/WebAnalyzer[/bold yellow]")
     else:
-        print("\n⭐ If you find WebAnalyzer helpful, please star us on GitHub: https://github.com/frkndncr/WebAnalyzer")
+        # Non-interactive CLI Mode
+        parser = argparse.ArgumentParser(description="WebAnalyzer v3.0 - Enterprise Domain Security Platform")
+        parser.add_argument("-u", "--url", help="Target domain name (e.g. example.com)")
+        parser.add_argument("-l", "--list", help="Path to a text file containing domain list (one per line)")
+        parser.add_argument("-m", "--modules", help="Comma-separated module names or numbers (or 'all')")
+        parser.add_argument("-t", "--threads", type=int, help="Max parallel workers (concurrency)")
+        parser.add_argument("--silent", action="store_true", help="Print only final JSON scan outputs")
+        
+        args = parser.parse_args()
+        
+        if not _check_modules():
+            sys.exit("[✘] Missing dependencies. Run pip install -r requirements.txt")
+            
+        if args.threads:
+            os.environ["WEBANALYZER_MAX_WORKERS"] = str(args.threads)
+            
+        # Determine targets
+        targets = []
+        if args.url:
+            targets.append(args.url.strip())
+        elif args.list:
+            if os.path.exists(args.list):
+                with open(args.list, 'r', encoding='utf-8') as f:
+                    targets.extend([line.strip() for line in f if line.strip() and not line.startswith('#')])
+            else:
+                sys.exit(f"[✘] List file not found: {args.list}")
+        elif not sys.stdin.isatty():
+            # Read from stdin/pipe
+            for line in sys.stdin:
+                line_str = line.strip()
+                if line_str and not line_str.startswith('#'):
+                    targets.append(line_str)
+                    
+        if not targets:
+            parser.print_help()
+            sys.exit(0)
+            
+        # Parse modules
+        selected_modules = []
+        if args.modules:
+            selected_modules = parse_selected_modules(args.modules, available_modules)
+        else:
+            selected_modules = available_modules
+            
+        if not selected_modules:
+            sys.exit("[✘] No valid modules selected.")
+            
+        # Execute targets
+        for domain in targets:
+            clean_domain = domain.replace("http://", "").replace("https://", "").split("/")[0]
+            
+            if not args.silent:
+                print(f"[*] Scanning domain: {clean_domain}")
+                
+            results = await execute_modules_with_display(clean_domain, selected_modules)
+            
+            try:
+                save_results_to_json(clean_domain, results)
+            except Exception as e:
+                logger.error(f"Error saving results: {e}")
+                
+            if args.silent:
+                # Direct JSON output to stdout for tool piping (like jq)
+                import json
+                print(json.dumps(results, indent=2, default=str))
+
+def parse_selected_modules(module_arg, available_modules):
+    if not module_arg or module_arg.lower() in ['all', 'a']:
+        return available_modules
+    
+    selected = []
+    parts = [p.strip().lower() for p in module_arg.split(',')]
+    for part in parts:
+        try:
+            idx = int(part) - 1
+            if 0 <= idx < len(available_modules):
+                selected.append(available_modules[idx])
+                continue
+        except ValueError:
+            pass
+        
+        for mod in available_modules:
+            if part in mod.lower():
+                selected.append(mod)
+                break
+    return list(set(selected))
 
 def run_cli():
     try:
@@ -1082,7 +1184,9 @@ def run_cli():
                 close_session_manager()
             except Exception:
                 pass
-        print("🧹 Cleanup completed.")
+        # Only print cleanup when interactive
+        if len(sys.argv) == 1 and sys.stdin.isatty():
+            print("🧹 Cleanup completed.")
 
 if __name__ == "__main__":
     run_cli()
