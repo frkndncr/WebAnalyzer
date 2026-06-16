@@ -304,7 +304,7 @@ def analyze_ssl_advanced(domain: str) -> Dict:
         }
 
 def analyze_cors_policy(response: Optional[requests.Response]) -> Dict:
-    """Analyze CORS policy configuration"""
+    """Analyze CORS policy configuration with dynamic reflection test"""
     if not response:
         return {"error": "No response available"}
     
@@ -317,12 +317,36 @@ def analyze_cors_policy(response: Optional[requests.Response]) -> Dict:
     
     issues = []
     
-    # Check for overly permissive CORS
-    if cors_headers["Access-Control-Allow-Origin"] == "*":
-        if cors_headers["Access-Control-Allow-Credentials"] == "true":
+    # 1. Check for overly permissive CORS
+    origin_header = cors_headers["Access-Control-Allow-Origin"]
+    credentials_header = cors_headers["Access-Control-Allow-Credentials"]
+    
+    if origin_header == "*":
+        if credentials_header and credentials_header.lower() == "true":
             issues.append("Critical: Wildcard origin with credentials allowed")
         else:
             issues.append("Warning: Wildcard origin allows all domains")
+            
+    # 2. Dynamic reflection test (simulate evil origin)
+    try:
+        parsed_url = urlparse(response.url)
+        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        evil_origin = "https://evil-attacker.local"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Origin': evil_origin
+        }
+        test_response = requests.get(base_url, headers=headers, timeout=5, verify=False)
+        reflected_origin = test_response.headers.get("Access-Control-Allow-Origin")
+        reflected_credentials = test_response.headers.get("Access-Control-Allow-Credentials")
+        
+        if reflected_origin == evil_origin:
+            if reflected_credentials and reflected_credentials.lower() == "true":
+                issues.append("Critical: Vulnerable to CORS Origin Reflection with credentials allowed")
+            else:
+                issues.append("High: Server reflects arbitrary origins in Access-Control-Allow-Origin")
+    except Exception:
+        pass
     
     return {
         "headers": {k: v or "Not Set" for k, v in cors_headers.items()},
@@ -332,31 +356,69 @@ def analyze_cors_policy(response: Optional[requests.Response]) -> Dict:
     }
 
 def analyze_cookie_security_detailed(response: Optional[requests.Response]) -> Dict:
-    """Detailed cookie security analysis"""
+    """Detailed cookie security analysis checking all cookies individually"""
     if not response:
         return {"error": "No response available"}
     
-    set_cookie_header = response.headers.get('Set-Cookie')
-    
-    if not set_cookie_header:
+    # Extract cookies list
+    cookies = []
+    headers = response.headers
+    for header_name, header_value in headers.items():
+        if header_name.lower() == 'set-cookie':
+            # Support multiple cookies in headers
+            cookies.extend([c.strip() for c in header_value.split(',') if c.strip()])
+            
+    if not cookies:
         return {"cookies_present": False, "analysis": "No cookies detected"}
     
     security_issues = []
+    analyzed_cookies = []
     
-    # Basic cookie security checks
-    if "Secure" not in set_cookie_header:
-        security_issues.append("Missing Secure flag")
+    # Sensitive cookie names pattern
+    sensitive_cookie_pattern = re.compile(r'(session|jwt|auth|token|admin|login|passwd|skey)', re.IGNORECASE)
     
-    if "HttpOnly" not in set_cookie_header:
-        security_issues.append("Missing HttpOnly flag")
+    for cookie in cookies:
+        cookie_parts = [part.strip() for part in cookie.split(';')]
+        cookie_name_val = cookie_parts[0] if cookie_parts else ""
+        cookie_name = cookie_name_val.split('=')[0] if '=' in cookie_name_val else "Unknown"
+        
+        is_sensitive = bool(sensitive_cookie_pattern.search(cookie_name))
+        
+        cookie_lower = cookie.lower()
+        secure = "secure" in cookie_lower
+        httponly = "httponly" in cookie_lower
+        samesite = None
+        for part in cookie_parts:
+            if part.lower().startswith("samesite"):
+                samesite = part.split('=')[1] if '=' in part else "True"
+                
+        cookie_issues = []
+        if not secure:
+            cookie_issues.append("Missing Secure flag")
+        if not httponly:
+            cookie_issues.append("Missing HttpOnly flag")
+        if not samesite:
+            cookie_issues.append("Missing SameSite attribute")
+            
+        severity = "High" if is_sensitive else "Low"
+        for issue in cookie_issues:
+            security_issues.append(f"{issue} on {'sensitive ' if is_sensitive else ''}cookie '{cookie_name}' ({severity} severity)")
+            
+        analyzed_cookies.append({
+            "name": cookie_name,
+            "is_sensitive": is_sensitive,
+            "secure": secure,
+            "httponly": httponly,
+            "samesite": samesite or "Not Set",
+            "issues": cookie_issues
+        })
     
-    if "SameSite" not in set_cookie_header:
-        security_issues.append("Missing SameSite attribute")
-    
+    score = max(0, 100 - (len(security_issues) * 15))
     return {
         "cookies_present": True,
+        "analyzed_cookies": analyzed_cookies,
         "security_issues": security_issues,
-        "security_score": max(0, 100 - (len(security_issues) * 25))
+        "security_score": score
     }
 
 def detect_http_methods(domain: str) -> Dict:
@@ -365,7 +427,7 @@ def detect_http_methods(domain: str) -> Dict:
         url = f"https://{domain}"
         
         # Try OPTIONS request
-        response = requests.options(url, timeout=30, verify=False)
+        response = requests.options(url, timeout=10, verify=False)
         allowed_methods = response.headers.get('Allow', '').split(',')
         allowed_methods = [method.strip() for method in allowed_methods if method.strip()]
         
@@ -415,11 +477,11 @@ def analyze_server_info(response: Optional[requests.Response]) -> Dict:
     }
 
 def perform_vulnerability_scan(domain: str, response: Optional[requests.Response]) -> Dict:
-    """Perform basic vulnerability scanning"""
+    """Perform advanced vulnerability scanning including sensitive file probing"""
     vulnerabilities = []
     
     try:
-        # Check for HTTPS enforcement
+        # 1. Check for HTTPS enforcement
         if response and not response.url.startswith('https://'):
             vulnerabilities.append({
                 "type": "Insecure Transport",
@@ -427,24 +489,57 @@ def perform_vulnerability_scan(domain: str, response: Optional[requests.Response
                 "description": "Site not enforcing HTTPS"
             })
         
-        # Check response for sensitive information
+        # 2. Check response for database error leaks
         if response:
             response_text = getattr(response, 'text', '')
-            
-            # Check for error messages
             error_patterns = [
                 (r"fatal error", "PHP Fatal Error"),
                 (r"warning.*mysql", "MySQL Warning"),
                 (r"error.*sql", "SQL Error")
             ]
-            
             for pattern, description in error_patterns:
                 if re.search(pattern, response_text, re.IGNORECASE):
                     vulnerabilities.append({
                         "type": "Information Disclosure",
-                        "severity": "Low",
+                        "severity": "Medium",
                         "description": f"{description} detected in response"
                     })
+        
+        # 3. Sensitive Files and Endpoints Prober
+        sensitive_paths = [
+            ".env", ".git/config", "wp-config.php", "config.json", 
+            "backup.sql", "db.sql", "phpinfo.php", ".htaccess",
+            "config.php.bak", "config.php~"
+        ]
+        
+        # Run concurrent checks for sensitive files
+        parsed = urlparse(response.url if response else f"https://{domain}")
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        
+        import concurrent.futures
+        def check_path(path):
+            try:
+                target_url = f"{base_url.rstrip('/')}/{path}"
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                res = requests.get(target_url, headers=headers, timeout=4, verify=False, allow_redirects=False)
+                # If we get a 200 and it doesn't look like a standard error landing page
+                if res.status_code == 200:
+                    content_len = len(res.text)
+                    if content_len > 0 and "404" not in res.text and "not found" not in res.text.lower():
+                        return {
+                            "type": "Exposed Sensitive File",
+                            "severity": "High" if path in [".env", ".git/config", "wp-config.php"] else "Medium",
+                            "description": f"Exposed sensitive file: {path} (Size: {content_len} bytes)"
+                        }
+            except Exception:
+                pass
+            return None
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(check_path, sensitive_paths))
+            for res in results:
+                if res:
+                    vulnerabilities.append(res)
         
         return {
             "vulnerabilities_found": len(vulnerabilities),
