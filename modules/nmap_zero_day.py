@@ -13,7 +13,13 @@ import os
 
 class UltraAdvancedNetworkScanner:
     def __init__(self, timeout=20, domain=None, aggressive_mode=True, output_file="nmap_report.json"):
-        self.nm = nmap.PortScanner()
+        self.nmap_available = True
+        try:
+            self.nm = nmap.PortScanner()
+        except Exception:
+            self.nmap_available = False
+            self.nm = None
+            print("⚠️  Nmap program was not found in PATH. WebAnalyzer will use built-in async socket scanner fallback.")
         self.timeout = timeout
         self.domain = domain
         self.aggressive_mode = aggressive_mode
@@ -63,7 +69,51 @@ class UltraAdvancedNetworkScanner:
         except Exception as e:
             return {'error': str(e)}
 
+    async def fallback_socket_scan(self, target):
+        """Asynchronous socket-based port scanner when Nmap is not installed"""
+        common_ports = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8000, 8080, 8443]
+        open_ports = []
+        services = {}
+        
+        async def scan_port(port):
+            try:
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(target, port),
+                    timeout=2.0
+                )
+                open_ports.append(port)
+                service_name = "unknown"
+                try:
+                    service_name = socket.getservbyport(port, "tcp")
+                except Exception:
+                    pass
+                if port == 80: service_name = "http"
+                elif port == 443: service_name = "https"
+                elif port == 8080: service_name = "http-proxy"
+                
+                services[port] = {
+                    'port': port,
+                    'state': 'open',
+                    'service': service_name,
+                    'version': 'unknown',
+                    'product': service_name,
+                    'cpe': []
+                }
+                writer.close()
+                await writer.wait_closed()
+            except Exception:
+                pass
+                
+        await asyncio.gather(*(scan_port(port) for port in common_ports))
+        return {
+            'open_ports': sorted(open_ports),
+            'services': services
+        }
+
     async def advanced_port_scan(self, target):
+        if not self.nmap_available:
+            return await self.fallback_socket_scan(target)
+            
         # Nmap tarama argümanları
         scan_args = '-sV -Pn -A -T5 -p-' if self.aggressive_mode else '-sV -Pn -F -T5'
         
