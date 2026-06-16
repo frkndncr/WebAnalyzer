@@ -166,56 +166,35 @@ class CloudflareBypass:
                 
                 try:
                     if self.is_valid_ip(ip) and not self.is_cloudflare_ip(ip) and not self.is_private_ip(ip):
-                        # Try socket connection
-                        try:
-                            socket_test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                            socket_test.settimeout(3)
-                            result = socket_test.connect_ex((ip, 80))
-                            socket_test.close()
-                            
-                            if result == 0:
-                                # Try HTTP request
+                        # Try dual-port verification
+                        status = self.verify_ip(ip)
+                        if status == "active":
+                            confidence = 'Very High'
+                            # Try verifying with Host headers
+                            for port in [80, 443]:
                                 try:
-                                    headers = {
-                                        'User-Agent': random.choice(self.user_agents),
-                                        'Host': self.domain
-                                    }
-                                    
+                                    schema = "https" if port == 443 else "http"
                                     response = requests.get(
-                                        f"http://{ip}/", 
-                                        headers=headers,
-                                        timeout=3,
+                                        f"{schema}://{ip}/",
+                                        headers={
+                                            'User-Agent': random.choice(self.user_agents),
+                                            'Host': self.domain
+                                        },
+                                        timeout=4,
                                         verify=False
                                     )
-                                    
-                                    if response.status_code == 200:
-                                        confidence = 'High'
-                                        
-                                        # Check if content contains domain name
-                                        if self.domain.lower() in response.text.lower():
-                                            confidence = 'Very High'
-                                            self.log(f"Confirmed active IP: {ip} ✓", "success", True)
-                                        else:
-                                            self.log(f"Found active IP: {ip}", "success", True)
-                                        
-                                        self.found_ips.append({
-                                            'ip': ip,
-                                            'source': 'database',
-                                            'description': ip_data.get('description', ''),
-                                            'confidence': confidence
-                                        })
+                                    if response.status_code == 200 and self.domain.lower() in response.text.lower():
+                                        confidence = 'Very High'
+                                        break
                                 except:
-                                    # Just socket connection works
-                                    self.found_ips.append({
-                                        'ip': ip,
-                                        'source': 'database',
-                                        'description': ip_data.get('description', ''),
-                                        'confidence': 'Medium'
-                                    })
-                            else:
-                                self.log(f"IP {ip} is not responsive", "info")
-                        except:
-                            pass
+                                    pass
+                            
+                            self.found_ips.append({
+                                'ip': ip,
+                                'source': 'database',
+                                'description': ip_data.get('description', ''),
+                                'confidence': confidence
+                            })
                 except:
                     pass
     
