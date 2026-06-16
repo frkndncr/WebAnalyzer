@@ -1,5 +1,6 @@
 import dns.resolver
 import time
+import re
 from datetime import datetime
 from typing import Dict, List, Union
 from collections import defaultdict
@@ -23,9 +24,131 @@ class DNSAnalyzer:
             "records": self._resolve_all_dns(domain),
             "response_time_ms": self._measure_dns_response_time(domain)
         }
+        
+        # Add DNS Security Audit
+        dns_info["security_audit"] = self.audit_dns_security(domain)
 
         self._update_history(domain, dns_info)
         return dns_info
+
+    def audit_dns_security(self, domain: str) -> Dict:
+        """Perform security audit on domain's SPF, DMARC, DNSSEC and CAA records"""
+        score = 100
+        issues = []
+        
+        # 1. SPF Audit
+        spf_status = "Missing"
+        spf_record = ""
+        spf_issues = []
+        try:
+            txt_records = self.resolver.resolve(domain, "TXT")
+            for record in txt_records:
+                record_str = str(record).replace('"', '').strip()
+                if record_str.startswith("v=spf1"):
+                    spf_status = "Found"
+                    spf_record = record_str
+                    break
+        except Exception:
+            pass
+            
+        if spf_status == "Missing":
+            score -= 30
+            spf_issues.append("SPF record is missing. Attackers can spoof emails from this domain.")
+            issues.append("Missing SPF record")
+        else:
+            if "+all" in spf_record or "?all" in spf_record:
+                score -= 20
+                spf_issues.append("SPF ends with +all or ?all, allowing any sender to spoof mail.")
+                issues.append("Weak SPF policy (+all/?all)")
+                
+        # 2. DMARC Audit
+        dmarc_status = "Missing"
+        dmarc_record = ""
+        dmarc_issues = []
+        try:
+            dmarc_txt = self.resolver.resolve(f"_dmarc.{domain}", "TXT")
+            for record in dmarc_txt:
+                record_str = str(record).replace('"', '').strip()
+                if record_str.startswith("v=DMARC1"):
+                    dmarc_status = "Found"
+                    dmarc_record = record_str
+                    break
+        except Exception:
+            pass
+            
+        if dmarc_status == "Missing":
+            score -= 35
+            dmarc_issues.append("DMARC record is missing. No protection against email spoofing.")
+            issues.append("Missing DMARC record")
+        else:
+            policy_match = re.search(r"p=(none|quarantine|reject)", dmarc_record, re.IGNORECASE)
+            if policy_match:
+                policy = policy_match.group(1).lower()
+                if policy == "none":
+                    score -= 15
+                    dmarc_issues.append("DMARC policy set to 'p=none' (monitoring only, spoofed mail is still delivered).")
+                    issues.append("Weak DMARC policy (p=none)")
+            else:
+                score -= 20
+                dmarc_issues.append("DMARC record is misconfigured (no valid p= policy found).")
+                issues.append("Misconfigured DMARC policy")
+                
+        # 3. DNSSEC Check
+        dnssec_enabled = False
+        try:
+            dnskey_records = self.resolver.resolve(domain, "DNSKEY")
+            if dnskey_records:
+                dnssec_enabled = True
+        except Exception:
+            pass
+            
+        if not dnssec_enabled:
+            score -= 15
+            issues.append("DNSSEC is not enabled")
+            
+        # 4. CAA Check
+        caa_status = "Missing"
+        try:
+            caa_records = self.resolver.resolve(domain, "CAA")
+            if caa_records and len(caa_records) > 0 and str(caa_records[0]) != "No Record":
+                caa_status = "Found"
+        except Exception:
+            pass
+            
+        if caa_status == "Missing":
+            score -= 10
+            issues.append("Missing CAA record")
+            
+        score = max(0, score)
+        
+        # Calculate grade
+        if score >= 90: grade = "A"
+        elif score >= 75: grade = "B"
+        elif score >= 60: grade = "C"
+        elif score >= 45: grade = "D"
+        else: grade = "F"
+        
+        return {
+            "score": score,
+            "grade": grade,
+            "spf": {
+                "status": spf_status,
+                "record": spf_record,
+                "issues": spf_issues
+            },
+            "dmarc": {
+                "status": dmarc_status,
+                "record": dmarc_record,
+                "issues": dmarc_issues
+            },
+            "dnssec": {
+                "enabled": dnssec_enabled
+            },
+            "caa": {
+                "status": caa_status
+            },
+            "weaknesses": issues
+        }
 
     def _resolve_all_dns(self, domain: str) -> Dict:
         """Resolve all DNS records concurrently with minimal types"""
@@ -71,7 +194,7 @@ class DNSAnalyzer:
         return self.history.get(domain, [])
 
     def generate_report(self, domain: str, color: bool = False) -> str:
-        """Generate a fast, clean, and beautiful report"""
+        """Generate a fast, clean, and beautiful report with security audit"""
         dns_info = self.get_dns_records(domain)
         c = lambda x, y: f"\033[{x}m{y}\033[0m" if color else y  # Renk fonksiyonu
         report = [
@@ -89,6 +212,25 @@ class DNSAnalyzer:
         # Response Time
         report.append("")
         report.append(c(92, f"⏱  Response Time: {dns_info['response_time_ms']} ms"))
+        
+        # Security Audit Section
+        sec = dns_info["security_audit"]
+        report.append("")
+        report.append(c(95, "🛡️  DNS Security Audit"))
+        report.append(c(90, "─" * 40))
+        
+        grade_color = 92 if sec["grade"] in ["A", "B"] else (93 if sec["grade"] in ["C", "D"] else 91)
+        report.append(f"Security Grade: " + c(grade_color, f"{sec['grade']} ({sec['score']}/100)"))
+        report.append(f"SPF Status    : {sec['spf']['status']}")
+        report.append(f"DMARC Status  : {sec['dmarc']['status']}")
+        report.append(f"DNSSEC Enabled: {'Yes' if sec['dnssec']['enabled'] else 'No'}")
+        report.append(f"CAA Status    : {sec['caa']['status']}")
+        
+        if sec["weaknesses"]:
+            report.append("")
+            report.append(c(91, "⚠️  Security Weaknesses Detected:"))
+            for issue in sec["weaknesses"]:
+                report.append(f"  - {issue}")
 
         return "\n".join(report)
 
