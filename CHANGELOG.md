@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.0] - 2026-06-16
+
+### Added
+- DNS Security Audit checking SPF records, DMARC policies, DNSSEC status, and CAA policies in `modules/domain_dns.py`.
+- Dynamic CORS Origin Reflection vulnerability test in `modules/security_analysis.py`.
+- Individual cookie analysis checking `Secure`, `HttpOnly`, and `SameSite` flags.
+- Concurrent sensitive files and endpoints prober in `modules/security_analysis.py` checking for exposed `.env`, `.git/config`, `wp-config.php`, backups, etc.
+- CLI argument parsing interface, multi-target inputs, JSON stdout mode, and pipeline support in `main.py`.
+
+### Enhanced
+- Cloudflare bypass module (`modules/cloudflare_bypass.py`) with dual-port verification (ports 80 & 443) and Host-header validation.
+
 ## [3.0.0] - 2025-09-09
 
 ### Added
