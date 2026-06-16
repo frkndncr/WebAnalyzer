@@ -95,6 +95,20 @@ graph TB
 - 🚀 **Go dili** (Subfinder entegrasyonu için)
 - 💾 **4GB+ RAM** toplu işleme için önerilen
 
+### 📦 PyPI (Pip) ile Kolay Kurulum
+
+WebAnalyzer'ı PyPI üzerinden global olarak kurup doğrudan CLI tarayıcısını çalıştırabilirsiniz:
+
+```bash
+# Paketi kurun
+pip install webanalyzer-security
+
+# Tarayıcıyı çalıştırın
+webanalyzer
+```
+
+---
+
 ### 🐳 Docker Compose ile Kurulum (Hızlı ve Sorunsuz - Önerilen)
 
 Tüm platformu (MySQL veritabanı, FastAPI backend ve React dashboard) çalıştırmanın en hızlı yolu Docker Compose kullanmaktır. Bu yöntem tüm bağımlılıkları (Python, Go, Node, Nmap, Subfinder) otomatik olarak yapılandırır:

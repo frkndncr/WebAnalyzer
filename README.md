@@ -95,6 +95,20 @@ graph TB
 - 🚀 **Go language** (for Subfinder integration)
 - 💾 **4GB+ RAM** recommended for bulk processing
 
+### 📦 Installation via PyPI (Pip)
+
+WebAnalyzer is available on PyPI. You can install it globally and run the interactive CLI scanner instantly:
+
+```bash
+# Install the package
+pip install webanalyzer-security
+
+# Run the CLI tool
+webanalyzer
+```
+
+---
+
 ### 🐳 Docker Compose Installation (Frictionless - Recommended)
 
 The fastest way to spin up the entire platform (MySQL database, FastAPI backend, and React dashboard) is using Docker Compose. This packages all dependencies (Python, Go, Node, Nmap, Subfinder) automatically:
