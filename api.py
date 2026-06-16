@@ -74,14 +74,14 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
     
     # Redefine the dictionary to pass to execute_modules_safely
     module_functions = {
-        "Domain Information": lambda d: get_domain_info(d, os.getenv('WHOIS_API_KEY', 'default_key')),
+        "Domain Information": lambda d: get_domain_info(d),
         "DNS Records": lambda d: DNSAnalyzer().get_dns_records(d),
         "SEO Analysis": analyze_advanced_seo,
         "Web Technologies": detect_web_technologies,
         "Security Analysis": analyze_security,
         "Advanced Content Scan": lambda d: AdvancedContentScanner(d).scan(),
         "Contact Spy": lambda d: GlobalDomainScraper(d).run(),
-        "Subdomain Discovery": lambda d: run_subfinder(d, output_dir=f"logs/{d}"),
+        "Subdomain Discovery": lambda d: run_subfinder(d),
         "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(),
         "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
         "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(d).run_scan(),

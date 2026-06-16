@@ -158,9 +158,6 @@ python main.py --help
 ### ⚙️ Konfigürasyon
 
 ```bash
-# 🔑 API anahtarlarını ayarla (isteğe bağlı)
-export WHOIS_API_KEY="api_anahtariniz"
-
 # ⚡ Performans ayarlarını yapılandır
 export WEBANALYZER_MAX_WORKERS="10"
 export WEBANALYZER_BATCH_SIZE="100"

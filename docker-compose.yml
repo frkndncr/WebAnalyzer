@@ -30,7 +30,6 @@ services:
       - DB_NAME=webanalyzer
       - DB_USER=root
       - DB_PASSWORD=root
-      - WHOIS_API_KEY=${WHOIS_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

@@ -158,9 +158,6 @@ python main.py --help
 ### ⚙️ Configuration
 
 ```bash
-# 🔑 Set API keys (optional)
-export WHOIS_API_KEY="your_api_key"
-
 # ⚡ Configure performance settings
 export WEBANALYZER_MAX_WORKERS="10"
 export WEBANALYZER_BATCH_SIZE="100"

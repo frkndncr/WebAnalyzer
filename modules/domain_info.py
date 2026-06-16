@@ -10,7 +10,7 @@ import urllib.request
 import urllib.error
 
 
-def get_domain_info(domain, api_key=None):
+def get_domain_info(domain):
     """
     Domain hakkında kapsamlı bilgi toplar - 3. parti API kullanmadan
     """

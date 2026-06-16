@@ -18,7 +18,6 @@ def load_config(config_path="webanalyzer_config.json"):
         return json.load(f)
 
 config = load_config()
-api_key = config.get("whois_api_key")
 
 # Skip patterns for problematic domains
 SKIP_PATTERNS = [

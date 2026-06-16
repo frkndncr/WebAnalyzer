@@ -72,9 +72,6 @@ class UserAgentConfig:
 @dataclass
 class AppConfig:
     """Main application configuration"""
-    # API Keys
-    whois_api_key: str = ""  # WhoisXML API key, will be loaded from env or config file
-    
     # Directories
     output_dir: str = "logs"
     log_file: str = "webanalyzer.log"
@@ -93,7 +90,6 @@ class AppConfig:
     
     def __post_init__(self):
         # Environment variables
-        self.whois_api_key = os.getenv('WHOIS_API_KEY', self.whois_api_key)
         
         if self.session is None:
             self.session = SessionConfig()
@@ -166,7 +162,6 @@ class ConfigManager:
     def _config_to_dict(self, config: AppConfig) -> dict:
         """Convert config object to dictionary"""
         return {
-            'whois_api_key': config.whois_api_key,
             'output_dir': config.output_dir,
             'log_file': config.log_file,
             'session': {
@@ -199,7 +194,6 @@ class ConfigManager:
     def _dict_to_config(self, config_dict: dict) -> AppConfig:
         """Convert dictionary to config object"""
         return AppConfig(
-            whois_api_key=config_dict.get('whois_api_key', ''),
             output_dir=config_dict.get('output_dir', 'logs'),
             log_file=config_dict.get('log_file', 'webanalyzer.log'),
             session=SessionConfig(**config_dict.get('session', {})),
@@ -247,7 +241,6 @@ if __name__ == "__main__":
     parser.add_argument('--create-config', action='store_true', help='Create default config file')
     parser.add_argument('--show-config', action='store_true', help='Show current configuration')
     parser.add_argument('--add-proxy', help='Add proxy (format: http://ip:port or https://ip:port)')
-    parser.add_argument('--set-api-key', help='Set WHOIS API key')
     
     args = parser.parse_args()
     
@@ -268,8 +261,3 @@ if __name__ == "__main__":
         current_proxies.append(proxy_dict)
         manager.update_proxy_list(current_proxies)
         print(f"Proxy added: {proxy_url}")
-    
-    if args.set_api_key:
-        manager.config.whois_api_key = args.set_api_key
-        manager.save_config()
-        print("API key updated.")

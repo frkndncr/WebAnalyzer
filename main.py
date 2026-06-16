@@ -97,16 +97,7 @@ def _check_modules(silent=True):
 @safe_module_execution(delay_type='light')
 def safe_get_domain_info(domain):
     """Safe wrapper for domain info retrieval"""
-    if CONFIG_AVAILABLE:
-        config = get_config()
-        api_key = config.whois_api_key or os.getenv('WHOIS_API_KEY')
-    else:
-        api_key = os.getenv('WHOIS_API_KEY')
-        
-    if not api_key:
-        logger.warning("WHOIS_API_KEY is not set. Some API-based lookups might be limited.")
-    
-    result = get_domain_info(domain, api_key)
+    result = get_domain_info(domain)
     
     # Display results
     if result and isinstance(result, dict):

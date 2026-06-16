@@ -1,5 +1,4 @@
 {
-    "whois_api_key": "",
     "output_dir": "logs",
     "log_file": "webanalyzer.log",
     "session": {

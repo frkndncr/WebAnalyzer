@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.2.0] - 2026-06-16
+
+### Added
+- Passive OSINT subdomain discovery engine in `modules/subfinder_tool.py` checking crt.sh (Certificate Transparency), HackerTarget, and AlienVault OTX (completely free and keyless) as a fallback when the `subfinder` Go binary is missing.
+
+### Removed
+- Removed all `whois_api_key` and other API key configs, CLI settings, configuration loaders/savers, warning prompts, and documentation to deliver a fully decentralized, zero-config, keyless operation.
+
 ## [3.1.0] - 2026-06-16
 
 ### Added
