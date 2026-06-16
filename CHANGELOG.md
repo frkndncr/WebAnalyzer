@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.3.0] - 2026-06-16
+
+### Added
+- Database schema alignment in `database/schema.sql` to support new ENUM states (`interrupted`, `timeout`, `skipped`, `partial`), missing statistics constraints, and custom timestamp audit columns.
+
+### Enhanced
+- Defer Connection Pool Creation (Lazy Load) in `database/db_manager.py` to allow CLI and API imports to load seamlessly when MySQL is offline.
+- Scale Connection Pool Size to 20 by default (from 3) to prevent worker connection starvation during massive bulk operations.
+- Thread-safe lazy initialization for Database connection pool using `threading.Lock`.
+- Bulk processor concurrency optimizations in `bulk/processor.py`:
+  - Moved the `ThreadPoolExecutor` allocation outside retry loops in `safe_run_module` to prevent thread churn.
+  - Handled `TimeoutError` using non-blocking executor shutdowns (`wait=False`) to avoid worker blockages.
+  - Swapped `domain_cache` to `collections.OrderedDict` to allow O(1) FIFO cache cleanup.
+  - Proactive garbage collection (`gc.collect()`) at the end of each batch process to stabilize memory usage.
+
 ## [3.2.0] - 2026-06-16
 
 ### Added

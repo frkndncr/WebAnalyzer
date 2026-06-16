@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 from typing import List, Dict, Any, Optional
 import time
+import threading
 
 class DatabaseManager:
     def __init__(self):
@@ -15,23 +16,35 @@ class DatabaseManager:
             'user': os.getenv('DB_USER', 'root'),
             'password': os.getenv('DB_PASSWORD', 'root'),
             'pool_name': 'webanalyzer_pool',
-            'pool_size': 3,
+            'pool_size': int(os.getenv('DB_POOL_SIZE', '20')),
             'connection_timeout': 60,
             'pool_reset_session': False,
             'charset': 'utf8mb4',
             'use_unicode': True,
             'autocommit': False
         }
+        self.pool = None
+        self.pool_lock = threading.Lock()
         
-        try:
-            self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
-            logging.info("Database connection pool created successfully")
-        except Error as e:
-            logging.error(f"Error creating connection pool: {e}")
-            raise
+    def _init_pool(self):
+        """Lazy connection pool initialization with thread safety"""
+        if self.pool is not None:
+            return
+        
+        with self.pool_lock:
+            if self.pool is None:
+                try:
+                    self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
+                    logging.info("Database connection pool created successfully")
+                except Error as e:
+                    logging.error(f"Error creating connection pool: {e}")
+                    raise RuntimeError(f"Database connection pool initialization failed: {e}") from e
     
     def get_connection(self):
         """Connection pool'dan bağlantı al - retry logic"""
+        if self.pool is None:
+            self._init_pool()
+            
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -528,7 +541,7 @@ class DatabaseManager:
             result = cursor.fetchone()
             
             # Pool status
-            pool_size = self.pool.pool_size
+            pool_size = self.pool.pool_size if self.pool else 0
             
             cursor.close()
             connection.close()

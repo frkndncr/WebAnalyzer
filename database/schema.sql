@@ -4,10 +4,13 @@ CREATE TABLE IF NOT EXISTS scan_jobs (
     job_name VARCHAR(255),
     total_domains INT DEFAULT 0,
     completed_domains INT DEFAULT 0,
-    status ENUM('pending', 'running', 'completed', 'failed') DEFAULT 'pending',
+    status ENUM('pending', 'running', 'completed', 'failed', 'interrupted') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP NULL,
     completed_at TIMESTAMP NULL,
+    last_activity TIMESTAMP NULL,
+    total_time FLOAT DEFAULT 0.0,
+    success_rate FLOAT DEFAULT 0.0,
     INDEX idx_status (status),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -17,10 +20,11 @@ CREATE TABLE IF NOT EXISTS domains (
     id INT AUTO_INCREMENT PRIMARY KEY,
     job_id INT,
     domain VARCHAR(255) NOT NULL,
-    status ENUM('pending', 'scanning', 'completed', 'failed') DEFAULT 'pending',
+    status ENUM('pending', 'scanning', 'completed', 'failed', 'timeout', 'skipped', 'partial') DEFAULT 'pending',
     priority INT DEFAULT 5,
     retry_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
     scanned_at TIMESTAMP NULL,
     FOREIGN KEY (job_id) REFERENCES scan_jobs(id) ON DELETE CASCADE,
     UNIQUE KEY unique_job_domain (job_id, domain),
@@ -39,8 +43,11 @@ CREATE TABLE IF NOT EXISTS scan_results (
     execution_time FLOAT,
     result_data JSON,
     error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_domain_module (domain_id, module_name),
     INDEX idx_domain (domain_id),
     INDEX idx_module (module_name),
     INDEX idx_risk (risk_level)
@@ -54,6 +61,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilities (
     severity ENUM('info', 'low', 'medium', 'high', 'critical'),
     module_name VARCHAR(100),
     details JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE,
     INDEX idx_severity (severity),
@@ -85,7 +93,8 @@ CREATE TABLE IF NOT EXISTS statistics (
     risk_distribution JSON,
     technology_distribution JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (job_id) REFERENCES scan_jobs(id) ON DELETE CASCADE
+    FOREIGN KEY (job_id) REFERENCES scan_jobs(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_job_stats (job_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Loglar

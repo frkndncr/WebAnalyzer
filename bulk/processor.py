@@ -13,7 +13,7 @@ import warnings
 import requests
 import urllib3
 import concurrent.futures
-from collections import defaultdict, deque
+from collections import defaultdict, deque, OrderedDict
 from threading import Lock
 import gc
 
@@ -112,23 +112,26 @@ def safe_run_module(module, module_name, domain, max_retries=None):
     
     backoff_times = [2.0, 5.0, 10.0]
     
-    for attempt in range(max_retries):
-        try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        for attempt in range(max_retries):
+            try:
                 future = executor.submit(run_module_universal, module, module_name, domain)
                 result = future.result(timeout=TIMEOUT_SETTINGS.get(module_name, 5))
                 
                 if result and result.get('status') not in ['failed', 'error', 'timeout']:
                     return result
                     
-        except concurrent.futures.TimeoutError:
-            logging.debug(f"Timeout {module_name} for {domain} (attempt {attempt + 1})")
-        except Exception as e:
-            logging.debug(f"Module {module_name} error for {domain}: {str(e)[:100]}")
-        
-        # Retry with backoff
-        if attempt < max_retries - 1:
-            time.sleep(backoff_times[min(attempt, len(backoff_times) - 1)])
+            except concurrent.futures.TimeoutError:
+                logging.debug(f"Timeout {module_name} for {domain} (attempt {attempt + 1})")
+            except Exception as e:
+                logging.debug(f"Module {module_name} error for {domain}: {str(e)[:100]}")
+            
+            # Retry with backoff
+            if attempt < max_retries - 1:
+                time.sleep(backoff_times[min(attempt, len(backoff_times) - 1)])
+    finally:
+        executor.shutdown(wait=False)
     
     return {
         "domain": domain,
@@ -144,7 +147,7 @@ class OptimizedBulkProcessor:
         self.max_workers = min(max_workers, 20)  # Hard limit
         
         # Cache management
-        self.domain_cache = {}
+        self.domain_cache = OrderedDict()
         self.max_cache_size = 10000
         self.cache_lock = Lock()
         
@@ -203,10 +206,11 @@ class OptimizedBulkProcessor:
         """Cache boyutu kontrolü ve temizlik"""
         with self.cache_lock:
             if len(self.domain_cache) > self.max_cache_size:
-                # LRU mantığı ile eski entry'leri temizle
-                oldest_keys = list(self.domain_cache.keys())[:2000]
-                for key in oldest_keys:
-                    del self.domain_cache[key]
+                # FIFO mantığı ile en eski entry'leri temizle (OrderedDict popitem(last=False))
+                for _ in range(2000):
+                    if not self.domain_cache:
+                        break
+                    self.domain_cache.popitem(last=False)
                 logging.debug(f"Cache cleaned, new size: {len(self.domain_cache)}")
     
     def _monitor_resources(self):
@@ -464,6 +468,9 @@ class OptimizedBulkProcessor:
         with self.update_lock:
             if self.pending_updates:
                 self._flush_batch_updates()
+                
+        # Trigger garbage collection to keep memory usage flat
+        gc.collect()
     
     def scan_domain(self, domain_id, domain_name):
         """Tek bir domain'i tara - optimized version"""
