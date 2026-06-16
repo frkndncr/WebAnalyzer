@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import EducationModal from './EducationModal';
 import InteractiveJson from './InteractiveJson';
+import { getApiUrl } from '../config';
 
 // Specialized Markdown/Highlight parser for making vulnerabilities bold
 const HighlightVuln = ({ text }) => {
@@ -76,7 +77,7 @@ const ResultsPanel = ({ domain }) => {
     let interval;
     const fetchResults = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/status/${domain}`);
+        const res = await fetch(getApiUrl(`/api/status/${domain}`));
         if (res.ok) {
           const json = await res.json();
           setData(json);

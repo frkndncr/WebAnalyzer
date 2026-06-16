@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getApiUrl } from '../config';
 
 const MODULES = [
   "Domain Information", "DNS Records", "SEO Analysis", 
@@ -30,7 +31,7 @@ const ScanForm = ({ setCurrentDomain, setActiveTab }) => {
     const modulesToRun = Object.keys(selectedModules).filter(m => selectedModules[m]);
     
     try {
-      const resp = await fetch('http://localhost:8000/api/scan', {
+      const resp = await fetch(getApiUrl('/api/scan'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain, modules: modulesToRun })

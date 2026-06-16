@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DocumentationModal from './DocumentationModal';
 import InteractiveJson from './InteractiveJson';
+import { getApiUrl } from '../config';
 
 const SECTIONS = [
   { id: 'overview', title: 'Genel Bakış', icon: '📋', layer: 'ALL', description: 'Modül bilgileri, 5 katmanlı mimari', docFile: '01-genel-bakis.md' },
@@ -40,7 +41,7 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
   const pollStatus = (sectionId) => {
     const poll = setInterval(async () => {
       try {
-        const resp = await fetch(`http://localhost:8000/api/scan/section/status?domain=${encodeURIComponent(domain)}&section=${sectionId}`);
+        const resp = await fetch(getApiUrl(`/api/scan/section/status?domain=${encodeURIComponent(domain)}&section=${sectionId}`));
         if (resp.ok) {
           const data = await resp.json();
           if (data.status === 'completed') {
@@ -65,7 +66,7 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
     setStatuses(prev => ({ ...prev, [sectionId]: 'running' }));
     setResults(prev => { const n = { ...prev }; delete n[sectionId]; return n; });
     try {
-      const resp = await fetch('http://localhost:8000/api/scan/section', {
+      const resp = await fetch(getApiUrl('/api/scan/section'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain, section: sectionId }),
