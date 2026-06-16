@@ -1060,6 +1060,11 @@ async def main():
     
     print(f"\n🎉 Analysis completed for {domain}!")
     print("🛡️  IP rotation and rate limiting protection was active throughout the scan.")
+    
+    if RICH_AVAILABLE:
+        rprint("\n[bold yellow]⭐ If you find WebAnalyzer helpful, please star us on GitHub: https://github.com/frkndncr/WebAnalyzer[/bold yellow]")
+    else:
+        print("\n⭐ If you find WebAnalyzer helpful, please star us on GitHub: https://github.com/frkndncr/WebAnalyzer")
 
 def run_cli():
     try:
