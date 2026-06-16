@@ -291,6 +291,72 @@ def _run_acs_full(domain: str, task_key: str):
     except Exception as e:
         ACS_SECTION_TASKS[task_key] = {"status": "error", "result": None, "error": str(e)}
 
+@app.get("/api/recent-scans")
+async def get_recent_scans():
+    """Retrieve list of recently scanned domains with their summary"""
+    from datetime import datetime
+    scans = []
+    logs_dir = "logs"
+    if os.path.exists(logs_dir):
+        for domain in os.listdir(logs_dir):
+            domain_path = os.path.join(logs_dir, domain)
+            if os.path.isdir(domain_path):
+                result_file = os.path.join(domain_path, "results.json")
+                if os.path.exists(result_file):
+                    try:
+                        mtime = os.path.getmtime(result_file)
+                        scan_date = datetime.fromtimestamp(mtime).isoformat()
+                        
+                        with open(result_file, "r", encoding="utf-8") as f:
+                            res = json.load(f)
+                            
+                        sec_res = res.get("Security Analysis", {})
+                        score = sec_res.get("security_score", None) if isinstance(sec_res, dict) else None
+                        grade = sec_res.get("security_grade", None) if isinstance(sec_res, dict) else None
+                        vuln_count = sec_res.get("vulnerabilities_found", 0) if isinstance(sec_res, dict) else 0
+                        
+                        scans.append({
+                            "domain": domain,
+                            "scan_date": scan_date,
+                            "score": score,
+                            "grade": grade,
+                            "vulnerabilities": vuln_count
+                        })
+                    except Exception:
+                        pass
+    scans.sort(key=lambda x: x["scan_date"], reverse=True)
+    return scans[:20]
+
+@app.get("/api/stats")
+async def get_global_stats():
+    """Retrieve global system statistics from DB (or logs fallback)"""
+    try:
+        from database.db_manager import db_manager
+        # Attempt to run query. If DB is offline, this will raise error.
+        stats = db_manager.execute_query("SELECT COUNT(*) as total_jobs, SUM(total_domains) as total_domains FROM scan_jobs", commit=False)
+        vulns = db_manager.execute_query("SELECT COUNT(*) as count FROM vulnerabilities", commit=False)
+        
+        return {
+            "source": "database",
+            "total_jobs": stats[0]["total_jobs"] if stats else 0,
+            "total_domains": stats[0]["total_domains"] if stats else 0,
+            "total_vulnerabilities": vulns[0]["count"] if vulns else 0,
+            "status": "connected"
+        }
+    except Exception:
+        total_scans = 0
+        logs_dir = "logs"
+        if os.path.exists(logs_dir):
+            total_scans = len([d for d in os.listdir(logs_dir) if os.path.isdir(os.path.join(logs_dir, d))])
+        return {
+            "source": "logs",
+            "total_jobs": 0,
+            "total_domains": total_scans,
+            "total_vulnerabilities": 0,
+            "status": "standalone",
+            "note": "DB connection offline, showing local logs cache"
+        }
+
 @app.get("/")
 async def root():
     return {

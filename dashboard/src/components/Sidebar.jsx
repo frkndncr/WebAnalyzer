@@ -17,6 +17,20 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       
       <div style={{ padding: '2rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <button 
+          className={`btn-outline ${activeTab === 'overview' ? 'active' : ''}`}
+          style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}
+          onClick={() => setActiveTab('overview')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          [00] SYS_OVERVIEW
+        </button>
+
+        <button 
           className={`btn-outline ${activeTab === 'new_scan' ? 'active' : ''}`}
           style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}
           onClick={() => setActiveTab('new_scan')}
