@@ -290,3 +290,12 @@ def _run_acs_full(domain: str, task_key: str):
         ACS_SECTION_TASKS[task_key] = {"status": "completed", "result": results, "error": None}
     except Exception as e:
         ACS_SECTION_TASKS[task_key] = {"status": "error", "result": None, "error": str(e)}
+
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "name": "WebAnalyzer API",
+        "version": "3.0.0",
+        "docs_url": "/docs"
+    }
