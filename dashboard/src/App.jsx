@@ -10,6 +10,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <div className="cyber-scanline"></div>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="main-content">
         <div className="animate-fade-in">
