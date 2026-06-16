@@ -74,9 +74,35 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           <div className="status-indicator active"></div>
           GATEWAY_ONLINE
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
           <div className="status-indicator active"></div>
           RECON_ENGINE_READY
+        </div>
+
+        <div style={{ borderTop: '1px dashed rgba(0, 242, 254, 0.15)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ color: 'var(--text-primary)', fontSize: '0.8rem', fontWeight: 600 }}>
+            Developed by:
+            <a href="https://github.com/frkndncr" target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--accent-blue)', textDecoration: 'none', marginTop: '2px', transition: 'all 0.2s' }}>
+              👤 Furkan Dinçer (@frkndncr)
+            </a>
+          </div>
+          
+          <a href="https://github.com/frkndncr/WebAnalyzer" target="_blank" rel="noopener noreferrer" 
+            className="btn-primary" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '6px', 
+              padding: '0.4rem', 
+              fontSize: '0.75rem', 
+              textDecoration: 'none', 
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              fontFamily: 'var(--font-cyber)'
+            }}>
+            ⭐ STAR_ON_GITHUB
+          </a>
         </div>
       </div>
     </div>

@@ -4,19 +4,19 @@ import InteractiveJson from './InteractiveJson';
 import { getApiUrl } from '../config';
 
 const SECTIONS = [
-  { id: 'overview', title: 'Genel Bakış', icon: '📋', layer: 'ALL', description: 'Modül bilgileri, 5 katmanlı mimari', docFile: '01-genel-bakis.md' },
-  { id: 'data_classes', title: 'Veri Sınıfları', icon: '🏗️', layer: 'CORE', description: '6 data class yapısı, hash deduplikasyonu', docFile: '02-veri-siniflari.md' },
-  { id: 'pattern_registry', title: 'Pattern Registry', icon: '📖', layer: 'CORE', description: '40+ secret deseni, 14 JS kategorisi', docFile: '03-pattern-registry.md' },
-  { id: 'crawl_engine', title: 'Crawl Engine', icon: '🕷️', layer: 'L1', description: 'Eş zamanlı crawl motoru, sitemap, robots.txt', docFile: '04-crawl-engine.md' },
-  { id: 'secret_scanner', title: 'Secret Scanner', icon: '🔐', layer: 'L1+L3', description: 'Gizli bilgi tarama, entropi, risk puanlama', docFile: '05-secret-scanner.md' },
-  { id: 'js_analysis', title: 'JS Analysis & Taint', icon: '⚡', layer: 'L1+L3', description: 'JS güvenlik analizi, taint-flow izleme', docFile: '06-js-analysis.md' },
-  { id: 'ssrf_detection', title: 'SSRF Detection', icon: '🎯', layer: 'L1+L2', description: 'SSRF pasif/aktif tespit', docFile: '07-ssrf-detection.md' },
+  { id: 'overview', title: 'Overview', icon: '📋', layer: 'ALL', description: 'Module information, 5-layer architecture', docFile: '01-genel-bakis.md' },
+  { id: 'data_classes', title: 'Data Classes', icon: '🏗️', layer: 'CORE', description: '6 data class structures, hash deduplication', docFile: '02-veri-siniflari.md' },
+  { id: 'pattern_registry', title: 'Pattern Registry', icon: '📖', layer: 'CORE', description: '40+ secret patterns, 14 JS categories', docFile: '03-pattern-registry.md' },
+  { id: 'crawl_engine', title: 'Crawl Engine', icon: '🕷️', layer: 'L1', description: 'Concurrent crawl engine, sitemap, robots.txt', docFile: '04-crawl-engine.md' },
+  { id: 'secret_scanner', title: 'Secret Scanner', icon: '🔐', layer: 'L1+L3', description: 'Secret information scan, entropy, risk scoring', docFile: '05-secret-scanner.md' },
+  { id: 'js_analysis', title: 'JS Analysis & Taint', icon: '⚡', layer: 'L1+L3', description: 'JS security analysis, taint-flow tracking', docFile: '06-js-analysis.md' },
+  { id: 'ssrf_detection', title: 'SSRF Detection', icon: '🎯', layer: 'L1+L2', description: 'SSRF passive/active detection', docFile: '07-ssrf-detection.md' },
   { id: 'active_testing', title: 'Active Testing', icon: '⚔️', layer: 'L2', description: 'Fuzzing, auth bypass, CORS, Nuclei', docFile: '08-active-testing.md' },
-  { id: 'headless_browser', title: 'Headless Browser', icon: '🌐', layer: 'L4', description: 'Playwright runtime analizi', docFile: '09-headless-browser.md' },
-  { id: 'exploit_chains', title: 'Exploit Chains', icon: '⛓️', layer: 'L5', description: 'Saldırı zinciri oluşturma', docFile: '10-exploit-chains.md' },
-  { id: 'waf_detection', title: 'WAF Detection', icon: '🛡️', layer: 'L5', description: 'WAF tespiti ve adaptif strateji', docFile: '11-waf-detection.md' },
-  { id: 'utilities', title: 'Utilities & Helpers', icon: '🔧', layer: 'ALL', description: 'Yardımcı fonksiyonlar, CLI', docFile: '12-utilities-and-helpers.md' },
-  { id: 'main_flow', title: 'Ana Akış (run())', icon: '🚀', layer: 'ALL', description: 'Tam tarama akışı', docFile: '13-ana-akis.md' },
+  { id: 'headless_browser', title: 'Headless Browser', icon: '🌐', layer: 'L4', description: 'Playwright runtime analysis', docFile: '09-headless-browser.md' },
+  { id: 'exploit_chains', title: 'Exploit Chains', icon: '⛓️', layer: 'L5', description: 'Exploit chain building', docFile: '10-exploit-chains.md' },
+  { id: 'waf_detection', title: 'WAF Detection', icon: '🛡️', layer: 'L5', description: 'WAF detection and adaptive strategy', docFile: '11-waf-detection.md' },
+  { id: 'utilities', title: 'Utilities & Helpers', icon: '🔧', layer: 'ALL', description: 'Helper functions, CLI', docFile: '12-utilities-and-helpers.md' },
+  { id: 'main_flow', title: 'Main Flow (run())', icon: '🚀', layer: 'ALL', description: 'Full scan pipeline', docFile: '13-ana-akis.md' },
 ];
 
 const LAYER_COLORS = { 'L1': '#58a6ff', 'L2': '#d29922', 'L3': '#3fb950', 'L4': '#bc8cff', 'L5': '#f85149', 'CORE': '#8b949e', 'ALL': '#e6edf3', 'L1+L3': '#3fb950', 'L1+L2': '#d29922' };
@@ -62,7 +62,7 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
   };
 
   const runSection = async (sectionId) => {
-    if (!domain) { alert('Domain alanı zorunludur!'); return; }
+    if (!domain) { alert('Domain field is required!'); return; }
     setStatuses(prev => ({ ...prev, [sectionId]: 'running' }));
     setResults(prev => { const n = { ...prev }; delete n[sectionId]; return n; });
     try {
@@ -75,16 +75,16 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
         pollStatus(sectionId);
       } else {
         setStatuses(prev => ({ ...prev, [sectionId]: 'error' }));
-        setResults(prev => ({ ...prev, [sectionId]: { error: 'API yanıt vermedi' } }));
+        setResults(prev => ({ ...prev, [sectionId]: { error: 'API did not respond' } }));
       }
     } catch {
       setStatuses(prev => ({ ...prev, [sectionId]: 'error' }));
-      setResults(prev => ({ ...prev, [sectionId]: { error: 'API bağlantısı kurulamadı' } }));
+      setResults(prev => ({ ...prev, [sectionId]: { error: 'Failed to connect to API' } }));
     }
   };
 
   const runAll = async () => {
-    if (!domain) { alert('Domain alanı zorunludur!'); return; }
+    if (!domain) { alert('Domain field is required!'); return; }
     setRunAllActive(true);
     setRunAllProgress(0);
     for (let i = 0; i < SECTIONS.length; i++) {
@@ -109,10 +109,10 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
 
   const statusBadge = (id) => {
     const s = statuses[id];
-    if (s === 'running') return <span className="acs-status-badge acs-status-running">⏳ Çalışıyor</span>;
-    if (s === 'completed') return <span className="acs-status-badge acs-status-completed">✅ Tamamlandı</span>;
-    if (s === 'error') return <span className="acs-status-badge acs-status-error">❌ Hata</span>;
-    return <span className="acs-status-badge acs-status-idle">⏸ Hazır</span>;
+    if (s === 'running') return <span className="acs-status-badge acs-status-running">⏳ Running</span>;
+    if (s === 'completed') return <span className="acs-status-badge acs-status-completed">✅ Completed</span>;
+    if (s === 'error') return <span className="acs-status-badge acs-status-error">❌ Error</span>;
+    return <span className="acs-status-badge acs-status-idle">⏸ Ready</span>;
   };
 
   return (
@@ -124,14 +124,14 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
         <div>
           <h2 style={{ fontSize: '2rem', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span className="text-gradient">Advanced Content Scanner</span>
-            <span style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: '12px', background: 'rgba(188, 140, 255, 0.15)', color: 'var(--accent-purple)' }}>v4.0</span>
+            <span style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: '4px', background: 'rgba(188, 140, 255, 0.15)', color: 'var(--accent-purple)' }}>v4.0</span>
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>5 Katmanlı Güvenlik Analiz Modülü — 13 Bileşen</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>5-Layer Security Analysis Module — 13 Components</p>
         </div>
         <div className="glass-panel" style={{ padding: '0.8rem 1.2rem', display: 'flex', gap: '1.5rem', fontSize: '0.82rem' }}>
-          <div><span style={{ color: 'var(--text-secondary)' }}>Bileşen: </span><strong>13</strong></div>
-          <div><span style={{ color: 'var(--text-secondary)' }}>Desen: </span><strong>40+</strong></div>
-          <div><span style={{ color: 'var(--text-secondary)' }}>Satır: </span><strong>2545</strong></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>Components: </span><strong>13</strong></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>Patterns: </span><strong>40+</strong></div>
+          <div><span style={{ color: 'var(--text-secondary)' }}>Lines: </span><strong>2545</strong></div>
         </div>
       </div>
 
@@ -143,7 +143,7 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
         </div>
         <button className="btn-primary" onClick={runAll} disabled={runAllActive || !domain}
           style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {runAllActive ? (<><div className="status-indicator pending" style={{ margin: 0 }}></div> {runAllProgress}%</>) : (<>🚀 Tümünü Çalıştır</>)}
+          {runAllActive ? (<><div className="status-indicator pending" style={{ margin: 0 }}></div> {runAllProgress}%</>) : (<>🚀 Run All</>)}
         </button>
       </div>
 
@@ -175,7 +175,7 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
                 {statusBadge(sec.id)}
                 <button className="btn-primary" style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem' }}
                   onClick={() => runSection(sec.id)} disabled={statuses[sec.id] === 'running'}>
-                  {statuses[sec.id] === 'running' ? '⏳' : '▶'} Çalıştır
+                  {statuses[sec.id] === 'running' ? '⏳' : '▶'} Run
                 </button>
                 <button className="btn-outline" style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem' }}
                   onClick={() => setDocModal({ open: true, file: sec.docFile })}>
@@ -189,7 +189,7 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
               <div className="acs-card-result">
                 <div className="acs-card-result-header" onClick={() => setExpandedResult(expandedResult === sec.id ? null : sec.id)}>
                   <span style={{ fontSize: '0.82rem', color: 'var(--accent-green)', fontWeight: 600 }}>
-                    {results[sec.id].error ? '❌ Hata' : '📊 Sonuçlar'}
+                    {results[sec.id].error ? '❌ Error' : '📊 Results'}
                   </span>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', transform: expandedResult === sec.id ? 'rotate(180deg)' : 'none', transition: '0.2s' }}>▼</span>
                 </div>
