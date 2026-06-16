@@ -1,0 +1,37 @@
+name: Publish WebAnalyzer to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  pypi-publish:
+    name: Build and publish WebAnalyzer to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for Trusted Publishing OIDC authentication
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install packaging dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Build source and wheel distributions
+      run: python -m build
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        # Note: No API token is required here when using Trusted Publishing
+        print-hash: true
