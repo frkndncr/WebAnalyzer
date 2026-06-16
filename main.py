@@ -9,6 +9,11 @@ import sys
 import io
 import warnings
 
+# Force UTF-8 encoding on Windows to prevent UnicodeEncodeError in console output
+if sys.platform.startswith('win'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 # Import utility functions
 from utils.utils import clear_terminal, save_results_to_json, display_banner
 from utils.module_wrapper import ModuleExecutor, safe_module_execution
