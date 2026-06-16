@@ -94,4 +94,5 @@ class DNSAnalyzer:
 
 def main(domain: str) -> Dict:
     """Main function for main.py compatibility"""
+    analyzer = DNSAnalyzer()
     return analyzer.get_dns_records(domain)
