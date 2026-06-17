@@ -1116,12 +1116,12 @@ class AdvancedContentScanner:
                 try:
                     with self._lock:
                         if url in self.visited_urls or self.crawled_pages >= self.max_pages:
-                            wq.task_done(); continue
+                            continue
                         self.visited_urls.add(url)
                         self.crawled_pages += 1
                         cnt = self.crawled_pages
                     if not self._is_crawlable(url):
-                        wq.task_done(); continue
+                        continue
                     if cnt % 20 == 0:
                         self.logger.info(f"[CRAWL] {cnt}/{self.max_pages} pages")
                     self._process_url(url, depth, wq)
