@@ -1,8 +1,8 @@
-# 🚀 WebAnalyzer v3.3 - Kurumsal Domain Güvenlik ve İstihbarat Platformu
+# 🚀 WebAnalyzer v3.5.0 - Kurumsal Domain Güvenlik ve İstihbarat Platformu
 
 <div align="center">
 
-![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.3-blue?style=for-the-badge&logo=security&logoColor=white)
+![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.5.0-blue?style=for-the-badge&logo=security&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange?style=for-the-badge&logo=mysql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-red?style=for-the-badge&logo=opensource&logoColor=white)
@@ -24,7 +24,7 @@
   <img src="docs/assets/dashboard_ui_mockup.png" alt="WebAnalyzer Dashboard Mockup" width="850px" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); margin-bottom: 25px;" />
 </div>
 
-WebAnalyzer v3.3, siber güvenlik uzmanları, penetrasyon testçileri ve güvenlik araştırmacıları için tasarlanmış **en gelişmiş** Python tabanlı domain analiz çerçevesidir. Platform, keşif, güvenlik açığı değerlendirmesi ve istihbarat toplama işlemlerini **kurumsal seviyede toplu işleme yetenekleri** ile birleştirir.
+WebAnalyzer v3.5.0, siber güvenlik uzmanları, penetrasyon testçileri ve güvenlik araştırmacıları için tasarlanmış **en gelişmiş** Python tabanlı domain analiz çerçevesidir. Platform, keşif, güvenlik açığı değerlendirmesi ve istihbarat toplama işlemlerini **kurumsal seviyede toplu işleme yetenekleri** ile birleştirir.
 
 ### ✨ Devrimsel Özellikler
 
@@ -35,7 +35,7 @@ WebAnalyzer v3.3, siber güvenlik uzmanları, penetrasyon testçileri ve güvenl
 🔹 **🛡️ Anti-Tespit Cephaneliği**: IP rotasyonu, kullanıcı ajanı döngüsü ve gelişmiş gizlilik yetenekleri  
 🔹 **🚀 Ölçeklenebilir Mimari**: Dinamik kaynak yönetimi ile 1-50 paralel işçi desteği  
 
-### 🎯 v3.3'te Devrimsel Yenilikler
+### 🎯 v3.5.0'da Devrimsel Yenilikler
 
 <table>
 <tr>
@@ -158,6 +158,23 @@ mysql -u kullanici_adiniz -p veritabani_adiniz < database/schema.sql
 # ✅ Kurulumu doğrula
 python main.py --help
 ```
+
+### 🖥️ Siber Güvenlik Dashboard'unu Manuel Başlatma
+
+Tüm görsel kontrol panelini Docker olmadan yerel olarak çalıştırmak için:
+
+1. **FastAPI Backend'i (API) Başlatın:**
+   ```bash
+   uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+2. **React Frontend'i (Arayüz) Başlatın:**
+   ```bash
+   cd dashboard
+   npm install
+   npm run dev
+   ```
+   Tarayıcınızda [http://localhost:5173](http://localhost:5173) adresini açın.
 
 ### ⚙️ Konfigürasyon
 
