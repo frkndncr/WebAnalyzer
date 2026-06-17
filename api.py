@@ -360,38 +360,266 @@ async def get_global_stats():
 
 @app.get('/api/threat-intel/{domain}')
 async def get_threat_intel(domain: str):
-    """Extract security-related findings as threat intelligence"""
+    """Extract comprehensive threat intelligence from all scan modules"""
     result_path = os.path.join('logs', domain, 'results.json')
-    intel = {'domain': domain, 'mitre_techniques': [], 'iocs': [], 'cves': [], 'risk_score': 0}
-    if os.path.exists(result_path):
-        with open(result_path, 'r', encoding='utf-8') as f:
-            res = json.load(f)
-        sec = res.get('Security Analysis', {})
-        if isinstance(sec, dict):
-            intel['risk_score'] = sec.get('security_score', 0)
-            vulns = sec.get('vulnerabilities', [])
-            if isinstance(vulns, list):
-                for v in vulns:
-                    if isinstance(v, dict):
+    intel = {
+        'domain': domain,
+        'mitre_techniques': [],
+        'iocs': [],
+        'cves': [],
+        'risk_score': 0,
+        'security_grade': None,
+        'attack_surface': 0,
+        'vuln_density': 0,
+        'exposure_level': 0,
+        'scan_date': None,
+        'has_data': False,
+    }
+
+    if not os.path.exists(result_path):
+        return intel
+
+    try:
+        mtime = os.path.getmtime(result_path)
+        from datetime import datetime
+        intel['scan_date'] = datetime.fromtimestamp(mtime).isoformat()
+    except Exception:
+        pass
+
+    with open(result_path, 'r', encoding='utf-8') as f:
+        res = json.load(f)
+
+    intel['has_data'] = True
+
+    # ── Security Analysis → CVEs + risk score ──
+    sec = res.get('Security Analysis', {})
+    if isinstance(sec, dict):
+        intel['risk_score'] = sec.get('security_score', 0)
+        intel['security_grade'] = sec.get('security_grade', None)
+        vulns = sec.get('vulnerabilities', [])
+        if isinstance(vulns, list):
+            for v in vulns:
+                if isinstance(v, dict):
+                    sev = (v.get('severity', 'Medium') or 'Medium').upper()
+                    intel['cves'].append({
+                        'id': v.get('type', v.get('title', 'Unknown')),
+                        'severity': sev,
+                        'cvss': 9.5 if sev == 'CRITICAL' else 7.5 if sev == 'HIGH' else 5.0 if sev == 'MEDIUM' else 2.5,
+                        'description': v.get('description', v.get('detail', '')),
+                        'status': 'Detected',
+                    })
+
+    # ── Advanced Content Scan → more CVEs + IOCs ──
+    acs = res.get('Advanced Content Scan', {})
+    if isinstance(acs, dict):
+        for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
+            findings = acs.get(key, [])
+            if isinstance(findings, list):
+                for f in findings:
+                    if isinstance(f, dict):
+                        sev = (f.get('severity', 'Medium') or 'Medium').upper()
                         intel['cves'].append({
-                            'id': v.get('type', 'Unknown'),
-                            'severity': v.get('severity', 'Medium'),
-                            'description': v.get('description', '')
+                            'id': f.get('type', f.get('vuln_type', key.replace('_', ' ').title())),
+                            'severity': sev,
+                            'cvss': 9.5 if sev == 'CRITICAL' else 7.5 if sev == 'HIGH' else 5.0 if sev == 'MEDIUM' else 2.5,
+                            'description': f.get('description', f.get('value', '')),
+                            'status': 'Confirmed' if f.get('confirmed') else 'Detected',
                         })
+                        # Extract IOCs from findings
+                        url = f.get('source_url', f.get('url', ''))
+                        if url:
+                            intel['iocs'].append({
+                                'type': 'URL',
+                                'value': url[:80],
+                                'confidence': 85 if sev in ('CRITICAL', 'HIGH') else 60,
+                                'firstSeen': intel['scan_date'] or '',
+                                'source': 'WebAnalyzer ACS',
+                            })
+        # Exposed endpoints as IOCs
+        for ep in acs.get('exposed_endpoints', []):
+            if isinstance(ep, dict):
+                intel['iocs'].append({
+                    'type': 'URL',
+                    'value': ep.get('url', ep.get('path', ''))[:80],
+                    'confidence': 90,
+                    'firstSeen': intel['scan_date'] or '',
+                    'source': 'Sensitive Path Scanner',
+                })
+
+    # ── Nmap → IOCs (open ports / IPs) ──
+    nmap = res.get('Nmap Zero Day Scan', {})
+    if isinstance(nmap, dict):
+        for port_info in nmap.get('open_ports', nmap.get('ports', [])):
+            if isinstance(port_info, dict):
+                ip = port_info.get('ip', port_info.get('host', ''))
+                if ip:
+                    intel['iocs'].append({
+                        'type': 'IP Address',
+                        'value': f"{ip}:{port_info.get('port', '?')}",
+                        'confidence': 95,
+                        'firstSeen': intel['scan_date'] or '',
+                        'source': 'Nmap Port Scanner',
+                    })
+
+    # ── Contact Spy → email IOCs ──
+    contact = res.get('Contact Spy', {})
+    if isinstance(contact, dict):
+        for email in contact.get('emails', []):
+            if isinstance(email, str):
+                intel['iocs'].append({'type': 'Email', 'value': email, 'confidence': 70, 'firstSeen': intel['scan_date'] or '', 'source': 'Contact Spy'})
+
+    # ── Subdomain Takeover → IOCs ──
+    takeover = res.get('Subdomain Takeover', {})
+    if isinstance(takeover, dict):
+        for sub in takeover.get('vulnerable_subdomains', takeover.get('results', [])):
+            if isinstance(sub, dict):
+                intel['iocs'].append({
+                    'type': 'Domain',
+                    'value': sub.get('subdomain', sub.get('domain', '')),
+                    'confidence': 95,
+                    'firstSeen': intel['scan_date'] or '',
+                    'source': 'Subdomain Takeover',
+                })
+
+    # ── MITRE ATT&CK Mapping ──
+    mitre_map = {
+        'TA0043': {'name': 'Reconnaissance', 'detected': 0},
+        'TA0042': {'name': 'Resource Development', 'detected': 0},
+        'TA0001': {'name': 'Initial Access', 'detected': 0},
+        'TA0002': {'name': 'Execution', 'detected': 0},
+        'TA0003': {'name': 'Persistence', 'detected': 0},
+        'TA0004': {'name': 'Privilege Escalation', 'detected': 0},
+        'TA0005': {'name': 'Defense Evasion', 'detected': 0},
+        'TA0006': {'name': 'Credential Access', 'detected': 0},
+        'TA0007': {'name': 'Discovery', 'detected': 0},
+        'TA0008': {'name': 'Lateral Movement', 'detected': 0},
+        'TA0009': {'name': 'Collection', 'detected': 0},
+        'TA0010': {'name': 'Exfiltration', 'detected': 0},
+        'TA0040': {'name': 'Impact', 'detected': 0},
+    }
+    # Map findings to MITRE
+    for cve in intel['cves']:
+        cid = (cve.get('id', '') or '').lower()
+        if any(k in cid for k in ['xss', 'injection', 'rce', 'command']):
+            mitre_map['TA0002']['detected'] += 1
+        if any(k in cid for k in ['auth', 'bypass', 'credential', 'password', 'secret', 'api_key', 'token']):
+            mitre_map['TA0006']['detected'] += 1
+        if any(k in cid for k in ['ssrf', 'redirect', 'cors']):
+            mitre_map['TA0001']['detected'] += 1
+        if any(k in cid for k in ['header', 'csp', 'hsts', 'clickjack']):
+            mitre_map['TA0005']['detected'] += 1
+        if any(k in cid for k in ['disclosure', 'exposed', 'leak', 'information']):
+            mitre_map['TA0009']['detected'] += 1
+        if any(k in cid for k in ['sqli', 'sql']):
+            mitre_map['TA0001']['detected'] += 1
+            mitre_map['TA0009']['detected'] += 1
+
+    # Discovery gets a count from recon modules
+    if res.get('DNS Records'):
+        mitre_map['TA0043']['detected'] += 1
+    if res.get('Subdomain Discovery'):
+        mitre_map['TA0043']['detected'] += 1
+        mitre_map['TA0007']['detected'] += 1
+    if res.get('Nmap Zero Day Scan'):
+        mitre_map['TA0043']['detected'] += 1
+        mitre_map['TA0007']['detected'] += 1
+    if res.get('Web Technologies'):
+        mitre_map['TA0043']['detected'] += 1
+
+    intel['mitre_techniques'] = [{'id': k, **v} for k, v in mitre_map.items()]
+
+    # ── Composite scores ──
+    total_vulns = len(intel['cves'])
+    intel['attack_surface'] = min(10, round(len(intel['iocs']) * 0.8, 1))
+    intel['vuln_density'] = min(10, round(total_vulns * 1.2, 1))
+    intel['exposure_level'] = min(10, round(intel['risk_score'] * 1.0, 1)) if intel['risk_score'] else 0
+
+    # Deduplicate IOCs by value
+    seen = set()
+    unique_iocs = []
+    for ioc in intel['iocs']:
+        if ioc['value'] not in seen:
+            seen.add(ioc['value'])
+            unique_iocs.append(ioc)
+    intel['iocs'] = unique_iocs[:50]  # limit to 50
+
     return intel
 
 
 @app.get('/api/network-map/{domain}')
 async def get_network_map(domain: str):
-    """Retrieve network topology data for a domain"""
+    """Retrieve comprehensive network topology data for a domain"""
     result_path = os.path.join('logs', domain, 'results.json')
-    network = {'domain': domain, 'dns_records': {}, 'subdomains': [], 'technologies': {}, 'ports': []}
-    if os.path.exists(result_path):
-        with open(result_path, 'r', encoding='utf-8') as f:
-            res = json.load(f)
-        network['dns_records'] = res.get('DNS Records', {})
-        network['subdomains'] = res.get('Subdomain Discovery', [])
-        network['technologies'] = res.get('Web Technologies', {})
+    network = {
+        'domain': domain,
+        'dns_records': {},
+        'subdomains': [],
+        'technologies': {},
+        'ports': [],
+        'domain_info': {},
+        'ssl_info': {},
+        'subdomain_takeover': [],
+        'has_data': False,
+    }
+
+    if not os.path.exists(result_path):
+        return network
+
+    with open(result_path, 'r', encoding='utf-8') as f:
+        res = json.load(f)
+
+    network['has_data'] = True
+
+    # ── DNS Records ──
+    dns = res.get('DNS Records', {})
+    if isinstance(dns, dict):
+        network['dns_records'] = dns
+
+    # ── Subdomains ──
+    subs = res.get('Subdomain Discovery', [])
+    if isinstance(subs, list):
+        network['subdomains'] = [s if isinstance(s, str) else s.get('subdomain', s.get('domain', str(s))) for s in subs]
+    elif isinstance(subs, dict):
+        network['subdomains'] = subs.get('subdomains', subs.get('results', []))
+
+    # ── Subdomain Takeover ──
+    takeover = res.get('Subdomain Takeover', {})
+    if isinstance(takeover, dict):
+        network['subdomain_takeover'] = takeover.get('vulnerable_subdomains', takeover.get('results', []))
+    elif isinstance(takeover, list):
+        network['subdomain_takeover'] = takeover
+
+    # ── Technologies (categorized) ──
+    tech = res.get('Web Technologies', {})
+    if isinstance(tech, dict):
+        network['technologies'] = tech
+    elif isinstance(tech, list):
+        network['technologies'] = {'detected': tech}
+
+    # ── Port Scan (Nmap) ──
+    nmap = res.get('Nmap Zero Day Scan', {})
+    if isinstance(nmap, dict):
+        network['ports'] = nmap.get('open_ports', nmap.get('ports', nmap.get('results', [])))
+        if not isinstance(network['ports'], list):
+            network['ports'] = []
+
+    # ── Domain Info ──
+    dinfo = res.get('Domain Information', {})
+    if isinstance(dinfo, dict):
+        network['domain_info'] = dinfo
+
+    # ── SSL / Security headers ──
+    sec = res.get('Security Analysis', {})
+    if isinstance(sec, dict):
+        ssl_data = {}
+        for v in sec.get('vulnerabilities', sec.get('findings', [])):
+            if isinstance(v, dict):
+                vtype = (v.get('type', '') or '').lower()
+                if 'ssl' in vtype or 'tls' in vtype or 'certificate' in vtype or 'https' in vtype:
+                    ssl_data['issues'] = ssl_data.get('issues', [])
+                    ssl_data['issues'].append(v.get('description', v.get('detail', '')))
+        network['ssl_info'] = ssl_data
+
     return network
 
 

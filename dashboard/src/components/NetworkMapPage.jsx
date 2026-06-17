@@ -1,453 +1,767 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getApiUrl } from '../config';
 
-/* ─── Sample / Fallback Data ─────────────────────────────────── */
-const SAMPLE_DNS = {
-  A: ['104.21.32.1', '172.67.154.2'],
-  AAAA: ['2606:4700:3030::6815:2001'],
-  MX: ['mail.example.com (priority: 10)', 'mail2.example.com (priority: 20)'],
-  NS: ['ns1.cloudflare.com', 'ns2.cloudflare.com'],
-  TXT: ['v=spf1 include:_spf.google.com ~all', 'google-site-verification=abc123'],
-  CNAME: ['www → example.com'],
+/* ───────────────────────────  HELPERS  ─────────────────────────── */
+
+const TECH_CATEGORIES = {
+  'Web Server':   ['web_server', 'server', 'http_server'],
+  'CMS':          ['cms', 'content_management'],
+  'Framework':    ['framework', 'web_framework', 'frontend_framework', 'backend_framework'],
+  'Language':     ['language', 'programming_language', 'server_language'],
+  'JS Library':   ['javascript_library', 'js_library', 'js_framework', 'javascript_framework', 'javascript'],
+  'CSS':          ['css_framework', 'css', 'ui_framework'],
+  'Analytics':    ['analytics', 'tracking'],
+  'CDN':          ['cdn', 'content_delivery'],
+  'Hosting':      ['hosting', 'cloud', 'paas', 'iaas'],
+  'Security':     ['security', 'waf', 'firewall', 'ssl'],
+  'Database':     ['database', 'db'],
+  'Cache':        ['cache', 'caching'],
+  'Email':        ['email', 'mail'],
+  'DNS':          ['dns', 'nameserver'],
+  'Other':        [],
 };
 
-const COMMON_PORTS = [
-  { port: 21, service: 'FTP', status: 'Closed' },
-  { port: 22, service: 'SSH', status: 'Open' },
-  { port: 25, service: 'SMTP', status: 'Filtered' },
-  { port: 53, service: 'DNS', status: 'Open' },
-  { port: 80, service: 'HTTP', status: 'Open' },
-  { port: 110, service: 'POP3', status: 'Closed' },
-  { port: 143, service: 'IMAP', status: 'Closed' },
-  { port: 443, service: 'HTTPS', status: 'Open' },
-  { port: 445, service: 'SMB', status: 'Filtered' },
-  { port: 993, service: 'IMAPS', status: 'Closed' },
-  { port: 995, service: 'POP3S', status: 'Closed' },
-  { port: 1433, service: 'MSSQL', status: 'Closed' },
-  { port: 3306, service: 'MySQL', status: 'Filtered' },
-  { port: 3389, service: 'RDP', status: 'Closed' },
-  { port: 5432, service: 'PostgreSQL', status: 'Open' },
-  { port: 5900, service: 'VNC', status: 'Closed' },
-  { port: 8080, service: 'HTTP-Alt', status: 'Open' },
-  { port: 8443, service: 'HTTPS-Alt', status: 'Filtered' },
-  { port: 8888, service: 'HTTP-Proxy', status: 'Closed' },
-  { port: 9090, service: 'WebConsole', status: 'Closed' },
-];
-
-const SUBDOMAINS = [
-  { name: 'www', status: 'active', ip: '104.21.32.1' },
-  { name: 'mail', status: 'active', ip: '104.21.32.5' },
-  { name: 'api', status: 'active', ip: '104.21.32.10' },
-  { name: 'dev', status: 'inactive', ip: '—' },
-  { name: 'staging', status: 'takeover', ip: '52.20.100.3' },
-  { name: 'admin', status: 'active', ip: '104.21.32.15' },
-  { name: 'cdn', status: 'active', ip: '172.67.154.8' },
-  { name: 'blog', status: 'inactive', ip: '—' },
-];
-
-const TECH_STACK = {
-  Frontend: [
-    { name: 'React', version: '18.2.0' },
-    { name: 'Tailwind CSS', version: '3.4.1' },
-    { name: 'Vite', version: '5.1.0' },
-  ],
-  Backend: [
-    { name: 'FastAPI', version: '0.109.0' },
-    { name: 'Python', version: '3.12' },
-    { name: 'Uvicorn', version: '0.27.0' },
-  ],
-  Server: [
-    { name: 'Nginx', version: '1.25.3' },
-    { name: 'Linux', version: 'Ubuntu 22.04' },
-  ],
-  CDN: [
-    { name: 'Cloudflare', version: 'Enterprise' },
-  ],
-  Analytics: [
-    { name: 'Google Analytics', version: 'GA4' },
-    { name: 'Hotjar', version: '2.0' },
-  ],
-  Security: [
-    { name: 'WAF', version: 'Cloudflare' },
-    { name: 'HSTS', version: 'Enabled' },
-    { name: 'CSP', version: 'Strict' },
-  ],
+const categorizeTech = (key) => {
+  const lower = key.toLowerCase();
+  for (const [cat, keys] of Object.entries(TECH_CATEGORIES)) {
+    if (keys.some(k => lower.includes(k) || lower === k)) return cat;
+  }
+  return 'Other';
 };
 
-const SSL_INFO = {
-  issuer: "Let's Encrypt Authority X3",
-  subject: 'CN=example.com',
-  validFrom: '2024-09-15',
-  validTo: '2025-12-14',
-  serial: '04:8A:3F:B2:91:C7:D5:E6:F0:12:34:56:78:9A:BC:DE',
-  protocols: ['TLS 1.2', 'TLS 1.3'],
-  chain: ["Let's Encrypt Authority X3", 'DST Root CA X3', 'ISRG Root X1'],
+const CATEGORY_COLORS = {
+  'Web Server':  'badge-blue',
+  'CMS':         'badge-purple',
+  'Framework':   'badge-green',
+  'Language':    'badge-orange',
+  'JS Library':  'badge-blue',
+  'CSS':         'badge-purple',
+  'Analytics':   'badge-orange',
+  'CDN':         'badge-green',
+  'Hosting':     'badge-blue',
+  'Security':    'badge-red',
+  'Database':    'badge-purple',
+  'Cache':       'badge-green',
+  'Email':       'badge-orange',
+  'DNS':         'badge-blue',
+  'Other':       'badge-blue',
 };
 
-/* ─── Helper ─────────────────────────────────────────────────── */
-const daysUntil = (dateStr) => {
-  const d = new Date(dateStr);
-  const now = new Date();
-  return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+const DNS_ICONS = { A: '🌐', AAAA: '🔗', MX: '📧', NS: '🏷️', TXT: '📝', CNAME: '🔀', SOA: '📋', SRV: '🔌', PTR: '↩️', CAA: '🔒' };
+
+const portStateClass = (state) => {
+  if (!state) return '';
+  const s = String(state).toLowerCase();
+  if (s === 'open') return 'port-open';
+  if (s.includes('filter')) return 'port-filtered';
+  return 'port-closed';
 };
 
-const DNS_ICONS = { A: '🌐', AAAA: '🔗', MX: '📧', NS: '🏷️', TXT: '📝', CNAME: '↪️' };
-const TECH_ICONS = { Frontend: '🎨', Backend: '⚙️', Server: '🖥️', CDN: '🚀', Analytics: '📊', Security: '🛡️' };
+/* ───────────────────────────  SCAN LINE ANIMATION  ─────────────── */
 
-/* ─── Component ──────────────────────────────────────────────── */
-const NetworkMapPage = () => {
-  const [domain, setDomain] = useState('example.com');
-  const [dnsData, setDnsData] = useState(SAMPLE_DNS);
-  const [loading, setLoading] = useState(false);
-  const [scanActive, setScanActive] = useState(false);
-  const [scannedPorts, setScannedPorts] = useState(new Set());
-
-  /* ── Fetch DNS ── */
-  const fetchDNS = async () => {
-    if (!domain.trim()) return;
-    setLoading(true);
-    try {
-      const resp = await fetch(getApiUrl('/api/network-map/' + domain.trim()));
-      if (resp.ok) {
-        const data = await resp.json();
-        setDnsData({
-          A: data.a_records || data.A || SAMPLE_DNS.A,
-          AAAA: data.aaaa_records || data.AAAA || SAMPLE_DNS.AAAA,
-          MX: data.mx_records || data.MX || SAMPLE_DNS.MX,
-          NS: data.ns_records || data.NS || SAMPLE_DNS.NS,
-          TXT: data.txt_records || data.TXT || SAMPLE_DNS.TXT,
-          CNAME: data.cname_records || data.CNAME || SAMPLE_DNS.CNAME,
-        });
-      } else {
-        setDnsData(SAMPLE_DNS);
-      }
-    } catch {
-      setDnsData(SAMPLE_DNS);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ── Port scan animation ── */
-  const startPortScan = () => {
-    setScanActive(true);
-    setScannedPorts(new Set());
-    let idx = 0;
-    const interval = setInterval(() => {
-      if (idx >= COMMON_PORTS.length) {
-        clearInterval(interval);
-        setScanActive(false);
-        return;
-      }
-      setScannedPorts((prev) => new Set([...prev, COMMON_PORTS[idx].port]));
-      idx++;
-    }, 120);
-  };
-
-  const portStatusColor = (status) => {
-    if (status === 'Open') return '#39ff14';
-    if (status === 'Filtered') return '#ff0055';
-    return '#768390';
-  };
-  const portBg = (status) => {
-    if (status === 'Open') return 'rgba(57,255,20,0.08)';
-    if (status === 'Filtered') return 'rgba(255,0,85,0.08)';
-    return 'rgba(118,131,144,0.05)';
-  };
-
-  const subdomainColor = (status) => {
-    if (status === 'active') return '#39ff14';
-    if (status === 'takeover') return '#ff0055';
-    return '#768390';
-  };
-  const subdomainLabel = (status) => {
-    if (status === 'active') return 'ACTIVE';
-    if (status === 'takeover') return 'TAKEOVER RISK';
-    return 'INACTIVE';
-  };
-
-  const sslDaysLeft = daysUntil(SSL_INFO.validTo);
-  const sslDayColor = sslDaysLeft > 90 ? '#39ff14' : sslDaysLeft > 30 ? '#ff9f1c' : '#ff0055';
-
-  /* ─────────────── RENDER ─────────────── */
+const ScanLineOverlay = ({ active }) => {
+  if (!active) return null;
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{
+      position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999,
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', left: 0, right: 0, height: 2,
+        background: 'linear-gradient(90deg, transparent, var(--accent-blue), var(--accent-purple), transparent)',
+        boxShadow: '0 0 20px var(--accent-blue), 0 0 60px var(--accent-purple)',
+        animation: 'scanDown 2s ease-in-out infinite',
+      }} />
+      <style>{`@keyframes scanDown{0%{top:-2px}100%{top:100%}}`}</style>
+    </div>
+  );
+};
 
-      {/* ═══ Section A: Header ═══ */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h2 style={{ fontSize: '2.2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span className="text-gradient">NETWORK_TOPOLOGY</span>
-          <span style={{
-            fontSize: '0.7rem', padding: '3px 12px', borderRadius: '4px',
-            background: 'rgba(57,255,20,0.12)', color: '#39ff14',
-            border: '1px solid rgba(57,255,20,0.35)', fontFamily: "var(--font-mono)",
-            fontWeight: 700, letterSpacing: '2px',
-            boxShadow: '0 0 12px rgba(57,255,20,0.25)',
-          }}>🟢 RECON_MODE</span>
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontFamily: "var(--font-mono)" }}>
-          Infrastructure Reconnaissance & Asset Discovery
-        </p>
-      </div>
+/* ───────────────────────────  SUB-COMPONENTS  ─────────────────── */
 
-      {/* ═══ Section B: DNS Record Visualizer ═══ */}
-      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-        <h3 style={{ fontSize: '0.85rem', fontFamily: "var(--font-cyber)", marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-          📡 DNS_RECORDS
-        </h3>
-        <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
-          <input
-            className="input-glass"
-            placeholder="Enter domain (e.g. example.com)"
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && fetchDNS()}
-            style={{ maxWidth: '360px', flex: 1 }}
-          />
-          <button className="btn-primary" onClick={fetchDNS} disabled={loading} style={{ minWidth: '120px' }}>
-            {loading ? '⏳ RESOLVING...' : '🔍 RESOLVE'}
-          </button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.8rem' }}>
-          {Object.entries(dnsData).map(([type, records]) => (
-            <div key={type} className="glass-panel" style={{ padding: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.6rem' }}>
-                <span style={{ fontSize: '1.2rem' }}>{DNS_ICONS[type] || '📋'}</span>
-                <span style={{ fontFamily: "var(--font-cyber)", fontSize: '0.8rem', color: 'var(--accent-blue)' }}>{type}</span>
-                <span style={{
-                  marginLeft: 'auto', fontFamily: "var(--font-mono)", fontSize: '0.7rem',
-                  padding: '1px 6px', borderRadius: '4px',
-                  background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
-                }}>{Array.isArray(records) ? records.length : 0}</span>
-              </div>
-              {Array.isArray(records) && records.map((r, i) => (
-                <div key={i} style={{
-                  fontFamily: "var(--font-mono)", fontSize: '0.72rem', color: 'var(--text-secondary)',
-                  padding: '3px 0', borderTop: i > 0 ? '1px solid rgba(0,242,254,0.06)' : 'none',
-                  wordBreak: 'break-all',
-                }}>{r}</div>
-              ))}
+const EmptyState = ({ icon, message }) => (
+  <div style={{
+    textAlign: 'center', padding: '40px 20px',
+    color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)',
+    fontSize: 14,
+  }}>
+    <div style={{ fontSize: 36, marginBottom: 12 }}>{icon}</div>
+    <div>{message}</div>
+  </div>
+);
+
+/* DNS Records Panel */
+const DnsSection = ({ dns }) => {
+  const types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'SRV', 'PTR', 'CAA'];
+  const active = types.filter(t => dns && dns[t] && dns[t].length > 0);
+  const empty  = types.filter(t => !dns || !dns[t] || dns[t].length === 0);
+  const ordered = [...active, ...empty];
+
+  // also include any keys in dns that we didn't list
+  if (dns) {
+    Object.keys(dns).forEach(k => {
+      if (!types.includes(k)) ordered.push(k);
+    });
+  }
+
+  if (!dns || Object.keys(dns).length === 0) {
+    return <EmptyState icon="📡" message="No DNS records found for this domain." />;
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+      {ordered.map(type => {
+        const records = dns[type] || [];
+        const icon = DNS_ICONS[type] || '📄';
+        return (
+          <div key={type} className="glass-panel" style={{
+            padding: 16, borderRadius: 12,
+            borderLeft: records.length > 0 ? '3px solid var(--accent-blue)' : '3px solid var(--panel-border)',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+              fontFamily: 'var(--font-cyber)', fontSize: 13, color: 'var(--text-primary)',
+              letterSpacing: 1,
+            }}>
+              <span>{icon}</span>
+              <span>{type}</span>
+              <span style={{
+                marginLeft: 'auto', fontSize: 11,
+                background: records.length > 0 ? 'rgba(0,242,254,0.15)' : 'rgba(118,131,144,0.15)',
+                color: records.length > 0 ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                padding: '2px 8px', borderRadius: 6,
+              }}>
+                {records.length > 0 ? `${records.length} record${records.length > 1 ? 's' : ''}` : '—'}
+              </span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ Middle Row: Port Scanner + Subdomain Map ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-
-        {/* ═══ Section C: Port Scanner Grid ═══ */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '0.85rem', fontFamily: "var(--font-cyber)", color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-              🔌 PORT_SCANNER
-            </h3>
-            <button className="btn-primary" onClick={startPortScan} disabled={scanActive} style={{ padding: '0.4rem 1rem', fontSize: '0.72rem' }}>
-              {scanActive ? '⏳ SCANNING...' : '▶ START_SCAN'}
-            </button>
+            {records.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {records.map((rec, i) => {
+                  const val = typeof rec === 'object' ? (rec.value || rec.address || rec.exchange || JSON.stringify(rec)) : String(rec);
+                  return (
+                    <div key={i} style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 12,
+                      color: 'var(--accent-green)',
+                      background: 'rgba(57,255,20,0.05)',
+                      padding: '6px 10px', borderRadius: 6,
+                      wordBreak: 'break-all',
+                    }}>
+                      {typeof rec === 'object' && rec.priority != null && (
+                        <span style={{ color: 'var(--accent-orange)', marginRight: 8 }}>[pri:{rec.priority}]</span>
+                      )}
+                      {val}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>—</div>
+            )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '0.5rem' }}>
-            {COMMON_PORTS.map((p) => {
-              const visible = scannedPorts.has(p.port) || !scanActive && scannedPorts.size === 0;
+        );
+      })}
+    </div>
+  );
+};
+
+/* Port Scanner Panel */
+const PortSection = ({ ports }) => {
+  if (!ports || ports.length === 0) {
+    return <EmptyState icon="🔌" message="No port scan data available. Enable Nmap module." />;
+  }
+
+  const openCount = ports.filter(p => String(p.state || p.status || '').toLowerCase() === 'open').length;
+  const filteredCount = ports.filter(p => String(p.state || p.status || '').toLowerCase().includes('filter')).length;
+  const closedCount = ports.length - openCount - filteredCount;
+
+  return (
+    <>
+      {/* summary bar */}
+      <div style={{
+        display: 'flex', gap: 20, marginBottom: 16, flexWrap: 'wrap',
+        fontFamily: 'var(--font-mono)', fontSize: 13,
+      }}>
+        <span style={{ color: 'var(--accent-green)' }}>● Open: {openCount}</span>
+        <span style={{ color: 'var(--accent-orange)' }}>◐ Filtered: {filteredCount}</span>
+        <span style={{ color: 'var(--text-secondary)' }}>○ Closed: {closedCount}</span>
+        <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)' }}>Total: {ports.length}</span>
+      </div>
+      <div className="port-grid">
+        {ports.map((p, i) => {
+          const state = String(p.state || p.status || 'unknown').toLowerCase();
+          return (
+            <div key={i} className={`port-card ${portStateClass(state)}`}>
+              <div style={{
+                fontFamily: 'var(--font-cyber)', fontSize: 18,
+                color: state === 'open' ? 'var(--accent-green)' : state.includes('filter') ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                marginBottom: 4,
+              }}>
+                {p.port}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11,
+                color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: 1,
+                marginBottom: 4,
+              }}>
+                {p.service || 'unknown'}
+              </div>
+              <div style={{
+                fontSize: 10, fontFamily: 'var(--font-mono)', textTransform: 'uppercase',
+                color: state === 'open' ? 'var(--accent-green)' : state.includes('filter') ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                letterSpacing: 1.5,
+              }}>
+                {state}
+              </div>
+              {p.version && (
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginTop: 4 }}>
+                  {p.version}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+};
+
+/* Subdomain Map Panel */
+const SubdomainSection = ({ subdomains, takeoverData }) => {
+  if (!subdomains || subdomains.length === 0) {
+    return <EmptyState icon="🗺️" message="No subdomains discovered." />;
+  }
+
+  const takeoverMap = {};
+  if (takeoverData && Array.isArray(takeoverData)) {
+    takeoverData.forEach(item => {
+      takeoverMap[item.subdomain] = item.vulnerable;
+    });
+  }
+
+  const atRisk = subdomains.filter(s => takeoverMap[s]);
+
+  return (
+    <>
+      {atRisk.length > 0 && (
+        <div style={{
+          background: 'rgba(255,0,85,0.08)', border: '1px solid rgba(255,0,85,0.3)',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+          fontFamily: 'var(--font-mono)', fontSize: 12,
+          color: 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <span>{atRisk.length} subdomain{atRisk.length > 1 ? 's' : ''} at risk of takeover</span>
+        </div>
+      )}
+      <div style={{ marginBottom: 12, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
+        {subdomains.length} subdomain{subdomains.length !== 1 ? 's' : ''} discovered
+      </div>
+      {/* Subdomain visual map – SVG node graph */}
+      <SubdomainGraph subdomains={subdomains} takeoverMap={takeoverMap} />
+      {/* List fallback */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16,
+      }}>
+        {subdomains.map((sub, i) => {
+          const isRisk = takeoverMap[sub];
+          return (
+            <div key={i} style={{
+              fontFamily: 'var(--font-mono)', fontSize: 11,
+              padding: '5px 12px', borderRadius: 20,
+              background: isRisk ? 'rgba(255,0,85,0.12)' : 'rgba(0,242,254,0.08)',
+              border: `1px solid ${isRisk ? 'rgba(255,0,85,0.4)' : 'rgba(0,242,254,0.2)'}`,
+              color: isRisk ? 'var(--accent-red)' : 'var(--accent-blue)',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {isRisk && <span style={{ fontSize: 10 }}>🔓</span>}
+              {sub}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+};
+
+/* SVG subdomain graph */
+const SubdomainGraph = ({ subdomains, takeoverMap }) => {
+  const svgRef = useRef(null);
+  const maxShow = Math.min(subdomains.length, 40);
+  const subs = subdomains.slice(0, maxShow);
+  const cx = 300, cy = 200, R = 160;
+
+  return (
+    <svg ref={svgRef} viewBox="0 0 600 400" style={{ width: '100%', maxHeight: 380, fontFamily: 'var(--font-mono)' }}>
+      {/* central node */}
+      <circle cx={cx} cy={cy} r={28} fill="rgba(0,242,254,0.12)" stroke="var(--accent-blue)" strokeWidth={2} />
+      <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--accent-blue)" fontSize={10} fontWeight="bold">ROOT</text>
+      {/* nodes */}
+      {subs.map((sub, i) => {
+        const angle = (2 * Math.PI * i) / subs.length - Math.PI / 2;
+        const r = R + (i % 2 === 0 ? 0 : 25);
+        const nx = cx + r * Math.cos(angle);
+        const ny = cy + r * Math.sin(angle);
+        const isRisk = takeoverMap[sub];
+        const color = isRisk ? 'var(--accent-red)' : 'var(--accent-green)';
+        return (
+          <g key={i}>
+            <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={isRisk ? 'rgba(255,0,85,0.25)' : 'rgba(0,242,254,0.15)'} strokeWidth={1} />
+            <circle cx={nx} cy={ny} r={6} fill={isRisk ? 'rgba(255,0,85,0.25)' : 'rgba(57,255,20,0.2)'} stroke={color} strokeWidth={1.5}>
+              {isRisk && <animate attributeName="r" values="6;9;6" dur="1.5s" repeatCount="indefinite" />}
+            </circle>
+            <text x={nx} y={ny - 10} textAnchor="middle" fill={color} fontSize={7}
+              style={{ pointerEvents: 'none' }}>
+              {sub.length > 22 ? sub.slice(0, 20) + '…' : sub}
+            </text>
+          </g>
+        );
+      })}
+      {subdomains.length > maxShow && (
+        <text x={cx} y={390} textAnchor="middle" fill="var(--text-secondary)" fontSize={10}>
+          +{subdomains.length - maxShow} more subdomains
+        </text>
+      )}
+    </svg>
+  );
+};
+
+/* Technology Stack Panel */
+const TechSection = ({ technologies }) => {
+  if (!technologies || Object.keys(technologies).length === 0) {
+    return <EmptyState icon="⚙️" message="No technology data." />;
+  }
+
+  // Group techs by category
+  const grouped = {};
+  Object.entries(technologies).forEach(([key, value]) => {
+    if (value == null || value === '' || value === false) return;
+    const cat = categorizeTech(key);
+    if (!grouped[cat]) grouped[cat] = [];
+    // value can be string, array, or object
+    const vals = Array.isArray(value) ? value : [value];
+    vals.forEach(v => {
+      const display = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      grouped[cat].push({ key, display });
+    });
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {Object.entries(grouped).map(([cat, items]) => (
+        <div key={cat}>
+          <div style={{
+            fontFamily: 'var(--font-cyber)', fontSize: 12, letterSpacing: 1,
+            color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase',
+          }}>
+            {cat}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {items.map((item, i) => (
+              <span key={i} className={`badge ${CATEGORY_COLORS[cat] || 'badge-blue'}`} style={{ fontSize: 12 }}>
+                {item.display}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* SSL & Domain Info Panel */
+const InfoSection = ({ domainInfo, sslInfo }) => {
+  const hasDomain = domainInfo && Object.keys(domainInfo).length > 0;
+  const hasSsl = sslInfo && (sslInfo.issues?.length > 0 || Object.keys(sslInfo).length > 1);
+
+  if (!hasDomain && !hasSsl) {
+    return <EmptyState icon="🔒" message="No domain/SSL information available. Run a domain info scan." />;
+  }
+
+  const formatKey = (k) => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+      {/* Domain info */}
+      {hasDomain && (
+        <div className="glass-panel" style={{ padding: 20, borderRadius: 14 }}>
+          <div style={{
+            fontFamily: 'var(--font-cyber)', fontSize: 14, letterSpacing: 1,
+            color: 'var(--accent-blue)', marginBottom: 14,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span>🌐</span> Domain Info
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {Object.entries(domainInfo).map(([k, v]) => {
+              if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) return null;
+              const display = Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
               return (
-                <div key={p.port} style={{
-                  padding: '0.6rem 0.5rem', borderRadius: '6px', textAlign: 'center',
-                  background: visible ? portBg(p.status) : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${visible ? `${portStatusColor(p.status)}30` : 'rgba(255,255,255,0.04)'}`,
-                  transition: 'all 0.3s ease',
-                  opacity: visible ? 1 : 0.3,
-                  transform: visible ? 'scale(1)' : 'scale(0.92)',
-                }}>
-                  <div style={{ fontFamily: "var(--font-cyber)", fontSize: '0.9rem', fontWeight: 900, color: visible ? portStatusColor(p.status) : '#333' }}>
-                    {p.port}
-                  </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    {p.service}
-                  </div>
-                  <div style={{
-                    fontFamily: "var(--font-mono)", fontSize: '0.58rem', fontWeight: 700, marginTop: '3px',
-                    color: visible ? portStatusColor(p.status) : '#333',
-                  }}>
-                    {visible ? p.status.toUpperCase() : '—'}
-                  </div>
+                <div key={k} style={{ display: 'flex', gap: 12, fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: 'var(--text-secondary)', minWidth: 140, flexShrink: 0 }}>{formatKey(k)}</span>
+                  <span style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{display}</span>
                 </div>
               );
             })}
           </div>
-          <div style={{ marginTop: '0.8rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            {[{ label: 'Open', color: '#39ff14' }, { label: 'Filtered', color: '#ff0055' }, { label: 'Closed', color: '#768390' }].map((l) => (
-              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.68rem', fontFamily: "var(--font-mono)", color: 'var(--text-secondary)' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: l.color, display: 'inline-block', boxShadow: `0 0 6px ${l.color}60` }} />
-                {l.label}
-              </div>
-            ))}
-          </div>
         </div>
+      )}
 
-        {/* ═══ Section D: Subdomain Map ═══ */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontFamily: "var(--font-cyber)", marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-            🗺️ SUBDOMAIN_MAP
-          </h3>
-          {/* Root */}
-          <div style={{ textAlign: 'center', marginBottom: '0.6rem' }}>
-            <span style={{
-              display: 'inline-block', padding: '0.5rem 1.5rem', borderRadius: '6px',
-              background: 'rgba(0,242,254,0.12)', border: '1px solid rgba(0,242,254,0.35)',
-              fontFamily: "var(--font-cyber)", fontSize: '0.85rem', fontWeight: 700, color: '#00f2fe',
-              boxShadow: '0 0 15px rgba(0,242,254,0.2)',
-            }}>{domain || 'example.com'}</span>
-          </div>
-          {/* Connector line */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.3rem' }}>
-            <svg width="200" height="24" viewBox="0 0 200 24">
-              <line x1="100" y1="0" x2="100" y2="12" stroke="rgba(0,242,254,0.3)" strokeWidth="2" />
-              <line x1="10" y1="12" x2="190" y2="12" stroke="rgba(0,242,254,0.3)" strokeWidth="2" />
-            </svg>
-          </div>
-          {/* Subdomain nodes */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.6rem' }}>
-            {SUBDOMAINS.map((sub) => (
-              <div key={sub.name} className="glass-panel" style={{
-                padding: '0.7rem', textAlign: 'center',
-                borderLeft: `3px solid ${subdomainColor(sub.status)}`,
-                transition: 'all 0.25s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.boxShadow = `0 0 14px ${subdomainColor(sub.status)}30`}
-              onMouseLeave={(e) => e.currentTarget.style.boxShadow = ''}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {sub.name}
-                </div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: '0.62rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  {sub.ip}
-                </div>
-                <div style={{
-                  marginTop: '4px', display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
-                  fontSize: '0.58rem', fontWeight: 700, fontFamily: "var(--font-mono)",
-                  background: `${subdomainColor(sub.status)}15`,
-                  color: subdomainColor(sub.status),
-                  border: `1px solid ${subdomainColor(sub.status)}30`,
-                }}>
-                  {subdomainLabel(sub.status)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ Bottom Row: Tech Stack + SSL Info ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-
-        {/* ═══ Section E: Technology Stack ═══ */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontFamily: "var(--font-cyber)", marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-            🧩 TECHNOLOGY_STACK
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            {Object.entries(TECH_STACK).map(([category, techs]) => (
-              <div key={category}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  {TECH_ICONS[category]} {category}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  {techs.map((tech) => (
-                    <div key={tech.name} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '6px',
-                      padding: '4px 10px', borderRadius: '5px',
-                      background: 'rgba(0,242,254,0.06)', border: '1px solid rgba(0,242,254,0.15)',
-                      transition: 'all 0.25s ease', cursor: 'default',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,242,254,0.4)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(0,242,254,0.15)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(0,242,254,0.15)'; e.currentTarget.style.boxShadow = ''; }}>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>{tech.name}</span>
-                      <span style={{
-                        fontFamily: "var(--font-mono)", fontSize: '0.62rem', padding: '1px 5px',
-                        borderRadius: '3px', background: 'rgba(218,34,255,0.1)', color: '#da22ff',
-                      }}>{tech.version}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ═══ Section F: SSL Certificate Info ═══ */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontFamily: "var(--font-cyber)", marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-            🔐 SSL_CERTIFICATE
-          </h3>
-          {/* Info rows */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontFamily: "var(--font-mono)", fontSize: '0.8rem' }}>
-            {[
-              { label: 'Issuer', value: SSL_INFO.issuer },
-              { label: 'Subject', value: SSL_INFO.subject },
-              { label: 'Valid From', value: SSL_INFO.validFrom },
-              { label: 'Valid To', value: SSL_INFO.validTo },
-            ].map((row) => (
-              <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid rgba(0,242,254,0.06)' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.73rem' }}>{row.label}</span>
-                <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.75rem', textAlign: 'right' }}>{row.value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Serial */}
-          <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.7rem', borderRadius: '5px', background: 'rgba(13,17,23,0.5)', border: '1px solid var(--panel-border)' }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Serial: </span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.65rem', color: 'var(--accent-blue)', wordBreak: 'break-all' }}>{SSL_INFO.serial}</span>
-          </div>
-
-          {/* Days remaining */}
+      {/* SSL info */}
+      {hasSsl && (
+        <div className="glass-panel" style={{ padding: 20, borderRadius: 14 }}>
           <div style={{
-            marginTop: '0.8rem', padding: '0.7rem', borderRadius: '6px',
-            background: `${sslDayColor}10`, border: `1px solid ${sslDayColor}30`,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            fontFamily: 'var(--font-cyber)', fontSize: 14, letterSpacing: 1,
+            color: 'var(--accent-purple)', marginBottom: 14,
+            display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Days Remaining</span>
-            <span style={{ fontFamily: "var(--font-cyber)", fontSize: '1.3rem', fontWeight: 900, color: sslDayColor, textShadow: `0 0 10px ${sslDayColor}50` }}>
-              {sslDaysLeft}
-            </span>
+            <span>🔒</span> SSL / TLS Info
           </div>
-
-          {/* Protocol support */}
-          <div style={{ marginTop: '0.8rem' }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.4rem' }}>PROTOCOL SUPPORT</span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {SSL_INFO.protocols.map((p) => (
-                <span key={p} style={{
-                  padding: '3px 10px', borderRadius: '4px', fontFamily: "var(--font-mono)", fontSize: '0.72rem',
-                  fontWeight: 700, background: 'rgba(57,255,20,0.1)', color: '#39ff14', border: '1px solid rgba(57,255,20,0.25)',
-                }}>{p}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Certificate Chain */}
-          <div style={{ marginTop: '0.8rem' }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.4rem' }}>CERTIFICATE CHAIN</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              {SSL_INFO.chain.map((cert, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={{
-                      width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, fontFamily: "var(--font-mono)",
-                      background: i === 0 ? 'rgba(0,242,254,0.15)' : 'rgba(255,255,255,0.05)',
-                      color: i === 0 ? '#00f2fe' : 'var(--text-secondary)',
-                      border: `1px solid ${i === 0 ? 'rgba(0,242,254,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                    }}>{i + 1}</span>
-                    {i < SSL_INFO.chain.length - 1 && <div style={{ width: '1px', height: '10px', background: 'rgba(0,242,254,0.15)' }} />}
-                  </div>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: '0.72rem', color: i === 0 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                    {cert}
-                  </span>
+          {/* show issues */}
+          {sslInfo.issues && sslInfo.issues.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--accent-red)', marginBottom: 8 }}>Issues Found:</div>
+              {sslInfo.issues.map((issue, i) => (
+                <div key={i} style={{
+                  fontSize: 12, fontFamily: 'var(--font-mono)',
+                  color: 'var(--accent-orange)',
+                  background: 'rgba(255,159,28,0.06)', borderRadius: 6,
+                  padding: '6px 10px', marginBottom: 4,
+                  borderLeft: '3px solid var(--accent-orange)',
+                }}>
+                  ⚠ {typeof issue === 'object' ? JSON.stringify(issue) : issue}
                 </div>
               ))}
             </div>
+          )}
+          {/* other ssl fields */}
+          {Object.entries(sslInfo).filter(([k]) => k !== 'issues').map(([k, v]) => {
+            if (v == null || v === '') return null;
+            const display = Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
+            return (
+              <div key={k} style={{ display: 'flex', gap: 12, fontSize: 12, fontFamily: 'var(--font-mono)', marginBottom: 6 }}>
+                <span style={{ color: 'var(--text-secondary)', minWidth: 140 }}>{formatKey(k)}</span>
+                <span style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{display}</span>
+              </div>
+            );
+          })}
+          {(!sslInfo.issues || sslInfo.issues.length === 0) && Object.keys(sslInfo).filter(k => k !== 'issues').length === 0 && (
+            <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--accent-green)' }}>✓ No SSL issues detected</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ───────────────────────────  MAIN COMPONENT  ─────────────────── */
+
+const TABS = [
+  { id: 'dns',      label: 'DNS Records',     icon: '📡' },
+  { id: 'ports',    label: 'Port Scanner',     icon: '🔌' },
+  { id: 'subs',     label: 'Subdomain Map',    icon: '🗺️' },
+  { id: 'tech',     label: 'Tech Stack',       icon: '⚙️' },
+  { id: 'info',     label: 'SSL & Domain',     icon: '🔒' },
+];
+
+const NetworkMapPage = () => {
+  /* ── state ── */
+  const [domain, setDomain]             = useState('');
+  const [activeDomain, setActiveDomain] = useState('');
+  const [data, setData]                 = useState(null);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
+  const [activeTab, setActiveTab]       = useState('dns');
+  const [recentScans, setRecentScans]   = useState([]);
+  const [scanAnim, setScanAnim]         = useState(false);
+
+  /* ── fetch recent scans on mount ── */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl('/api/recent-scans'));
+        if (res.ok) {
+          const json = await res.json();
+          // might be array of strings or array of objects with .domain
+          const list = Array.isArray(json) ? json : (json.scans || json.domains || json.results || []);
+          const domains = list.map(item => typeof item === 'string' ? item : (item.domain || item.target || '')).filter(Boolean);
+          // dedupe
+          setRecentScans([...new Set(domains)].slice(0, 12));
+        }
+      } catch (_) { /* silent */ }
+    })();
+  }, []);
+
+  /* ── fetch network map data ── */
+  const fetchData = async (targetDomain) => {
+    const clean = targetDomain.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!clean) return;
+    setLoading(true);
+    setError('');
+    setData(null);
+    setActiveDomain(clean);
+    setScanAnim(true);
+    try {
+      const res = await fetch(getApiUrl('/api/network-map/' + encodeURIComponent(clean)));
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const json = await res.json();
+      setData(json);
+      if (!json.has_data) {
+        setError('No network data available. Run a scan first.');
+      }
+    } catch (e) {
+      setError(e.message || 'Failed to fetch network data.');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setScanAnim(false), 2200);
+    }
+  };
+
+  const handleScan = () => fetchData(domain);
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleScan(); };
+
+  /* ── derived stats ── */
+  const stats = data && data.has_data ? {
+    dnsCount:   data.dns_records  ? Object.values(data.dns_records).flat().length : 0,
+    portCount:  data.ports        ? data.ports.length : 0,
+    subCount:   data.subdomains   ? data.subdomains.length : 0,
+    techCount:  data.technologies ? Object.keys(data.technologies).length : 0,
+    sslIssues:  data.ssl_info?.issues?.length || 0,
+  } : null;
+
+  /* ── render ── */
+  return (
+    <div className="animate-fade-in" style={{ padding: '0 4px' }}>
+      <ScanLineOverlay active={scanAnim} />
+
+      {/* ── HEADER ── */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 className="text-gradient" style={{
+          fontFamily: 'var(--font-cyber)', fontSize: 28, margin: 0, letterSpacing: 2,
+        }}>
+          🛰️ NETWORK MAP
+        </h1>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0' }}>
+          Real-time infrastructure reconnaissance & attack surface visualization
+        </p>
+      </div>
+
+      {/* ── SEARCH BAR ── */}
+      <div className="glass-panel" style={{
+        padding: 20, borderRadius: 14, marginBottom: 20,
+      }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+            <input
+              className="input-glass"
+              type="text"
+              placeholder="Enter domain (e.g. example.com)"
+              value={domain}
+              onChange={e => setDomain(e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={{
+                width: '100%', padding: '12px 16px 12px 40px',
+                fontFamily: 'var(--font-mono)', fontSize: 14,
+                boxSizing: 'border-box',
+              }}
+            />
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' }}>🔍</span>
+          </div>
+          <button
+            className="btn-primary"
+            onClick={handleScan}
+            disabled={loading || !domain.trim()}
+            style={{
+              fontFamily: 'var(--font-cyber)', letterSpacing: 2, padding: '12px 28px',
+              fontSize: 13, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: 16 }}>⟳</span>
+                SCANNING...
+              </>
+            ) : (
+              <>🛰️ SCAN NETWORK</>
+            )}
+          </button>
+        </div>
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+
+        {/* Recent scans quick-select */}
+        {recentScans.length > 0 && (
+          <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-secondary)', marginRight: 4 }}>Recent:</span>
+            {recentScans.map((d, i) => (
+              <button
+                key={i}
+                className="btn-outline"
+                onClick={() => { setDomain(d); fetchData(d); }}
+                style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 11,
+                  padding: '4px 12px', borderRadius: 20,
+                }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── ERROR ── */}
+      {error && !loading && (
+        <div className="glass-panel" style={{
+          padding: 24, borderRadius: 14, marginBottom: 20, textAlign: 'center',
+          border: '1px solid rgba(255,0,85,0.25)',
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>📡</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--accent-red)' }}>{error}</div>
+        </div>
+      )}
+
+      {/* ── LOADING ── */}
+      {loading && (
+        <div className="glass-panel" style={{
+          padding: 60, borderRadius: 14, marginBottom: 20, textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 52, marginBottom: 16, animation: 'pulse 1.5s ease-in-out infinite' }}>🛰️</div>
+          <div style={{ fontFamily: 'var(--font-cyber)', fontSize: 16, color: 'var(--accent-blue)', letterSpacing: 3, marginBottom: 8 }}>
+            SCANNING NETWORK
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
+            Mapping infrastructure for <span style={{ color: 'var(--accent-green)' }}>{activeDomain}</span>
+          </div>
+          {/* animated progress bar */}
+          <div style={{
+            margin: '20px auto 0', maxWidth: 400, height: 3, borderRadius: 3,
+            background: 'rgba(0,242,254,0.1)', overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%', width: '40%', borderRadius: 3,
+              background: 'linear-gradient(90deg, var(--accent-blue), var(--accent-purple))',
+              animation: 'loadSlide 1.2s ease-in-out infinite',
+            }} />
+          </div>
+          <style>{`
+            @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+            @keyframes loadSlide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+          `}</style>
+        </div>
+      )}
+
+      {/* ── DATA DISPLAY ── */}
+      {data && data.has_data && !loading && (
+        <div className="animate-fade-in">
+          {/* Stats ribbon */}
+          {stats && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 12, marginBottom: 20,
+            }}>
+              {[
+                { label: 'DNS Records',   value: stats.dnsCount,  icon: '📡', color: 'var(--accent-blue)' },
+                { label: 'Open Ports',     value: stats.portCount, icon: '🔌', color: 'var(--accent-green)' },
+                { label: 'Subdomains',     value: stats.subCount,  icon: '🗺️', color: 'var(--accent-purple)' },
+                { label: 'Technologies',   value: stats.techCount, icon: '⚙️', color: 'var(--accent-orange)' },
+                { label: 'SSL Issues',     value: stats.sslIssues, icon: '🔒', color: stats.sslIssues > 0 ? 'var(--accent-red)' : 'var(--accent-green)' },
+              ].map((s, i) => (
+                <div key={i} className="glass-panel" style={{
+                  padding: '16px 18px', borderRadius: 12, textAlign: 'center',
+                  borderTop: `2px solid ${s.color}`,
+                }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
+                  <div style={{ fontFamily: 'var(--font-cyber)', fontSize: 22, color: s.color, letterSpacing: 1 }}>{s.value}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div style={{
+            display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap',
+            borderBottom: '1px solid var(--panel-border)', paddingBottom: 6,
+          }}>
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                className={`btn-outline${activeTab === tab.id ? ' active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 12, padding: '8px 18px',
+                  borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <span>{tab.icon}</span> {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Active domain banner */}
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)',
+            marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span className="status-indicator active" />
+            Target: <span style={{ color: 'var(--accent-green)' }}>{activeDomain}</span>
+          </div>
+
+          {/* Tab content */}
+          <div className="glass-panel animate-fade-in" style={{ padding: 24, borderRadius: 14, minHeight: 200 }}>
+            <div style={{
+              fontFamily: 'var(--font-cyber)', fontSize: 16, letterSpacing: 2,
+              color: 'var(--text-primary)', marginBottom: 20,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span>{TABS.find(t => t.id === activeTab)?.icon}</span>
+              {TABS.find(t => t.id === activeTab)?.label.toUpperCase()}
+            </div>
+
+            {activeTab === 'dns'   && <DnsSection dns={data.dns_records} />}
+            {activeTab === 'ports' && <PortSection ports={data.ports} />}
+            {activeTab === 'subs'  && <SubdomainSection subdomains={data.subdomains} takeoverData={data.subdomain_takeover} />}
+            {activeTab === 'tech'  && <TechSection technologies={data.technologies} />}
+            {activeTab === 'info'  && <InfoSection domainInfo={data.domain_info} sslInfo={data.ssl_info} />}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── INITIAL EMPTY STATE ── */}
+      {!data && !loading && !error && (
+        <div className="glass-panel" style={{
+          padding: 60, borderRadius: 14, textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.7 }}>🛰️</div>
+          <div style={{ fontFamily: 'var(--font-cyber)', fontSize: 18, color: 'var(--text-primary)', letterSpacing: 3, marginBottom: 8 }}>
+            NETWORK MAPPER
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto' }}>
+            Enter a domain above to map its infrastructure — DNS records, open ports, subdomains, technology stack, and SSL configuration.
+          </div>
+          {/* decorative grid */}
+          <svg viewBox="0 0 400 120" style={{ width: '100%', maxWidth: 400, marginTop: 24, opacity: 0.3 }}>
+            {Array.from({ length: 8 }).map((_, i) => {
+              const x = 30 + (i % 4) * 100;
+              const y = 20 + Math.floor(i / 4) * 70;
+              return (
+                <g key={i}>
+                  <circle cx={x} cy={y} r={4} fill="none" stroke="var(--accent-blue)" strokeWidth={1} opacity={0.6}>
+                    <animate attributeName="r" values="3;5;3" dur={`${2 + i * 0.3}s`} repeatCount="indefinite" />
+                  </circle>
+                  {i > 0 && (
+                    <line
+                      x1={30 + ((i - 1) % 4) * 100} y1={20 + Math.floor((i - 1) / 4) * 70}
+                      x2={x} y2={y}
+                      stroke="var(--accent-blue)" strokeWidth={0.5} opacity={0.3}
+                    />
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      )}
     </div>
   );
 };
