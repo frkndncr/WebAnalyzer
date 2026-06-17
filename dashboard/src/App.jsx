@@ -7,6 +7,7 @@ import DashboardOverview from './components/DashboardOverview';
 import ThreatIntelPage from './components/ThreatIntelPage';
 import NetworkMapPage from './components/NetworkMapPage';
 import SettingsPage from './components/SettingsPage';
+import AttackPathPage from './components/AttackPathPage';
 
 function App() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -22,10 +23,12 @@ function App() {
         return <ResultsPanel domain={currentDomain} />;
       case 'advanced_scanner':
         return <AdvancedScannerPanel domain={currentDomain} />;
+      case 'attack_path':
+        return <AttackPathPage domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
       case 'threat_intel':
-        return <ThreatIntelPage />;
+        return <ThreatIntelPage domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
       case 'network_map':
-        return <NetworkMapPage />;
+        return <NetworkMapPage domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
       case 'settings':
         return <SettingsPage />;
       default:

@@ -550,9 +550,9 @@ const TABS = [
   { id: 'associated', label: 'Associated SAN', icon: '🔗' },
 ];
 
-const NetworkMapPage = () => {
+const NetworkMapPage = ({ domain, setCurrentDomain }) => {
   /* ── state ── */
-  const [domain, setDomain]             = useState('');
+  const [domainInput, setDomainInput]   = useState(domain || '');
   const [activeDomain, setActiveDomain] = useState('');
   const [data, setData]                 = useState(null);
   const [loading, setLoading]           = useState(false);
@@ -579,7 +579,7 @@ const NetworkMapPage = () => {
   }, []);
 
   /* ── fetch network map data ── */
-  const fetchData = async (targetDomain) => {
+  const fetchData = useCallback(async (targetDomain) => {
     const clean = targetDomain.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!clean) return;
     setLoading(true);
@@ -595,15 +595,26 @@ const NetworkMapPage = () => {
       if (!json.has_data) {
         setError('No network data available. Run a scan first.');
       }
+      if (setCurrentDomain) {
+        setCurrentDomain(clean);
+      }
     } catch (e) {
       setError(e.message || 'Failed to fetch network data.');
     } finally {
       setLoading(false);
       setTimeout(() => setScanAnim(false), 2200);
     }
-  };
+  }, [setCurrentDomain]);
 
-  const handleScan = () => fetchData(domain);
+  /* ── Auto-fetch on mount/domain change ── */
+  useEffect(() => {
+    if (domain) {
+      setDomainInput(domain);
+      fetchData(domain);
+    }
+  }, [domain, fetchData]);
+
+  const handleScan = () => fetchData(domainInput);
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleScan(); };
 
   /* ── derived stats ── */
@@ -642,8 +653,8 @@ const NetworkMapPage = () => {
               className="input-glass"
               type="text"
               placeholder="Enter domain (e.g. example.com)"
-              value={domain}
-              onChange={e => setDomain(e.target.value)}
+              value={domainInput}
+              onChange={e => setDomainInput(e.target.value)}
               onKeyDown={handleKeyDown}
               style={{
                 width: '100%', padding: '12px 16px 12px 40px',
@@ -656,7 +667,7 @@ const NetworkMapPage = () => {
           <button
             className="btn-primary"
             onClick={handleScan}
-            disabled={loading || !domain.trim()}
+            disabled={loading || !domainInput.trim()}
             style={{
               fontFamily: 'var(--font-cyber)', letterSpacing: 2, padding: '12px 28px',
               fontSize: 13, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
@@ -682,7 +693,7 @@ const NetworkMapPage = () => {
               <button
                 key={i}
                 className="btn-outline"
-                onClick={() => { setDomain(d); fetchData(d); }}
+                onClick={() => { setDomainInput(d); fetchData(d); }}
                 style={{
                   fontFamily: 'var(--font-mono)', fontSize: 11,
                   padding: '4px 12px', borderRadius: 20,

@@ -21,9 +21,9 @@ const generateRadarDots = (count) => {
 };
 
 /* ─── Component ──────────────────────────────────────────────── */
-const ThreatIntelPage = () => {
+const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   /* ── Domain input & recent scans ── */
-  const [domainInput, setDomainInput] = useState('');
+  const [domainInput, setDomainInput] = useState(domain || '');
   const [recentDomains, setRecentDomains] = useState([]);
 
   /* ── API data state ── */
@@ -63,9 +63,9 @@ const ThreatIntelPage = () => {
   }, []);
 
   /* ── Fetch threat intel for a domain ── */
-  const loadIntel = useCallback(async (domain) => {
-    if (!domain || !domain.trim()) return;
-    const target = domain.trim().toLowerCase();
+  const loadIntel = useCallback(async (targetDomain) => {
+    if (!targetDomain || !targetDomain.trim()) return;
+    const target = targetDomain.trim().toLowerCase();
     setLoading(true);
     setError('');
     setIntelData(null);
@@ -85,12 +85,24 @@ const ThreatIntelPage = () => {
       /* Regenerate radar dots based on real IOC count */
       const iocCount = Array.isArray(data.iocs) ? data.iocs.length : 6;
       setRadarDots(generateRadarDots(iocCount));
+
+      if (setCurrentDomain) {
+        setCurrentDomain(target);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load threat intelligence');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setCurrentDomain]);
+
+  /* ── Auto-fetch on mount/domain change ── */
+  useEffect(() => {
+    if (domain) {
+      setDomainInput(domain);
+      loadIntel(domain);
+    }
+  }, [domain, loadIntel]);
 
   /* ── Derived values from API or defaults ── */
   const mitreData = (intelData && Array.isArray(intelData.mitre_techniques)) ? intelData.mitre_techniques : [];
@@ -449,8 +461,7 @@ const ThreatIntelPage = () => {
             {[
               { id: 'overview', label: 'Threat Overview', icon: '📊' },
               { id: 'cves', label: 'CVEs & IOCs', icon: '🛡️' },
-              { id: 'archive', label: 'Wayback Secrets', icon: '🕒' },
-              { id: 'paths', label: 'Attack Paths', icon: '🎯' }
+              { id: 'archive', label: 'Wayback Secrets', icon: '🕒' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -795,277 +806,6 @@ const ThreatIntelPage = () => {
                       )}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ═══ Tab Content: Attack Paths (Elite Exploit Chain Visualization) ═══ */}
-          {activeTab === 'paths' && (
-            <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
-              
-              {/* Left Pane: Interactive SVG Node Graph */}
-              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1.2rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🗺️ AUTOMATIC_EXPLOIT_FLOWCHART
-                  <span style={{
-                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
-                    borderRadius: '4px', background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
-                    border: '1px solid rgba(0,242,254,0.2)',
-                  }}>
-                    {((intelData.attack_path?.graph?.nodes) || []).length} nodes
-                  </span>
-                </h3>
-
-                {((intelData.attack_path?.graph?.nodes) || []).length > 0 ? (
-                  <div style={{ background: 'rgba(10,14,20,0.5)', borderRadius: '12px', border: '1px solid var(--panel-border)', padding: '10px' }}>
-                    <svg viewBox="0 0 680 450" style={{ width: '100%', minHeight: '400px', display: 'block' }}>
-                      <defs>
-                        <marker id="arrow" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(0,242,254,0.5)" />
-                        </marker>
-                        <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="6" result="blur" />
-                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                      </defs>
-
-                      {/* Draw Edges */}
-                      {(() => {
-                        const nodes = intelData.attack_path.graph.nodes;
-                        const edges = intelData.attack_path.graph.edges || [];
-                        
-                        // Assign node positions
-                        const levels = { target: 0, recon: 1, technology: 1, vulnerability: 2, exploit: 3 };
-                        const columns = [[], [], [], []];
-                        nodes.forEach(node => {
-                          const lvl = levels[node.type] != null ? levels[node.type] : 2;
-                          columns[lvl].push(node);
-                        });
-
-                        const width = 680;
-                        const height = 450;
-                        const positions = {};
-                        
-                        columns.forEach((colNodes, colIndex) => {
-                          const x = 70 + colIndex * 180;
-                          const n = colNodes.length;
-                          colNodes.forEach((node, nodeIndex) => {
-                            positions[node.id] = { x, y: (height / (n + 1)) * (nodeIndex + 1) };
-                          });
-                        });
-
-                        return (
-                          <>
-                            {/* Static lines */}
-                            {edges.map((edge, idx) => {
-                              const fromPos = positions[edge.from];
-                              const toPos = positions[edge.to];
-                              if (!fromPos || !toPos) return null;
-                              return (
-                                <g key={'edge-' + idx}>
-                                  <line
-                                    x1={fromPos.x} y1={fromPos.y}
-                                    x2={toPos.x} y2={toPos.y}
-                                    stroke="rgba(0,242,254,0.3)"
-                                    strokeWidth="2.5"
-                                    markerEnd="url(#arrow)"
-                                  />
-                                  {/* Animated data pulse */}
-                                  <circle r="4" fill="#00f2fe" filter="url(#nodeGlow)">
-                                    <animateMotion
-                                      dur={`${2.5 + (idx % 2) * 0.8}s`}
-                                      repeatCount="indefinite"
-                                      path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
-                                    />
-                                  </circle>
-                                  {/* Label text on edge */}
-                                  <text
-                                    x={(fromPos.x + toPos.x) / 2}
-                                    y={((fromPos.y + toPos.y) / 2) - 8}
-                                    fill="rgba(118,131,144,0.7)"
-                                    fontSize="8"
-                                    fontFamily="var(--font-mono)"
-                                    textAnchor="middle"
-                                  >
-                                    {edge.label}
-                                  </text>
-                                </g>
-                              );
-                            })}
-
-                            {/* Draw Nodes */}
-                            {nodes.map((node) => {
-                              const pos = positions[node.id];
-                              if (!pos) return null;
-                              
-                              const isSelected = selectedNode?.id === node.id;
-                              const isCritical = node.severity === 'Critical';
-                              const isHigh = node.severity === 'High';
-                              const nodeColor = isCritical ? '#ff0055' : isHigh ? '#ff9f1c' : node.type === 'target' ? '#00f2fe' : '#39ff14';
-
-                              return (
-                                <g
-                                  key={node.id}
-                                  style={{ cursor: 'pointer' }}
-                                  onClick={() => setSelectedNode(node)}
-                                >
-                                  {/* Hover/Selection Ring */}
-                                  <circle
-                                    cx={pos.x} cy={pos.y}
-                                    r={isSelected ? 22 : 17}
-                                    fill="none"
-                                    stroke={nodeColor}
-                                    strokeWidth="2.5"
-                                    strokeDasharray={isSelected ? '0' : '4 2'}
-                                    opacity={isSelected ? 1 : 0.4}
-                                    filter={isSelected ? 'url(#nodeGlow)' : 'none'}
-                                    style={{ transition: 'all 0.2s ease' }}
-                                  />
-                                  {/* Inner Solid Circle */}
-                                  <circle
-                                    cx={pos.x} cy={pos.y}
-                                    r="13"
-                                    fill="#0d1117"
-                                    stroke={nodeColor}
-                                    strokeWidth="3.5"
-                                  />
-                                  {/* Node Type Label */}
-                                  <text
-                                    x={pos.x} y={pos.y + 4}
-                                    fill={nodeColor}
-                                    fontSize="11"
-                                    fontWeight="bold"
-                                    fontFamily="var(--font-mono)"
-                                    textAnchor="middle"
-                                  >
-                                    {node.type === 'target' ? '🎯' : node.type === 'recon' ? '🔍' : node.type === 'technology' ? '⚙️' : isCritical ? '💀' : '⚠'}
-                                  </text>
-                                  {/* Outer Label text */}
-                                  <text
-                                    x={pos.x} y={pos.y + 30}
-                                    fill={isSelected ? '#ffffff' : 'var(--text-secondary)'}
-                                    fontSize="9"
-                                    fontWeight={isSelected ? 'bold' : 'normal'}
-                                    fontFamily="var(--font-cyber)"
-                                    textAnchor="middle"
-                                    style={{ transition: 'fill 0.2s' }}
-                                  >
-                                    {node.label.length > 20 ? node.label.slice(0, 18) + '...' : node.label}
-                                  </text>
-                                </g>
-                              );
-                            })}
-                          </>
-                        );
-                      })()}
-                    </svg>
-                  </div>
-                ) : (
-                  <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                    No exploit graphs loaded. Enable "Attack Path Planner" module in configuration parameters.
-                  </div>
-                )}
-              </div>
-
-              {/* Right Pane: Selected Node Info / Exploit Chains list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                
-                {/* Node Detail Panel */}
-                <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '180px', borderLeft: selectedNode ? `3px solid ${selectedNode.severity === 'Critical' ? '#ff0055' : selectedNode.severity === 'High' ? '#ff9f1c' : '#00f2fe'}` : '1px solid var(--panel-border)' }}>
-                  <h4 style={{ fontSize: '0.8rem', fontFamily: 'var(--font-cyber)', color: 'var(--text-secondary)', marginBottom: '1rem', letterSpacing: '1.5px' }}>
-                    📦 NODE_PARAMETERS
-                  </h4>
-
-                  {selectedNode ? (
-                    <div className="animate-fade-in">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>
-                          {selectedNode.type === 'target' ? '🎯' : selectedNode.type === 'recon' ? '🔎' : '⚠️'}
-                        </span>
-                        <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.9rem', color: '#ffffff', fontWeight: 700 }}>
-                          {selectedNode.label}
-                        </div>
-                      </div>
-
-                      <div style={{ marginBottom: '10px' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem',
-                          fontWeight: 700, fontFamily: 'var(--font-mono)',
-                          background: selectedNode.severity === 'Critical' ? 'rgba(255,0,85,0.15)' : selectedNode.severity === 'High' ? 'rgba(255,159,28,0.15)' : 'rgba(0,242,254,0.15)',
-                          color: selectedNode.severity === 'Critical' ? '#ff0055' : selectedNode.severity === 'High' ? '#ff9f1c' : '#00f2fe',
-                          border: `1px solid ${selectedNode.severity === 'Critical' ? 'rgba(255,0,85,0.3)' : selectedNode.severity === 'High' ? 'rgba(255,159,28,0.3)' : 'rgba(0,242,254,0.3)'}`
-                        }}>
-                          {selectedNode.severity.toUpperCase()}
-                        </span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-secondary)', marginLeft: '10px' }}>
-                          Type: {selectedNode.type}
-                        </span>
-                      </div>
-
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
-                        {selectedNode.description}
-                      </p>
-                    </div>
-                  ) : (
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '1.5rem 0' }}>
-                      ⚡ Click any circle node inside the flowchart diagram to inspect vulnerabilities and logical mitigation playbooks.
-                    </div>
-                  )}
-                </div>
-
-                {/* Exploit Chains List */}
-                <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.8rem', fontFamily: 'var(--font-cyber)', color: 'var(--text-secondary)', marginBottom: '1.2rem', letterSpacing: '1.5px' }}>
-                    🔗 EXPLOIT_CHAINS_DETAILED
-                  </h4>
-
-                  {(intelData.attack_path?.exploit_chains || []).length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                      {intelData.attack_path.exploit_chains.map((chain, cidx) => {
-                        const cColor = chain.severity === 'Critical' ? '#ff0055' : chain.severity === 'High' ? '#ff9f1c' : '#00f2fe';
-                        return (
-                          <div key={cidx} style={{
-                            padding: '10px 12px', borderRadius: '8px',
-                            background: 'rgba(255,255,255,0.01)',
-                            border: '1px solid var(--panel-border)',
-                            borderLeft: `3px solid ${cColor}`
-                          }}>
-                            <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.82rem', fontWeight: 'bold', color: '#ffffff', marginBottom: '4px' }}>
-                              {chain.name}
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                              IMPACT: <span style={{ color: cColor }}>{chain.impact}</span>
-                            </div>
-
-                            {/* Steps representation */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', paddingLeft: '14px' }}>
-                              {/* vertical timeline track line */}
-                              <div style={{ position: 'absolute', left: '4px', top: '5px', bottom: '5px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                              
-                              {chain.steps.map((step, sidx) => (
-                                <div key={sidx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', fontFamily: 'var(--font-mono)' }}>
-                                  {/* bubble dot */}
-                                  <div style={{
-                                    position: 'absolute', left: '2px', width: '5px', height: '5px',
-                                    borderRadius: '50%', background: sidx === chain.steps.length - 1 ? cColor : 'rgba(255,255,255,0.4)',
-                                    boxShadow: sidx === chain.steps.length - 1 ? `0 0 6px ${cColor}` : 'none'
-                                  }} />
-                                  <span style={{ color: sidx === chain.steps.length - 1 ? cColor : 'var(--text-secondary)' }}>
-                                    {step}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                      No exploit chains loaded.
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
