@@ -401,7 +401,8 @@ async def get_threat_intel(domain: str):
         pass
 
     with open(result_path, 'r', encoding='utf-8') as f:
-        res = json.load(f)
+        data = json.load(f)
+    res = data.get('results', data)
 
     intel['has_data'] = True
 
@@ -604,7 +605,8 @@ async def get_network_map(domain: str):
         return network
 
     with open(result_path, 'r', encoding='utf-8') as f:
-        res = json.load(f)
+        data = json.load(f)
+    res = data.get('results', data)
 
     network['has_data'] = True
 
@@ -682,7 +684,8 @@ async def get_vulnerability_stats():
             if os.path.exists(result_file):
                 try:
                     with open(result_file, 'r', encoding='utf-8') as f:
-                        res = json.load(f)
+                        data = json.load(f)
+                    res = data.get('results', data)
                     sec = res.get('Security Analysis', {})
                     if isinstance(sec, dict):
                         for v in sec.get('vulnerabilities', []):
@@ -722,8 +725,9 @@ async def export_results(domain: str, fmt: str):
     if fmt == 'json':
         return data
     elif fmt == 'csv':
+        res = data.get('results', data)
         lines = ['Module,Status,Findings']
-        for module, result in data.items():
+        for module, result in res.items():
             count = len(result) if isinstance(result, list) else (
                 len(result.get('vulnerabilities', [])) if isinstance(result, dict) and 'vulnerabilities' in result else 1
             )
