@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -271,7 +272,7 @@ def _run_waf(scanner):
     waf = getattr(scanner, '_detected_waf', None)
     blocked = getattr(scanner, '_waf_triggered_count', 0) > 0
     return {
-        "detected_waf": waf or "Tespit edilmedi",
+        "detected_waf": waf or "Not Detected",
         "is_blocked": blocked,
         "rate_limit": scanner.rate_limit,
         "pages_scanned": len(scanner.visited_urls),
@@ -356,6 +357,105 @@ async def get_global_stats():
             "status": "standalone",
             "note": "DB connection offline, showing local logs cache"
         }
+
+@app.get('/api/threat-intel/{domain}')
+async def get_threat_intel(domain: str):
+    """Extract security-related findings as threat intelligence"""
+    result_path = os.path.join('logs', domain, 'results.json')
+    intel = {'domain': domain, 'mitre_techniques': [], 'iocs': [], 'cves': [], 'risk_score': 0}
+    if os.path.exists(result_path):
+        with open(result_path, 'r', encoding='utf-8') as f:
+            res = json.load(f)
+        sec = res.get('Security Analysis', {})
+        if isinstance(sec, dict):
+            intel['risk_score'] = sec.get('security_score', 0)
+            vulns = sec.get('vulnerabilities', [])
+            if isinstance(vulns, list):
+                for v in vulns:
+                    if isinstance(v, dict):
+                        intel['cves'].append({
+                            'id': v.get('type', 'Unknown'),
+                            'severity': v.get('severity', 'Medium'),
+                            'description': v.get('description', '')
+                        })
+    return intel
+
+
+@app.get('/api/network-map/{domain}')
+async def get_network_map(domain: str):
+    """Retrieve network topology data for a domain"""
+    result_path = os.path.join('logs', domain, 'results.json')
+    network = {'domain': domain, 'dns_records': {}, 'subdomains': [], 'technologies': {}, 'ports': []}
+    if os.path.exists(result_path):
+        with open(result_path, 'r', encoding='utf-8') as f:
+            res = json.load(f)
+        network['dns_records'] = res.get('DNS Records', {})
+        network['subdomains'] = res.get('Subdomain Discovery', [])
+        network['technologies'] = res.get('Web Technologies', {})
+    return network
+
+
+@app.get('/api/vulnerability-stats')
+async def get_vulnerability_stats():
+    """Aggregate vulnerability severity statistics across all scans"""
+    stats = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0, 'total': 0}
+    logs_dir = 'logs'
+    if os.path.exists(logs_dir):
+        for domain in os.listdir(logs_dir):
+            result_file = os.path.join(logs_dir, domain, 'results.json')
+            if os.path.exists(result_file):
+                try:
+                    with open(result_file, 'r', encoding='utf-8') as f:
+                        res = json.load(f)
+                    sec = res.get('Security Analysis', {})
+                    if isinstance(sec, dict):
+                        for v in sec.get('vulnerabilities', []):
+                            if isinstance(v, dict):
+                                sev = (v.get('severity', 'medium') or 'medium').lower()
+                                if sev in stats:
+                                    stats[sev] += 1
+                                stats['total'] += 1
+                except Exception:
+                    pass
+    return stats
+
+
+@app.get('/api/system-health')
+async def get_system_health():
+    """Return current system health and runtime info"""
+    import platform
+    import sys
+    return {
+        'api_status': 'online',
+        'python_version': sys.version.split()[0],
+        'platform': platform.system(),
+        'active_scans': len(ACTIVE_SCANS),
+        'pending_tasks': len(ACS_SECTION_TASKS),
+        'version': '3.3.0'
+    }
+
+
+@app.get('/api/export/{domain}/{fmt}')
+async def export_results(domain: str, fmt: str):
+    """Export scan results in JSON or CSV format"""
+    result_path = os.path.join('logs', domain, 'results.json')
+    if not os.path.exists(result_path):
+        raise HTTPException(status_code=404, detail='Results not found')
+    with open(result_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    if fmt == 'json':
+        return data
+    elif fmt == 'csv':
+        lines = ['Module,Status,Findings']
+        for module, result in data.items():
+            count = len(result) if isinstance(result, list) else (
+                len(result.get('vulnerabilities', [])) if isinstance(result, dict) and 'vulnerabilities' in result else 1
+            )
+            lines.append(f'{module},completed,{count}')
+        return PlainTextResponse(content='\n'.join(lines), media_type='text/csv')
+    else:
+        raise HTTPException(status_code=400, detail=f'Unsupported format: {fmt}')
+
 
 @app.get("/")
 async def root():
