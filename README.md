@@ -21,7 +21,7 @@
 ## 🌟 Overview
 
 <div align="center">
-  <img src="docs/assets/dashboard_ui_mockup.png" alt="WebAnalyzer Dashboard Mockup" width="850px" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); margin-bottom: 25px;" />
+  <img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer Dashboard Mockup" width="850px" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); margin-bottom: 25px;" />
 </div>
 
 WebAnalyzer v3.5.0 is the **most advanced** Python-based domain analysis framework designed for cybersecurity professionals, penetration testers, and security researchers. The platform combines reconnaissance, vulnerability assessment, and intelligence gathering with **enterprise-grade bulk processing capabilities**.
