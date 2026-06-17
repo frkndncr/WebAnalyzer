@@ -75,10 +75,10 @@ def save_results_to_json(domain, results, output_dir="logs"):
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False, default=str)
         
-        print(f"\033[92m✅ Results saved to: {output_file}\033[0m")
+        print(f"\033[92m[SUCCESS] Results saved to: {output_file}\033[0m")
         
     except Exception as e:
-        print(f"\033[91m❌ Error saving results: {e}\033[0m")
+        print(f"\033[91m[ERROR] Error saving results: {e}\033[0m")
         raise
 
 def serialize_results(results):

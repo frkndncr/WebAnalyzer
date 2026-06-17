@@ -19,7 +19,7 @@ class UltraAdvancedNetworkScanner:
         except Exception:
             self.nmap_available = False
             self.nm = None
-            print("⚠️  Nmap program was not found in PATH. WebAnalyzer will use built-in async socket scanner fallback.")
+            print("[WARNING] Nmap program was not found in PATH. WebAnalyzer will use built-in async socket scanner fallback.")
         self.timeout = timeout
         self.domain = domain
         self.aggressive_mode = aggressive_mode
@@ -148,7 +148,7 @@ class UltraAdvancedNetworkScanner:
                         open_ports.append(port)
                         services[port] = port_info
         except Exception as e:
-            print(f"Port tarama hatası: {e}")
+            print(f"Port scan error: {e}")
         
         return {
             'open_ports': open_ports,
@@ -233,7 +233,7 @@ class UltraAdvancedNetworkScanner:
                         }
                         vulns.append(vuln_details)
         except Exception as e:
-            print(f"CVE arama hatası: {e}")
+            print(f"CVE search error: {e}")
         
         # Exploit DB Sorgusu
         try:
@@ -251,7 +251,7 @@ class UltraAdvancedNetworkScanner:
                     }
                     vulns.append(exploit_details)
         except Exception as e:
-            print(f"Exploit arama hatası: {e}")
+            print(f"Exploit search error: {e}")
         
         return vulns
 
@@ -263,7 +263,7 @@ class UltraAdvancedNetworkScanner:
         ip = dns_info.get('ipv4')
         
         if not ip or 'error' in dns_info:
-            return {"error": "Domain çözümlenemedi"}
+            return {"error": "Domain could not be resolved"}
 
         # Port taraması
         port_scan_results = await self.advanced_port_scan(ip)

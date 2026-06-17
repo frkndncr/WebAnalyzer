@@ -80,12 +80,12 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
         "SEO Analysis": analyze_advanced_seo,
         "Web Technologies": detect_web_technologies,
         "Security Analysis": analyze_security,
-        "Advanced Content Scan": lambda d: AdvancedContentScanner(d).scan(),
-        "Contact Spy": lambda d: GlobalDomainScraper(d).run(),
+        "Advanced Content Scan": lambda d: AdvancedContentScanner(d).run(),
+        "Contact Spy": lambda d: GlobalDomainScraper(d).crawl(),
         "Subdomain Discovery": lambda d: run_subfinder(d),
-        "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(),
+        "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
         "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
-        "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(d).run_scan(),
+        "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
         "GEO Analysis": analyze_geo
     }
     
@@ -129,6 +129,8 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
                     res = await func(domain)
                 else:
                     res = func(domain)
+                    if asyncio.iscoroutine(res):
+                        res = await res
                 results[module_name] = res
                 ACTIVE_SCANS[domain]["results"][module_name] = res
             except Exception as e:
