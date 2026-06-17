@@ -32,6 +32,8 @@ const ThreatIntelPage = () => {
   const [error, setError] = useState('');
 
   /* ── UI state ── */
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedNode, setSelectedNode] = useState(null);
   const [cveSearch, setCveSearch] = useState('');
   const [iocSort, setIocSort] = useState({ key: 'confidence', asc: false });
   const [attackSurface, setAttackSurface] = useState(5);
@@ -67,6 +69,8 @@ const ThreatIntelPage = () => {
     setLoading(true);
     setError('');
     setIntelData(null);
+    setActiveTab('overview');
+    setSelectedNode(null);
     try {
       const res = await fetch(getApiUrl('/api/threat-intel/' + encodeURIComponent(target)));
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
@@ -437,266 +441,635 @@ const ThreatIntelPage = () => {
             </div>
           </div>
 
-          {/* ═══ Top Row: Radar + MITRE ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', marginBottom: '2.5rem', alignItems: 'start' }}>
-
-            {/* ═══ Section B: Threat Radar ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-                ⚡ THREAT_RADAR
-              </h3>
-              <svg width="280" height="280" viewBox="0 0 300 300" style={{ display: 'block', margin: '0 auto' }}>
-                <defs>
-                  <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(0,242,254,0.06)" />
-                    <stop offset="100%" stopColor="rgba(0,242,254,0)" />
-                  </radialGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                  </filter>
-                </defs>
-                {/* Background fill */}
-                <circle cx="150" cy="150" r="130" fill="url(#radarGrad)" />
-                {/* Concentric circles */}
-                {[130, 100, 70, 40].map((r) => (
-                  <circle key={r} cx="150" cy="150" r={r} fill="none" stroke="rgba(0,242,254,0.15)" strokeWidth="1" />
-                ))}
-                {/* Cross lines */}
-                <line x1="150" y1="20" x2="150" y2="280" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
-                <line x1="20" y1="150" x2="280" y2="150" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
-                <line x1="55" y1="55" x2="245" y2="245" stroke="rgba(0,242,254,0.05)" strokeWidth="1" />
-                <line x1="245" y1="55" x2="55" y2="245" stroke="rgba(0,242,254,0.05)" strokeWidth="1" />
-                {/* Sweep */}
-                <g style={{ transformOrigin: '150px 150px', animation: 'radarSweep 4s linear infinite' }}>
-                  <line x1="150" y1="150" x2="150" y2="20" stroke="rgba(0,242,254,0.8)" strokeWidth="2" filter="url(#glow)" />
-                  <path d="M150,150 L150,20 A130,130 0 0,1 242,68 Z" fill="rgba(0,242,254,0.08)" />
-                </g>
-                {/* Threat dots */}
-                {radarDots.map((dot, i) => (
-                  <circle key={i} cx={dot.x} cy={dot.y} r="4" fill={dot.severity} filter="url(#glow)"
-                    style={{ animation: `blinkDot 1.5s ease-in-out ${dot.delay}s infinite` }} />
-                ))}
-                {/* Center dot */}
-                <circle cx="150" cy="150" r="5" fill="#00f2fe" filter="url(#glow)" />
-              </svg>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.8rem' }}>
-                {iocData.length} active threat signatures detected
-              </div>
-            </div>
-
-            {/* ═══ Section C: MITRE ATT&CK Matrix ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-                🎯 MITRE ATT&CK MATRIX
-              </h3>
-              {mitreData.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '0.7rem' }}>
-                  {mitreData.map((cat) => (
-                    <div key={cat.id} className="glass-panel" style={{
-                      padding: '0.9rem',
-                      borderLeft: `3px solid ${mitreColor(cat.detected)}`,
-                      cursor: 'pointer',
-                      transition: 'all 0.25s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = `0 0 18px ${mitreColor(cat.detected)}40`;
-                      e.currentTarget.style.borderColor = `${mitreColor(cat.detected)}60`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '';
-                      e.currentTarget.style.borderColor = '';
-                    }}>
-                      <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.68rem', color: 'var(--text-primary)', marginBottom: '4px', lineHeight: 1.3 }}>
-                        {cat.name}
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                        {cat.id}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                          fontFamily: 'var(--font-cyber)', fontSize: '1.1rem', fontWeight: 900,
-                          color: mitreColor(cat.detected),
-                          textShadow: `0 0 8px ${mitreColor(cat.detected)}60`,
-                        }}>{cat.detected}</span>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>detected</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
-                  No MITRE ATT&CK techniques mapped for this domain.
-                </div>
-              )}
-            </div>
+          {/* ═══ Tab Navigation ═══ */}
+          <div style={{
+            display: 'flex', gap: '8px', marginBottom: '2rem', flexWrap: 'wrap',
+            borderBottom: '1px solid var(--panel-border)', paddingBottom: '8px',
+          }}>
+            {[
+              { id: 'overview', label: 'Threat Overview', icon: '📊' },
+              { id: 'cves', label: 'CVEs & IOCs', icon: '🛡️' },
+              { id: 'archive', label: 'Wayback Secrets', icon: '🕒' },
+              { id: 'paths', label: 'Attack Paths', icon: '🎯' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`btn-outline${activeTab === tab.id ? ' active' : ''}`}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSelectedNode(null);
+                }}
+                style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.82rem', padding: '8px 20px',
+                  borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px',
+                  background: activeTab === tab.id ? 'rgba(0,242,254,0.1)' : 'transparent',
+                  borderColor: activeTab === tab.id ? 'var(--accent-blue)' : 'var(--panel-border)',
+                  color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer', transition: 'all 0.2s ease',
+                }}
+              >
+                <span>{tab.icon}</span> {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* ═══ Section D: CVE Database Search ═══ */}
-          <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              🛡️ CVE DATABASE
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
-                borderRadius: '4px', background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
-                border: '1px solid rgba(0,242,254,0.2)',
-              }}>
-                {cveData.length} entries
-              </span>
-            </h3>
-            <input
-              className="input-glass"
-              placeholder="Search CVE ID or description..."
-              value={cveSearch}
-              onChange={(e) => setCveSearch(e.target.value)}
-              style={{ marginBottom: '1rem', maxWidth: '450px' }}
-            />
-            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
-                <thead>
-                  <tr>
-                    {['CVE ID', 'Severity', 'CVSS', 'Description', 'Status'].map((h) => (
-                      <th key={h} style={{
-                        background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
-                        fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
-                        color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
-                        fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
-                      }}>{h}</th>
+          {/* ═══ Tab Content: Overview ═══ */}
+          {activeTab === 'overview' && (
+            <div className="animate-fade-in">
+              <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', marginBottom: '2.5rem', alignItems: 'start' }}>
+                {/* Section B: Threat Radar */}
+                <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
+                    ⚡ THREAT_RADAR
+                  </h3>
+                  <svg width="280" height="280" viewBox="0 0 300 300" style={{ display: 'block', margin: '0 auto' }}>
+                    <defs>
+                      <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="rgba(0,242,254,0.06)" />
+                        <stop offset="100%" stopColor="rgba(0,242,254,0)" />
+                      </radialGradient>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                      </filter>
+                    </defs>
+                    <circle cx="150" cy="150" r="130" fill="url(#radarGrad)" />
+                    {[130, 100, 70, 40].map((r) => (
+                      <circle key={r} cx="150" cy="150" r={r} fill="none" stroke="rgba(0,242,254,0.15)" strokeWidth="1" />
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCVEs.map((cve, idx) => (
-                    <tr key={cve.id + '-' + idx} style={{ transition: 'background 0.2s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = ''}>
-                      <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-blue)', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        {cve.id}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        <span style={severityStyle(cve.severity)}>{cve.severity}</span>
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: cve.cvss >= 9 ? '#ff0055' : cve.cvss >= 7 ? '#ff9f1c' : '#00f2fe', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        {Number(cve.cvss).toFixed(1)}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', color: 'var(--text-secondary)', fontSize: '0.8rem', maxWidth: '400px', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        {cve.description}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', ...statusStyle(cve.status) }}>
-                        {cve.status}
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredCVEs.length === 0 && (
-                    <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No matching CVEs found.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    <line x1="150" y1="20" x2="150" y2="280" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
+                    <line x1="20" y1="150" x2="280" y2="150" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
+                    <g style={{ transformOrigin: '150px 150px', animation: 'radarSweep 4s linear infinite' }}>
+                      <line x1="150" y1="150" x2="150" y2="20" stroke="rgba(0,242,254,0.8)" strokeWidth="2" filter="url(#glow)" />
+                      <path d="M150,150 L150,20 A130,130 0 0,1 242,68 Z" fill="rgba(0,242,254,0.08)" />
+                    </g>
+                    {radarDots.map((dot, i) => (
+                      <circle key={i} cx={dot.x} cy={dot.y} r="4" fill={dot.severity} filter="url(#glow)"
+                        style={{ animation: `blinkDot 1.5s ease-in-out ${dot.delay}s infinite` }} />
+                    ))}
+                    <circle cx="150" cy="150" r="5" fill="#00f2fe" filter="url(#glow)" />
+                  </svg>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.8rem' }}>
+                    {iocData.length} active threat signatures detected
+                  </div>
+                </div>
 
-          {/* ═══ Bottom Row: IOC + Risk Calculator ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', marginBottom: '2rem' }}>
-
-            {/* ═══ Section E: IOC Table ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                🔍 INDICATORS OF COMPROMISE
-                <span style={{
-                  fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
-                  borderRadius: '4px', background: 'rgba(218,34,255,0.1)', color: '#da22ff',
-                  border: '1px solid rgba(218,34,255,0.2)',
-                }}>
-                  {iocData.length} IOCs
-                </span>
-              </h3>
-              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
-                  <thead>
-                    <tr>
-                      {[
-                        { key: 'type', label: 'Type' },
-                        { key: 'value', label: 'Value' },
-                        { key: 'confidence', label: 'Confidence' },
-                        { key: 'firstSeen', label: 'First Seen' },
-                        { key: 'source', label: 'Source' },
-                      ].map((col) => (
-                        <th key={col.key} onClick={() => toggleSort(col.key)} style={{
-                          background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
-                          fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
-                          color: iocSort.key === col.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                          borderBottom: '1px solid var(--panel-border)', fontFamily: 'var(--font-mono)',
-                          cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+                {/* Section C: MITRE ATT&CK Matrix */}
+                <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
+                    🎯 MITRE ATT&CK MATRIX
+                  </h3>
+                  {mitreData.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '0.7rem' }}>
+                      {mitreData.map((cat) => (
+                        <div key={cat.id} className="glass-panel" style={{
+                          padding: '0.9rem',
+                          borderLeft: `3px solid ${mitreColor(cat.detected)}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.25s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = `0 0 18px ${mitreColor(cat.detected)}40`;
+                          e.currentTarget.style.borderColor = `${mitreColor(cat.detected)}60`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = '';
+                          e.currentTarget.style.borderColor = '';
                         }}>
-                          {col.label} {iocSort.key === col.key ? (iocSort.asc ? '▲' : '▼') : ''}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedIOCs.length > 0 ? sortedIOCs.map((ioc, i) => (
-                      <tr key={i} style={{ transition: 'background 0.2s' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = ''}>
-                        <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                          <span style={{
-                            display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem',
-                            fontWeight: 600, fontFamily: 'var(--font-mono)',
-                            background: 'rgba(218,34,255,0.1)', color: '#da22ff', border: '1px solid rgba(218,34,255,0.25)',
-                          }}>{ioc.type}</span>
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(48,54,61,0.3)', wordBreak: 'break-all' }}>
-                          {ioc.value}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '50px', height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                              <div style={{
-                                width: `${ioc.confidence}%`, height: '100%', borderRadius: '3px',
-                                background: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe',
-                              }} />
-                            </div>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe' }}>
-                              {ioc.confidence}%
-                            </span>
+                          <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.68rem', color: 'var(--text-primary)', marginBottom: '4px', lineHeight: 1.3 }}>
+                            {cat.name}
                           </div>
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
-                          {ioc.firstSeen}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', fontSize: '0.8rem', color: 'var(--accent-blue)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
-                          {ioc.source}
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No IOCs detected.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                            {cat.id}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontFamily: 'var(--font-cyber)', fontSize: '1.1rem', fontWeight: 900,
+                              color: mitreColor(cat.detected),
+                              textShadow: `0 0 8px ${mitreColor(cat.detected)}60`,
+                            }}>{cat.detected}</span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>detected</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                      No MITRE ATT&CK techniques mapped for this domain.
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* ═══ Section F: Risk Score Calculator ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-                📊 RISK_CALCULATOR
-              </h3>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                <canvas ref={riskCanvasRef} style={{ width: '180px', height: '180px' }} />
-              </div>
-              <RiskSlider label="ATTACK_SURFACE" value={attackSurface} setValue={setAttackSurface} emoji="🎯" />
-              <RiskSlider label="VULN_DENSITY" value={vulnDensity} setValue={setVulnDensity} emoji="🐛" />
-              <RiskSlider label="EXPOSURE_LEVEL" value={exposure} setValue={setExposure} emoji="🌐" />
-              <div style={{
-                marginTop: '1rem', padding: '0.8rem', borderRadius: '6px',
-                background: `${riskColor}10`, border: `1px solid ${riskColor}30`,
-                textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
-              }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Composite Risk: </span>
-                <span style={{ color: riskColor, fontWeight: 700, fontSize: '0.9rem' }}>{riskScore.toFixed(1)} / 10.0</span>
+              {/* Section F: Risk Score Calculator */}
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
+                  📊 RISK_CALCULATOR
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <canvas ref={riskCanvasRef} style={{ width: '180px', height: '180px' }} />
+                  </div>
+                  <div>
+                    <RiskSlider label="ATTACK_SURFACE" value={attackSurface} setValue={setAttackSurface} emoji="🎯" />
+                    <RiskSlider label="VULN_DENSITY" value={vulnDensity} setValue={setVulnDensity} emoji="🐛" />
+                    <RiskSlider label="EXPOSURE_LEVEL" value={exposure} setValue={setExposure} emoji="🌐" />
+                    <div style={{
+                      marginTop: '1rem', padding: '0.8rem', borderRadius: '6px',
+                      background: `${riskColor}10`, border: `1px solid ${riskColor}30`,
+                      textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
+                    }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Composite Risk: </span>
+                      <span style={{ color: riskColor, fontWeight: 700, fontSize: '0.9rem' }}>{riskScore.toFixed(1)} / 10.0</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ═══ Tab Content: CVEs & IOCs ═══ */}
+          {activeTab === 'cves' && (
+            <div className="animate-fade-in">
+              {/* Section D: CVE Database Search */}
+              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🛡️ CVE DATABASE
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
+                    border: '1px solid rgba(0,242,254,0.2)',
+                  }}>
+                    {cveData.length} entries
+                  </span>
+                </h3>
+                <input
+                  className="input-glass"
+                  placeholder="Search CVE ID or description..."
+                  value={cveSearch}
+                  onChange={(e) => setCveSearch(e.target.value)}
+                  style={{ marginBottom: '1rem', maxWidth: '450px' }}
+                />
+                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                    <thead>
+                      <tr>
+                        {['CVE ID', 'Severity', 'CVSS', 'Description', 'Status'].map((h) => (
+                          <th key={h} style={{
+                            background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                            fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
+                            fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCVEs.map((cve, idx) => (
+                        <tr key={cve.id + '-' + idx} style={{ transition: 'background 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-blue)', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {cve.id}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <span style={severityStyle(cve.severity)}>{cve.severity}</span>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: cve.cvss >= 9 ? '#ff0055' : cve.cvss >= 7 ? '#ff9f1c' : '#00f2fe', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {Number(cve.cvss).toFixed(1)}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', color: 'var(--text-secondary)', fontSize: '0.8rem', maxWidth: '400px', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {cve.description}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', ...statusStyle(cve.status) }}>
+                            {cve.status}
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredCVEs.length === 0 && (
+                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No matching CVEs found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Section E: IOC Table */}
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🔍 INDICATORS OF COMPROMISE
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(218,34,255,0.1)', color: '#da22ff',
+                    border: '1px solid rgba(218,34,255,0.2)',
+                  }}>
+                    {iocData.length} IOCs
+                  </span>
+                </h3>
+                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                    <thead>
+                      <tr>
+                        {[
+                          { key: 'type', label: 'Type' },
+                          { key: 'value', label: 'Value' },
+                          { key: 'confidence', label: 'Confidence' },
+                          { key: 'firstSeen', label: 'First Seen' },
+                          { key: 'source', label: 'Source' },
+                        ].map((col) => (
+                          <th key={col.key} onClick={() => toggleSort(col.key)} style={{
+                            background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                            fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            color: iocSort.key === col.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                            borderBottom: '1px solid var(--panel-border)', fontFamily: 'var(--font-mono)',
+                            cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+                          }}>
+                            {col.label} {iocSort.key === col.key ? (iocSort.asc ? '▲' : '▼') : ''}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedIOCs.length > 0 ? sortedIOCs.map((ioc, i) => (
+                        <tr key={i} style={{ transition: 'background 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <span style={{
+                              display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem',
+                              fontWeight: 600, fontFamily: 'var(--font-mono)',
+                              background: 'rgba(218,34,255,0.1)', color: '#da22ff', border: '1px solid rgba(218,34,255,0.25)',
+                            }}>{ioc.type}</span>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(48,54,61,0.3)', wordBreak: 'break-all' }}>
+                            {ioc.value}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '50px', height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                <div style={{
+                                  width: `${ioc.confidence}%`, height: '100%', borderRadius: '3px',
+                                  background: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe',
+                                }} />
+                              </div>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe' }}>
+                                {ioc.confidence}%
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
+                            {ioc.firstSeen}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontSize: '0.8rem', color: 'var(--accent-blue)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
+                            {ioc.source}
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No IOCs detected.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ Tab Content: Wayback Secrets ═══ */}
+          {activeTab === 'archive' && (
+            <div className="animate-fade-in">
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🕒 WAYBACK MACHINE HISTORICAL SECRETS
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(255,159,28,0.1)', color: 'var(--accent-orange)',
+                    border: '1px solid rgba(255,159,28,0.2)',
+                  }}>
+                    {(intelData.archive_secrets || []).length} secrets found
+                  </span>
+                </h3>
+                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                    <thead>
+                      <tr>
+                        {['Secret Type', 'Exposed Value', 'File Location', 'Context Snippet', 'Severity'].map((h) => (
+                          <th key={h} style={{
+                            background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                            fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
+                            fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(intelData.archive_secrets || []).length > 0 ? intelData.archive_secrets.map((sec, idx) => (
+                        <tr key={idx} style={{ transition: 'background 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-blue)', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {sec.type}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', color: '#ff0055', fontWeight: 600, borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <code>{sec.value}</code>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <a href={sec.wayback_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-green)', textDecoration: 'none' }}>
+                              {sec.file_url.split('/').pop()}
+                            </a>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', color: 'var(--text-secondary)', fontSize: '0.8rem', maxWidth: '350px', borderBottom: '1px solid rgba(48,54,61,0.3)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {sec.context}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <span style={severityStyle(sec.severity ? sec.severity.toUpperCase() : 'HIGH')}>{sec.severity || 'High'}</span>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                            No historical secrets detected in Web Archive crawls. Enable "Web Archive Spy" during scan parameters configuration.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ Tab Content: Attack Paths (Elite Exploit Chain Visualization) ═══ */}
+          {activeTab === 'paths' && (
+            <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
+              
+              {/* Left Pane: Interactive SVG Node Graph */}
+              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1.2rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🗺️ AUTOMATIC_EXPLOIT_FLOWCHART
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
+                    border: '1px solid rgba(0,242,254,0.2)',
+                  }}>
+                    {((intelData.attack_path?.graph?.nodes) || []).length} nodes
+                  </span>
+                </h3>
+
+                {((intelData.attack_path?.graph?.nodes) || []).length > 0 ? (
+                  <div style={{ background: 'rgba(10,14,20,0.5)', borderRadius: '12px', border: '1px solid var(--panel-border)', padding: '10px' }}>
+                    <svg viewBox="0 0 680 450" style={{ width: '100%', minHeight: '400px', display: 'block' }}>
+                      <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(0,242,254,0.5)" />
+                        </marker>
+                        <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="6" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      {/* Draw Edges */}
+                      {(() => {
+                        const nodes = intelData.attack_path.graph.nodes;
+                        const edges = intelData.attack_path.graph.edges || [];
+                        
+                        // Assign node positions
+                        const levels = { target: 0, recon: 1, technology: 1, vulnerability: 2, exploit: 3 };
+                        const columns = [[], [], [], []];
+                        nodes.forEach(node => {
+                          const lvl = levels[node.type] != null ? levels[node.type] : 2;
+                          columns[lvl].push(node);
+                        });
+
+                        const width = 680;
+                        const height = 450;
+                        const positions = {};
+                        
+                        columns.forEach((colNodes, colIndex) => {
+                          const x = 70 + colIndex * 180;
+                          const n = colNodes.length;
+                          colNodes.forEach((node, nodeIndex) => {
+                            positions[node.id] = { x, y: (height / (n + 1)) * (nodeIndex + 1) };
+                          });
+                        });
+
+                        return (
+                          <>
+                            {/* Static lines */}
+                            {edges.map((edge, idx) => {
+                              const fromPos = positions[edge.from];
+                              const toPos = positions[edge.to];
+                              if (!fromPos || !toPos) return null;
+                              return (
+                                <g key={'edge-' + idx}>
+                                  <line
+                                    x1={fromPos.x} y1={fromPos.y}
+                                    x2={toPos.x} y2={toPos.y}
+                                    stroke="rgba(0,242,254,0.3)"
+                                    strokeWidth="2.5"
+                                    markerEnd="url(#arrow)"
+                                  />
+                                  {/* Animated data pulse */}
+                                  <circle r="4" fill="#00f2fe" filter="url(#nodeGlow)">
+                                    <animateMotion
+                                      dur={`${2.5 + (idx % 2) * 0.8}s`}
+                                      repeatCount="indefinite"
+                                      path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                                    />
+                                  </circle>
+                                  {/* Label text on edge */}
+                                  <text
+                                    x={(fromPos.x + toPos.x) / 2}
+                                    y={((fromPos.y + toPos.y) / 2) - 8}
+                                    fill="rgba(118,131,144,0.7)"
+                                    fontSize="8"
+                                    fontFamily="var(--font-mono)"
+                                    textAnchor="middle"
+                                  >
+                                    {edge.label}
+                                  </text>
+                                </g>
+                              );
+                            })}
+
+                            {/* Draw Nodes */}
+                            {nodes.map((node) => {
+                              const pos = positions[node.id];
+                              if (!pos) return null;
+                              
+                              const isSelected = selectedNode?.id === node.id;
+                              const isCritical = node.severity === 'Critical';
+                              const isHigh = node.severity === 'High';
+                              const nodeColor = isCritical ? '#ff0055' : isHigh ? '#ff9f1c' : node.type === 'target' ? '#00f2fe' : '#39ff14';
+
+                              return (
+                                <g
+                                  key={node.id}
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => setSelectedNode(node)}
+                                >
+                                  {/* Hover/Selection Ring */}
+                                  <circle
+                                    cx={pos.x} cy={pos.y}
+                                    r={isSelected ? 22 : 17}
+                                    fill="none"
+                                    stroke={nodeColor}
+                                    strokeWidth="2.5"
+                                    strokeDasharray={isSelected ? '0' : '4 2'}
+                                    opacity={isSelected ? 1 : 0.4}
+                                    filter={isSelected ? 'url(#nodeGlow)' : 'none'}
+                                    style={{ transition: 'all 0.2s ease' }}
+                                  />
+                                  {/* Inner Solid Circle */}
+                                  <circle
+                                    cx={pos.x} cy={pos.y}
+                                    r="13"
+                                    fill="#0d1117"
+                                    stroke={nodeColor}
+                                    strokeWidth="3.5"
+                                  />
+                                  {/* Node Type Label */}
+                                  <text
+                                    x={pos.x} y={pos.y + 4}
+                                    fill={nodeColor}
+                                    fontSize="11"
+                                    fontWeight="bold"
+                                    fontFamily="var(--font-mono)"
+                                    textAnchor="middle"
+                                  >
+                                    {node.type === 'target' ? '🎯' : node.type === 'recon' ? '🔍' : node.type === 'technology' ? '⚙️' : isCritical ? '💀' : '⚠'}
+                                  </text>
+                                  {/* Outer Label text */}
+                                  <text
+                                    x={pos.x} y={pos.y + 30}
+                                    fill={isSelected ? '#ffffff' : 'var(--text-secondary)'}
+                                    fontSize="9"
+                                    fontWeight={isSelected ? 'bold' : 'normal'}
+                                    fontFamily="var(--font-cyber)"
+                                    textAnchor="middle"
+                                    style={{ transition: 'fill 0.2s' }}
+                                  >
+                                    {node.label.length > 20 ? node.label.slice(0, 18) + '...' : node.label}
+                                  </text>
+                                </g>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </div>
+                ) : (
+                  <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    No exploit graphs loaded. Enable "Attack Path Planner" module in configuration parameters.
+                  </div>
+                )}
+              </div>
+
+              {/* Right Pane: Selected Node Info / Exploit Chains list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                {/* Node Detail Panel */}
+                <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '180px', borderLeft: selectedNode ? `3px solid ${selectedNode.severity === 'Critical' ? '#ff0055' : selectedNode.severity === 'High' ? '#ff9f1c' : '#00f2fe'}` : '1px solid var(--panel-border)' }}>
+                  <h4 style={{ fontSize: '0.8rem', fontFamily: 'var(--font-cyber)', color: 'var(--text-secondary)', marginBottom: '1rem', letterSpacing: '1.5px' }}>
+                    📦 NODE_PARAMETERS
+                  </h4>
+
+                  {selectedNode ? (
+                    <div className="animate-fade-in">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>
+                          {selectedNode.type === 'target' ? '🎯' : selectedNode.type === 'recon' ? '🔎' : '⚠️'}
+                        </span>
+                        <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.9rem', color: '#ffffff', fontWeight: 700 }}>
+                          {selectedNode.label}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '10px' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem',
+                          fontWeight: 700, fontFamily: 'var(--font-mono)',
+                          background: selectedNode.severity === 'Critical' ? 'rgba(255,0,85,0.15)' : selectedNode.severity === 'High' ? 'rgba(255,159,28,0.15)' : 'rgba(0,242,254,0.15)',
+                          color: selectedNode.severity === 'Critical' ? '#ff0055' : selectedNode.severity === 'High' ? '#ff9f1c' : '#00f2fe',
+                          border: `1px solid ${selectedNode.severity === 'Critical' ? 'rgba(255,0,85,0.3)' : selectedNode.severity === 'High' ? 'rgba(255,159,28,0.3)' : 'rgba(0,242,254,0.3)'}`
+                        }}>
+                          {selectedNode.severity.toUpperCase()}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-secondary)', marginLeft: '10px' }}>
+                          Type: {selectedNode.type}
+                        </span>
+                      </div>
+
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                        {selectedNode.description}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '1.5rem 0' }}>
+                      ⚡ Click any circle node inside the flowchart diagram to inspect vulnerabilities and logical mitigation playbooks.
+                    </div>
+                  )}
+                </div>
+
+                {/* Exploit Chains List */}
+                <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                  <h4 style={{ fontSize: '0.8rem', fontFamily: 'var(--font-cyber)', color: 'var(--text-secondary)', marginBottom: '1.2rem', letterSpacing: '1.5px' }}>
+                    🔗 EXPLOIT_CHAINS_DETAILED
+                  </h4>
+
+                  {(intelData.attack_path?.exploit_chains || []).length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                      {intelData.attack_path.exploit_chains.map((chain, cidx) => {
+                        const cColor = chain.severity === 'Critical' ? '#ff0055' : chain.severity === 'High' ? '#ff9f1c' : '#00f2fe';
+                        return (
+                          <div key={cidx} style={{
+                            padding: '10px 12px', borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.01)',
+                            border: '1px solid var(--panel-border)',
+                            borderLeft: `3px solid ${cColor}`
+                          }}>
+                            <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.82rem', fontWeight: 'bold', color: '#ffffff', marginBottom: '4px' }}>
+                              {chain.name}
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                              IMPACT: <span style={{ color: cColor }}>{chain.impact}</span>
+                            </div>
+
+                            {/* Steps representation */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative', paddingLeft: '14px' }}>
+                              {/* vertical timeline track line */}
+                              <div style={{ position: 'absolute', left: '4px', top: '5px', bottom: '5px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                              
+                              {chain.steps.map((step, sidx) => (
+                                <div key={sidx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', fontFamily: 'var(--font-mono)' }}>
+                                  {/* bubble dot */}
+                                  <div style={{
+                                    position: 'absolute', left: '2px', width: '5px', height: '5px',
+                                    borderRadius: '50%', background: sidx === chain.steps.length - 1 ? cColor : 'rgba(255,255,255,0.4)',
+                                    boxShadow: sidx === chain.steps.length - 1 ? `0 0 6px ${cColor}` : 'none'
+                                  }} />
+                                  <span style={{ color: sidx === chain.steps.length - 1 ? cColor : 'var(--text-secondary)' }}>
+                                    {step}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                      No exploit chains loaded.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

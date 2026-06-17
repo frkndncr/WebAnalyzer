@@ -453,6 +453,91 @@ const InfoSection = ({ domainInfo, sslInfo }) => {
   );
 };
 
+/* Phishing Monitor Panel */
+const PhishingSection = ({ phishingDomains }) => {
+  if (!phishingDomains || phishingDomains.length === 0) {
+    return <EmptyState icon="🪞" message="No active typosquatted domains found. Brand reputation is secure." />;
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
+        Discovered {phishingDomains.length} typosquatted/homoglyph domain variations resolved in public DNS.
+      </div>
+      <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+          <thead>
+            <tr>
+              {['Variation Domain', 'IP Addresses', 'Threat Severity', 'Status'].map((h) => (
+                <th key={h} style={{
+                  background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                  fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                  color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
+                  fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {phishingDomains.map((item, idx) => (
+              <tr key={idx} style={{ transition: 'background 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,0,85,0.03)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-red)', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                  {item.domain}
+                </td>
+                <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                  {item.ips.join(', ')}
+                </td>
+                <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                  <span style={{
+                    display: 'inline-block', padding: '2px 10px', borderRadius: '4px', fontSize: '0.72rem',
+                    fontWeight: 700, fontFamily: 'var(--font-mono)',
+                    background: 'rgba(255,0,85,0.15)', color: '#ff0055', border: '1px solid rgba(255,0,85,0.4)',
+                  }}>{item.severity || 'High'}</span>
+                </td>
+                <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', color: '#ff0055', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                  ● Active
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+/* SSL Associated Infrastructure Panel */
+const AssociatedSection = ({ associatedSans }) => {
+  if (!associatedSans || associatedSans.length === 0) {
+    return <EmptyState icon="🔗" message="No certificate SAN association records discovered." />;
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
+        Discovered {associatedSans.length} associated target domains and sibling infrastructure registered under common certificates.
+      </div>
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12,
+      }}>
+        {associatedSans.map((san, i) => (
+          <div key={i} style={{
+            fontFamily: 'var(--font-mono)', fontSize: 11,
+            padding: '5px 12px', borderRadius: 20,
+            background: 'rgba(0,242,254,0.08)',
+            border: '1px solid rgba(0,242,254,0.2)',
+            color: 'var(--accent-blue)',
+          }}>
+            {san}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 /* ───────────────────────────  MAIN COMPONENT  ─────────────────── */
 
 const TABS = [
@@ -461,6 +546,8 @@ const TABS = [
   { id: 'subs',     label: 'Subdomain Map',    icon: '🗺️' },
   { id: 'tech',     label: 'Tech Stack',       icon: '⚙️' },
   { id: 'info',     label: 'SSL & Domain',     icon: '🔒' },
+  { id: 'phishing', label: 'Phishing Monitor', icon: '🪞' },
+  { id: 'associated', label: 'Associated SAN', icon: '🔗' },
 ];
 
 const NetworkMapPage = () => {
@@ -723,6 +810,8 @@ const NetworkMapPage = () => {
             {activeTab === 'subs'  && <SubdomainSection subdomains={data.subdomains} takeoverData={data.subdomain_takeover} />}
             {activeTab === 'tech'  && <TechSection technologies={data.technologies} />}
             {activeTab === 'info'  && <InfoSection domainInfo={data.domain_info} sslInfo={data.ssl_info} />}
+            {activeTab === 'phishing' && <PhishingSection phishingDomains={data.phishing_domains} />}
+            {activeTab === 'associated' && <AssociatedSection associatedSans={data.associated_sans} />}
           </div>
         </div>
       )}
