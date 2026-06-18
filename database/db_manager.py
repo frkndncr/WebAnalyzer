@@ -37,7 +37,7 @@ class DatabaseManager:
                     self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
                     logging.info("Database connection pool created successfully")
                 except Error as e:
-                    logging.error(f"Error creating connection pool: {e}")
+                    logging.debug(f"MySQL unavailable (standalone mode): {e}")
                     raise RuntimeError(f"Database connection pool initialization failed: {e}") from e
     
     def get_connection(self):

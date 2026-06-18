@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getApiUrl } from '../config';
 
 /* ───────────────────────────  HELPERS  ─────────────────────────── */
@@ -92,74 +92,183 @@ const EmptyState = ({ icon, message }) => (
 
 /* DNS Records Panel */
 const DnsSection = ({ dns }) => {
-  const types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'SRV', 'PTR', 'CAA'];
-  const active = types.filter(t => dns && dns[t] && dns[t].length > 0);
-  const empty  = types.filter(t => !dns || !dns[t] || dns[t].length === 0);
-  const ordered = [...active, ...empty];
-
-  // also include any keys in dns that we didn't list
-  if (dns) {
-    Object.keys(dns).forEach(k => {
-      if (!types.includes(k)) ordered.push(k);
-    });
-  }
-
   if (!dns || Object.keys(dns).length === 0) {
     return <EmptyState icon="📡" message="No DNS records found for this domain." />;
   }
 
+  const dnsRecords = dns.records || dns;
+  const responseTime = dns.response_time_ms;
+  const securityAudit = dns.security_audit;
+
+  const types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'SRV', 'PTR', 'CAA'];
+
+  const getRecordValues = (type) => {
+    if (dnsRecords[type]) return dnsRecords[type];
+    const matchKey = Object.keys(dnsRecords).find(k => k === type || k.startsWith(type + ' '));
+    return matchKey ? dnsRecords[matchKey] : [];
+  };
+
+  const active = types.filter(t => {
+    const vals = getRecordValues(t);
+    return vals && vals.length > 0;
+  });
+  const empty = types.filter(t => {
+    const vals = getRecordValues(t);
+    return !vals || vals.length === 0;
+  });
+  const ordered = [...active, ...empty];
+
+  Object.keys(dnsRecords).forEach(k => {
+    const isCovered = types.some(t => k === t || k.startsWith(t + ' '));
+    if (!isCovered && k !== 'timestamp' && k !== 'domain') {
+      ordered.push(k);
+    }
+  });
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-      {ordered.map(type => {
-        const records = dns[type] || [];
-        const icon = DNS_ICONS[type] || '📄';
-        return (
-          <div key={type} className="glass-panel" style={{
-            padding: 16, borderRadius: 12,
-            borderLeft: records.length > 0 ? '3px solid var(--accent-blue)' : '3px solid var(--panel-border)',
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
-              fontFamily: 'var(--font-cyber)', fontSize: 13, color: 'var(--text-primary)',
-              letterSpacing: 1,
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        {responseTime != null && (
+          <div className="glass-panel" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font-mono)' }}>
+            ⚡ Response Time: <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{responseTime} ms</span>
+          </div>
+        )}
+        {securityAudit && securityAudit.score != null && (
+          <div className="glass-panel" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font-cyber)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            🛡️ Security Grade: 
+            <span style={{ 
+              color: securityAudit.score >= 80 ? 'var(--accent-green)' : securityAudit.score >= 60 ? 'var(--accent-orange)' : 'var(--accent-red)',
+              fontWeight: 'bold',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '2px 8px',
+              borderRadius: 4
             }}>
-              <span>{icon}</span>
-              <span>{type}</span>
-              <span style={{
-                marginLeft: 'auto', fontSize: 11,
-                background: records.length > 0 ? 'rgba(0,242,254,0.15)' : 'rgba(118,131,144,0.15)',
-                color: records.length > 0 ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                padding: '2px 8px', borderRadius: 6,
-              }}>
-                {records.length > 0 ? `${records.length} record${records.length > 1 ? 's' : ''}` : '—'}
-              </span>
-            </div>
-            {records.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {records.map((rec, i) => {
-                  const val = typeof rec === 'object' ? (rec.value || rec.address || rec.exchange || JSON.stringify(rec)) : String(rec);
-                  return (
-                    <div key={i} style={{
-                      fontFamily: 'var(--font-mono)', fontSize: 12,
-                      color: 'var(--accent-green)',
-                      background: 'rgba(57,255,20,0.05)',
-                      padding: '6px 10px', borderRadius: 6,
-                      wordBreak: 'break-all',
-                    }}>
-                      {typeof rec === 'object' && rec.priority != null && (
-                        <span style={{ color: 'var(--accent-orange)', marginRight: 8 }}>[pri:{rec.priority}]</span>
-                      )}
-                      {val}
-                    </div>
-                  );
-                })}
+              {securityAudit.grade || 'N/A'} ({securityAudit.score}/100)
+            </span>
+          </div>
+        )}
+      </div>
+
+      {securityAudit && (
+        <div className="glass-panel" style={{ padding: 20, borderRadius: 12 }}>
+          <h4 style={{ margin: '0 0 16px', fontSize: 14, fontFamily: 'var(--font-cyber)', color: 'var(--text-primary)', letterSpacing: 1 }}>
+            🛡️ DNS SECURITY AUDIT
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 16 }}>
+            {securityAudit.spf && (
+              <div style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--panel-border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>SPF RECORD</div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: securityAudit.spf.status === 'Found' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                    ● {securityAudit.spf.status}
+                  </span>
+                </div>
+                {securityAudit.spf.record && (
+                  <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: 6, color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.2)', padding: 6, borderRadius: 4 }}>
+                    {securityAudit.spf.record}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>—</div>
+            )}
+            {securityAudit.dmarc && (
+              <div style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--panel-border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>DMARC POLICY</div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: securityAudit.dmarc.status === 'Found' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                    ● {securityAudit.dmarc.status}
+                  </span>
+                </div>
+                {securityAudit.dmarc.record && (
+                  <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: 6, color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.2)', padding: 6, borderRadius: 4 }}>
+                    {securityAudit.dmarc.record}
+                  </div>
+                )}
+              </div>
+            )}
+            {securityAudit.dnssec && (
+              <div style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--panel-border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>DNSSEC STATUS</div>
+                <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: securityAudit.dnssec.enabled ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                  {securityAudit.dnssec.enabled ? '🟢 Enabled' : '⚪ Disabled'}
+                </div>
+              </div>
+            )}
+            {securityAudit.caa && (
+              <div style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--panel-border)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>CAA POLICY</div>
+                <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: securityAudit.caa.status === 'Found' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                  {securityAudit.caa.status === 'Found' ? '🟢 Found' : '⚪ Missing'}
+                </div>
+              </div>
             )}
           </div>
-        );
-      })}
+          {securityAudit.weaknesses && securityAudit.weaknesses.length > 0 && (
+            <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--accent-orange)', fontFamily: 'var(--font-cyber)', marginBottom: 8, letterSpacing: 0.5 }}>
+                ⚠️ VULNERABILITIES & WEAKNESSES
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {securityAudit.weaknesses.map((w, idx) => (
+                  <li key={idx} style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+        {ordered.map(type => {
+          const vals = getRecordValues(type);
+          const icon = DNS_ICONS[type.split(' ')[0]] || '📄';
+          return (
+            <div key={type} className="glass-panel" style={{
+              padding: 16, borderRadius: 12,
+              borderLeft: vals.length > 0 ? '3px solid var(--accent-blue)' : '3px solid var(--panel-border)',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                fontFamily: 'var(--font-cyber)', fontSize: 13, color: 'var(--text-primary)',
+                letterSpacing: 1,
+              }}>
+                <span>{icon}</span>
+                <span>{type}</span>
+                <span style={{
+                  marginLeft: 'auto', fontSize: 11,
+                  background: vals.length > 0 ? 'rgba(0,242,254,0.15)' : 'rgba(118,131,144,0.15)',
+                  color: vals.length > 0 ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                  padding: '2px 8px', borderRadius: 6,
+                }}>
+                  {vals.length > 0 ? `${vals.length} record${vals.length > 1 ? 's' : ''}` : '—'}
+                </span>
+              </div>
+              {vals.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {vals.map((rec, i) => {
+                    const val = typeof rec === 'object' ? (rec.value || rec.address || rec.exchange || JSON.stringify(rec)) : String(rec);
+                    return (
+                      <div key={i} style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 12,
+                        color: 'var(--accent-green)',
+                        background: 'rgba(57,255,20,0.05)',
+                        padding: '6px 10px', borderRadius: 6,
+                        wordBreak: 'break-all',
+                      }}>
+                        {typeof rec === 'object' && rec.priority != null && (
+                          <span style={{ color: 'var(--accent-orange)', marginRight: 8 }}>[pri:{rec.priority}]</span>
+                        )}
+                        {val}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>—</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -285,43 +394,153 @@ const SubdomainSection = ({ subdomains, takeoverData }) => {
 
 /* SVG subdomain graph */
 const SubdomainGraph = ({ subdomains, takeoverMap }) => {
-  const svgRef = useRef(null);
-  const maxShow = Math.min(subdomains.length, 40);
+  const containerRef = useRef(null);
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+
+  const maxShow = Math.min(subdomains.length, 60);
   const subs = subdomains.slice(0, maxShow);
   const cx = 300, cy = 200, R = 160;
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const scaleFactor = 1.1;
+      let newScale = transform.scale;
+      if (e.deltaY < 0) {
+        newScale = Math.min(transform.scale * scaleFactor, 5);
+      } else {
+        newScale = Math.max(transform.scale / scaleFactor, 0.25);
+      }
+      setTransform(prev => ({ ...prev, scale: newScale }));
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [transform.scale]);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    setTransform(prev => ({
+      ...prev,
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y
+    }));
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const zoomIn = () => {
+    setTransform(prev => ({ ...prev, scale: Math.min(prev.scale * 1.2, 5) }));
+  };
+
+  const zoomOut = () => {
+    setTransform(prev => ({ ...prev, scale: Math.max(prev.scale / 1.2, 0.25) }));
+  };
+
+  const resetZoom = () => {
+    setTransform({ x: 0, y: 0, scale: 1 });
+  };
+
   return (
-    <svg ref={svgRef} viewBox="0 0 600 400" style={{ width: '100%', maxHeight: 380, fontFamily: 'var(--font-mono)' }}>
-      {/* central node */}
-      <circle cx={cx} cy={cy} r={28} fill="rgba(0,242,254,0.12)" stroke="var(--accent-blue)" strokeWidth={2} />
-      <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--accent-blue)" fontSize={10} fontWeight="bold">ROOT</text>
-      {/* nodes */}
-      {subs.map((sub, i) => {
-        const angle = (2 * Math.PI * i) / subs.length - Math.PI / 2;
-        const r = R + (i % 2 === 0 ? 0 : 25);
-        const nx = cx + r * Math.cos(angle);
-        const ny = cy + r * Math.sin(angle);
-        const isRisk = takeoverMap[sub];
-        const color = isRisk ? 'var(--accent-red)' : 'var(--accent-green)';
-        return (
-          <g key={i}>
-            <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={isRisk ? 'rgba(255,0,85,0.25)' : 'rgba(0,242,254,0.15)'} strokeWidth={1} />
-            <circle cx={nx} cy={ny} r={6} fill={isRisk ? 'rgba(255,0,85,0.25)' : 'rgba(57,255,20,0.2)'} stroke={color} strokeWidth={1.5}>
-              {isRisk && <animate attributeName="r" values="6;9;6" dur="1.5s" repeatCount="indefinite" />}
-            </circle>
-            <text x={nx} y={ny - 10} textAnchor="middle" fill={color} fontSize={7}
-              style={{ pointerEvents: 'none' }}>
-              {sub.length > 22 ? sub.slice(0, 20) + '…' : sub}
-            </text>
-          </g>
-        );
-      })}
+    <div 
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '400px',
+        border: '1px solid var(--panel-border)',
+        borderRadius: '12px',
+        background: 'rgba(0,0,0,0.3)',
+        overflow: 'hidden',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        userSelect: 'none'
+      }}
+    >
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        right: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        zIndex: 10,
+      }}>
+        <button className="btn-outline" onClick={zoomIn} style={{ padding: '6px 12px', minWidth: '32px', fontFamily: 'var(--font-cyber)' }}>+</button>
+        <button className="btn-outline" onClick={zoomOut} style={{ padding: '6px 12px', minWidth: '32px', fontFamily: 'var(--font-cyber)' }}>-</button>
+        <button className="btn-outline" onClick={resetZoom} style={{ padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-cyber)', textTransform: 'uppercase' }}>Reset</button>
+      </div>
+
+      <svg 
+        viewBox="0 0 600 400" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          fontFamily: 'var(--font-mono)' 
+        }}
+      >
+        <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`} style={{ transformOrigin: '300px 200px', transition: isDragging ? 'none' : 'transform 0.1s ease-out' }}>
+          <circle cx={cx} cy={cy} r={28} fill="rgba(0,242,254,0.12)" stroke="var(--accent-blue)" strokeWidth={2} />
+          <text x={cx} y={cy + 4} textAnchor="middle" fill="var(--accent-blue)" fontSize={10} fontWeight="bold">ROOT</text>
+          
+          {subs.map((sub, i) => {
+            const angle = (2 * Math.PI * i) / subs.length - Math.PI / 2;
+            const r = R + (i % 2 === 0 ? 0 : 30);
+            const nx = cx + r * Math.cos(angle);
+            const ny = cy + r * Math.sin(angle);
+            const isRisk = takeoverMap[sub];
+            const color = isRisk ? 'var(--accent-red)' : 'var(--accent-green)';
+            return (
+              <g key={i}>
+                <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={isRisk ? 'rgba(255,0,85,0.25)' : 'rgba(0,242,254,0.15)'} strokeWidth={1} />
+                <circle cx={nx} cy={ny} r={6} fill={isRisk ? 'rgba(255,0,85,0.25)' : 'rgba(57,255,20,0.2)'} stroke={color} strokeWidth={1.5}>
+                  {isRisk && <animate attributeName="r" values="6;9;6" dur="1.5s" repeatCount="indefinite" />}
+                </circle>
+                <text x={nx} y={ny - 10} textAnchor="middle" fill={color} fontSize={7} style={{ pointerEvents: 'none' }}>
+                  {sub.length > 22 ? sub.slice(0, 20) + '…' : sub}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
       {subdomains.length > maxShow && (
-        <text x={cx} y={390} textAnchor="middle" fill="var(--text-secondary)" fontSize={10}>
-          +{subdomains.length - maxShow} more subdomains
-        </text>
+        <div style={{
+          position: 'absolute',
+          bottom: '12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '11px',
+          color: 'var(--text-secondary)',
+          background: 'rgba(0,0,0,0.6)',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          border: '1px solid var(--panel-border)',
+          pointerEvents: 'none'
+        }}>
+          +{subdomains.length - maxShow} more subdomains (zoom / drag to explore)
+        </div>
       )}
-    </svg>
+    </div>
   );
 };
 
@@ -550,9 +769,9 @@ const TABS = [
   { id: 'associated', label: 'Associated SAN', icon: '🔗' },
 ];
 
-const NetworkMapPage = ({ domain, setCurrentDomain }) => {
+const NetworkMapPage = () => {
   /* ── state ── */
-  const [domainInput, setDomainInput]   = useState(domain || '');
+  const [domain, setDomain]             = useState('');
   const [activeDomain, setActiveDomain] = useState('');
   const [data, setData]                 = useState(null);
   const [loading, setLoading]           = useState(false);
@@ -579,7 +798,7 @@ const NetworkMapPage = ({ domain, setCurrentDomain }) => {
   }, []);
 
   /* ── fetch network map data ── */
-  const fetchData = useCallback(async (targetDomain) => {
+  const fetchData = async (targetDomain) => {
     const clean = targetDomain.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!clean) return;
     setLoading(true);
@@ -595,26 +814,15 @@ const NetworkMapPage = ({ domain, setCurrentDomain }) => {
       if (!json.has_data) {
         setError('No network data available. Run a scan first.');
       }
-      if (setCurrentDomain) {
-        setCurrentDomain(clean);
-      }
     } catch (e) {
       setError(e.message || 'Failed to fetch network data.');
     } finally {
       setLoading(false);
       setTimeout(() => setScanAnim(false), 2200);
     }
-  }, [setCurrentDomain]);
+  };
 
-  /* ── Auto-fetch on mount/domain change ── */
-  useEffect(() => {
-    if (domain) {
-      setDomainInput(domain);
-      fetchData(domain);
-    }
-  }, [domain, fetchData]);
-
-  const handleScan = () => fetchData(domainInput);
+  const handleScan = () => fetchData(domain);
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleScan(); };
 
   /* ── derived stats ── */
@@ -653,8 +861,8 @@ const NetworkMapPage = ({ domain, setCurrentDomain }) => {
               className="input-glass"
               type="text"
               placeholder="Enter domain (e.g. example.com)"
-              value={domainInput}
-              onChange={e => setDomainInput(e.target.value)}
+              value={domain}
+              onChange={e => setDomain(e.target.value)}
               onKeyDown={handleKeyDown}
               style={{
                 width: '100%', padding: '12px 16px 12px 40px',
@@ -667,7 +875,7 @@ const NetworkMapPage = ({ domain, setCurrentDomain }) => {
           <button
             className="btn-primary"
             onClick={handleScan}
-            disabled={loading || !domainInput.trim()}
+            disabled={loading || !domain.trim()}
             style={{
               fontFamily: 'var(--font-cyber)', letterSpacing: 2, padding: '12px 28px',
               fontSize: 13, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
@@ -693,7 +901,7 @@ const NetworkMapPage = ({ domain, setCurrentDomain }) => {
               <button
                 key={i}
                 className="btn-outline"
-                onClick={() => { setDomainInput(d); fetchData(d); }}
+                onClick={() => { setDomain(d); fetchData(d); }}
                 style={{
                   fontFamily: 'var(--font-mono)', fontSize: 11,
                   padding: '4px 12px', borderRadius: 20,
