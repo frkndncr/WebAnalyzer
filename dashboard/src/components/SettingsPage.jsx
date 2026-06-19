@@ -677,7 +677,7 @@ const SettingsPage = () => {
                   <span className="text-gradient">WebAnalyzer</span>
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  v3.6.0 • Advanced Web Security Scanner
+                  v3.6.1 • Advanced Web Security Scanner
                 </div>
               </div>
             </div>
