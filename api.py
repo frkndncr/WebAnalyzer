@@ -718,7 +718,7 @@ async def get_system_health():
         'platform': platform.system(),
         'active_scans': len(ACTIVE_SCANS),
         'pending_tasks': len(ACS_SECTION_TASKS),
-        'version': '3.3.0'
+        'version': '3.6.0'
     }
 
 
@@ -749,6 +749,6 @@ async def root():
     return {
         "status": "online",
         "name": "WebAnalyzer API",
-        "version": "3.3.0",
+        "version": "3.6.0",
         "docs_url": "/docs"
     }
