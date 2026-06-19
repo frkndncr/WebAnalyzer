@@ -7,8 +7,9 @@ import socket
 import logging
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+from urllib.parse import urlparse
 
-# Try importing curl_cffi for advanced JA3 fingerprint impersonation
+# Try importing curl_cffi for advanced JA3/JA4 TLS & HTTP/2 impersonation
 try:
     from curl_cffi import requests as curl_requests
     HAS_CURL_CFFI = True
@@ -33,8 +34,6 @@ class SessionResponseWrapper:
 
     @property
     def status_code(self):
-        if self.backend == 'httpx':
-            return self.raw_response.status_code
         return self.raw_response.status_code
 
     @property
@@ -47,14 +46,10 @@ class SessionResponseWrapper:
 
     @property
     def content(self):
-        if self.backend == 'httpx':
-            return self.raw_response.content
         return self.raw_response.content
 
     @property
     def cookies(self):
-        if self.backend == 'httpx':
-            return self.raw_response.cookies
         return self.raw_response.cookies
 
     def json(self, **kwargs):
@@ -70,16 +65,20 @@ class AdvancedSessionManager:
         self.request_count = 0
         self.last_latency = 0.0
         self.cookies_jar = {}
+        self.current_domain = None
         
-        # Max requests per session burst (rotate after 5 to 12 requests)
-        self.max_requests_per_session = random.randint(5, 12)
+        # Sticky proxy mapping to keep the same IP for a specific domain scan
+        self.sticky_domain_proxies = {}
+        
+        # Max requests per session burst (rotate after 6 to 14 requests)
+        self.max_requests_per_session = random.randint(6, 14)
         
         # Auto-detect local Tor services
         self.tor_socks_port = self._detect_tor_socks_port()
         self.tor_control_port = self._detect_tor_control_port()
         
         # Dynamic proxy list
-        self.proxies_list = [None]  # Include direct connection as a option
+        self.proxies_list = [None]  # Include direct connection as default option
         
         if self.tor_socks_port:
             tor_proxy = {
@@ -87,19 +86,77 @@ class AdvancedSessionManager:
                 'https': f'socks5://127.0.0.1:{self.tor_socks_port}'
             }
             self.proxies_list.append(tor_proxy)
-            logger.info(f"Tor SOCKS proxy automatically added to rotation: port {self.tor_socks_port}")
+            logger.info(f"Tor SOCKS proxy automatically added to rotation pool: port {self.tor_socks_port}")
             
         self.proxy_cycle = itertools.cycle(self.proxies_list)
         
-        # Realistic User Agent list
-        self.user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1'
+        # Browser profiles matching User-Agent and impersonation fingerprints
+        self.browser_profiles = [
+            {
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'impersonate': 'chrome120',
+                'sec_ch_ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'platform': 'Windows',
+                'headers': {
+                    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-User': '?1',
+                    'Sec-Fetch-Dest': 'document'
+                }
+            },
+            {
+                'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'impersonate': 'chrome120',
+                'sec_ch_ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'platform': 'macOS',
+                'headers': {
+                    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"macOS"',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-User': '?1',
+                    'Sec-Fetch-Dest': 'document'
+                }
+            },
+            {
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+                'impersonate': 'firefox',
+                'sec_ch_ua': None,
+                'platform': 'Windows',
+                'headers': {
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-User': '?1',
+                    'Sec-Fetch-Dest': 'document'
+                }
+            },
+            {
+                'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0',
+                'impersonate': 'firefox',
+                'sec_ch_ua': None,
+                'platform': 'macOS',
+                'headers': {
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-User': '?1',
+                    'Sec-Fetch-Dest': 'document'
+                }
+            },
+            {
+                'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+                'impersonate': 'safari15_5',
+                'sec_ch_ua': None,
+                'platform': 'macOS',
+                'headers': {
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Dest': 'document'
+                }
+            }
         ]
         
         self._create_new_session()
@@ -146,49 +203,79 @@ class AdvancedSessionManager:
                 res2 = s.recv(1024)
                 if b'250' in res2:
                     logger.info("Tor circuit rotated successfully (NEWNYM issued).")
-                    # Give Tor a moment to establish new circuit connection
                     time.sleep(2)
             s.close()
         except Exception as e:
             logger.warning(f"Could not rotate Tor circuit: {e}")
 
+    def _get_proxy_for_domain(self, domain):
+        """Retrieve sticky proxy pinned for this domain, or select a new one"""
+        if not domain:
+            return next(self.proxy_cycle)
+        
+        # Clean domain
+        domain = domain.replace("www.", "")
+        if domain not in self.sticky_domain_proxies:
+            selected_proxy = next(self.proxy_cycle)
+            self.sticky_domain_proxies[domain] = selected_proxy
+            logger.info(f"Pinned sticky proxy session for domain [{domain}]: {selected_proxy}")
+        return self.sticky_domain_proxies[domain]
+
+    def _rotate_proxy_for_domain(self, domain):
+        """Force rotate sticky proxy mapping for a domain when experiencing blocks"""
+        if not domain:
+            return
+        domain = domain.replace("www.", "")
+        new_proxy = next(self.proxy_cycle)
+        self.sticky_domain_proxies[domain] = new_proxy
+        logger.info(f"Rotated and re-pinned sticky proxy session for domain [{domain}]: {new_proxy}")
+
     def _create_new_session(self):
-        """Initialize a new session choosing the best available client engine"""
+        """Initialize a new session choosing the best available client engine and browser profile"""
         if self.current_session:
             try:
                 self.current_session.close()
             except Exception:
                 pass
         
-        # Get next proxy from rotation
-        current_proxy = next(self.proxy_cycle)
+        # Retrieve sticky proxy if current domain context is set
+        current_proxy = self._get_proxy_for_domain(self.current_domain)
         
         # If proxy is Tor, rotate the Tor circuit first
         if current_proxy and any(p in str(current_proxy) for p in ['9050', '9150']):
             self._rotate_tor_circuit()
             
-        user_agent = random.choice(self.user_agents)
-        headers = {
-            'User-Agent': user_agent,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9,tr;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'DNT': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1'
-        }
+        # Pick a random browser profile for full header-handshake alignment
+        profile = random.choice(self.browser_profiles)
+        user_agent = profile['user_agent']
+        impersonate_target = profile['impersonate']
 
-        # 1st Choice: curl_cffi for advanced JA3 TLS & HTTP/2 impersonation
+        # Header ordering matching real browser sequences (Sec-Fetch-* and connection alignment)
+        headers = {}
+        headers['Connection'] = 'keep-alive'
+        headers['Upgrade-Insecure-Requests'] = '1'
+        headers['User-Agent'] = user_agent
+        headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+        
+        if profile['sec_ch_ua']:
+            headers['sec-ch-ua'] = profile['headers']['sec-ch-ua']
+            headers['sec-ch-ua-mobile'] = profile['headers']['sec-ch-ua-mobile']
+            headers['sec-ch-ua-platform'] = profile['headers']['sec-ch-ua-platform']
+            
+        for k, v in profile['headers'].items():
+            if k not in headers:
+                headers[k] = v
+                
+        headers['Accept-Encoding'] = 'gzip, deflate, br'
+        headers['Accept-Language'] = 'en-US,en;q=0.9,tr;q=0.8'
+        headers['Cache-Control'] = 'no-cache'
+        headers['Pragma'] = 'no-cache'
+
+        # 1st Choice: curl_cffi for advanced JA3/JA4 TLS & HTTP/2 impersonation
         if HAS_CURL_CFFI:
             try:
                 self.session_backend = 'curl_cffi'
-                self.current_session = curl_requests.Session(impersonate="chrome")
+                self.current_session = curl_requests.Session(impersonate=impersonate_target)
                 self.current_session.headers.update(headers)
                 if current_proxy:
                     self.current_session.proxies = current_proxy
@@ -197,9 +284,9 @@ class AdvancedSessionManager:
                 if self.cookies_jar:
                     self.current_session.cookies.update(self.cookies_jar)
                 
-                logger.info(f"Created curl_cffi Session (JA3 impersonate=chrome) with User-Agent: {user_agent}")
+                logger.info(f"Created curl_cffi Session (JA3 impersonate={impersonate_target}) with aligned User-Agent: {user_agent}")
                 self.request_count = 0
-                self.max_requests_per_session = random.randint(5, 12)
+                self.max_requests_per_session = random.randint(6, 14)
                 return
             except Exception as e:
                 logger.warning(f"Failed to initialize curl_cffi session, falling back to HTTPX: {e}")
@@ -208,7 +295,6 @@ class AdvancedSessionManager:
         if HAS_HTTPX:
             try:
                 self.session_backend = 'httpx'
-                # Format proxies for HTTPX
                 httpx_proxies = None
                 if current_proxy:
                     httpx_proxies = {
@@ -224,9 +310,9 @@ class AdvancedSessionManager:
                     timeout=30.0,
                     cookies=self.cookies_jar
                 )
-                logger.info(f"Created HTTPX Client (HTTP/2 enabled) with User-Agent: {user_agent}")
+                logger.info(f"Created HTTPX Client (HTTP/2 enabled) with aligned User-Agent: {user_agent}")
                 self.request_count = 0
-                self.max_requests_per_session = random.randint(5, 12)
+                self.max_requests_per_session = random.randint(6, 14)
                 return
             except Exception as e:
                 logger.warning(f"Failed to initialize HTTPX client, falling back to standard requests: {e}")
@@ -251,22 +337,22 @@ class AdvancedSessionManager:
         if self.cookies_jar:
             self.current_session.cookies.update(self.cookies_jar)
             
-        logger.info(f"Created standard requests.Session with User-Agent: {user_agent}")
+        logger.info(f"Created standard requests.Session with aligned User-Agent: {user_agent}")
         self.request_count = 0
-        self.max_requests_per_session = random.randint(5, 12)
+        self.max_requests_per_session = random.randint(6, 14)
 
     def _should_rotate_session(self):
         """Determine if current session burst limits are exceeded"""
         return self.request_count >= self.max_requests_per_session
 
     def _get_adaptive_delay(self):
-        """Calculate adaptive delay dynamically incorporating target server latency & random jitter"""
+        """Calculate delay dynamically incorporating target server latency & random jitter"""
         base_delay = random.uniform(*self.delay_range)
         
-        # If server is experiencing slow response times (> 2s), adaptively slow down requests
+        # If server latency is high, automatically adaptively slow down requests
         adaptive_adder = 0.0
         if self.last_latency > 2.0:
-            adaptive_adder = self.last_latency * 0.5
+            adaptive_adder = self.last_latency * 0.6
             logger.info(f"Target latency is high ({self.last_latency:.2f}s). Throttling down (adding +{adaptive_adder:.2f}s).")
             
         total_delay = base_delay + adaptive_adder
@@ -276,7 +362,7 @@ class AdvancedSessionManager:
         return max(0.5, total_delay + jitter)
 
     def _delay_request(self):
-        """Apply the computed human-like delay before executing a request"""
+        """Apply human-like delay before executing request"""
         delay = self._get_adaptive_delay()
         logger.debug(f"Applying delay of {delay:.2f} seconds...")
         time.sleep(delay)
@@ -289,6 +375,13 @@ class AdvancedSessionManager:
 
     def _make_request(self, method, url, **kwargs):
         """Send HTTP request handling session lifecycle, evasion, and automatic rate-limit recovery"""
+        # Set domain context for sticky proxy logic
+        try:
+            parsed = urlparse(url)
+            self.current_domain = parsed.netloc
+        except Exception:
+            pass
+
         # Trigger session rotation if request burst limits exceeded
         if self._should_rotate_session():
             logger.info("Session request burst limit reached. Rotating session...")
@@ -305,7 +398,6 @@ class AdvancedSessionManager:
         
         start_time = time.time()
         try:
-            # Enforce 30s timeout by default
             if 'timeout' not in kwargs:
                 kwargs['timeout'] = 30
                 
@@ -326,16 +418,17 @@ class AdvancedSessionManager:
                 except Exception:
                     pass
 
-            # Detect Cloudflare or standard rate limit block (HTTP 429 / 403 WAF page)
+            # Detect Cloudflare/WAF block (HTTP 429 / 403 WAF page)
             is_cf_block = 'Server' in response.headers and 'cloudflare' in response.headers['Server'].lower() and response.status_code in [403, 503]
             is_rate_limited = response.status_code == 429
             
             if is_cf_block or is_rate_limited:
-                wait_time = random.uniform(12.0, 24.0)
-                logger.warning(f"Rate limiting or WAF block detected from {url} (Status: {response.status_code}). Sleeping for {wait_time:.1f}s and rotating session...")
+                wait_time = random.uniform(15.0, 30.0)
+                logger.warning(f"WAF block or rate-limit detected from {url} (Status: {response.status_code}). Sleeping for {wait_time:.1f}s and rotating sticky proxy/identity...")
                 time.sleep(wait_time)
                 
-                # Rotate session immediately to swap IP/UA
+                # Rotate the sticky proxy and initialize a new session
+                self._rotate_proxy_for_domain(self.current_domain)
                 self._create_new_session()
                 
                 # Retry request with fresh identity
