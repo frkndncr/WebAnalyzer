@@ -144,12 +144,19 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
             func = module_functions[module_name]
             delay_type = module_weights.get(module_name, 'medium')
             
-            # For simplicity, we just safely execute it synchronously here
+            # Run blocking modules in a thread executor to keep the event loop responsive
             try:
-                if asyncio.iscoroutinefunction(func):
-                    res = await func(domain)
-                else:
+                async_modules = {"Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"}
+                if module_name in async_modules or asyncio.iscoroutinefunction(func):
                     res = func(domain)
+                    if asyncio.iscoroutine(res):
+                        res = await res
+                else:
+                    # Run synchronous function in a thread executor
+                    loop = asyncio.get_running_loop()
+                    def sync_wrapper():
+                        return func(domain)
+                    res = await loop.run_in_executor(None, sync_wrapper)
                     if asyncio.iscoroutine(res):
                         res = await res
                 results[module_name] = res
