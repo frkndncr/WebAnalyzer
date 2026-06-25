@@ -842,7 +842,9 @@ async def get_vulnerability_stats():
             if os.path.exists(result_file):
                 try:
                     with open(result_file, 'r', encoding='utf-8') as f:
-                        res = json.load(f)
+                        raw_res = json.load(f)
+                    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+                    
                     sec = res.get('Security Analysis', {})
                     if isinstance(sec, dict):
                         for v in sec.get('vulnerabilities', []):
@@ -851,9 +853,91 @@ async def get_vulnerability_stats():
                                 if sev in stats:
                                     stats[sev] += 1
                                 stats['total'] += 1
+
+                    acs = res.get('Advanced Content Scan', {})
+                    if isinstance(acs, dict):
+                        for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
+                            findings = acs.get(key, [])
+                            if isinstance(findings, list):
+                                for f in findings:
+                                    if isinstance(f, dict):
+                                        sev = (f.get('severity', 'medium') or 'medium').lower()
+                                        if sev in stats:
+                                            stats[sev] += 1
+                                        stats['total'] += 1
                 except Exception:
                     pass
     return stats
+
+
+@app.get('/api/active-scans')
+async def get_active_scans():
+    """Get detailed list of active scans"""
+    res = []
+    for domain, info in list(ACTIVE_SCANS.items()):
+        current = info.get("current_module", "Scanning...")
+        if current != "Finished":
+            res.append({
+                "domain": domain,
+                "total": info.get("total", 16),
+                "completed": info.get("completed", 0),
+                "current_module": current
+            })
+    return res
+
+
+@app.get('/api/recent-alerts')
+async def get_recent_alerts():
+    """Retrieve actual list of vulnerabilities parsed from all scanned targets"""
+    alerts = []
+    logs_dir = "logs"
+    if os.path.exists(logs_dir):
+        for domain in os.listdir(logs_dir):
+            result_file = os.path.join(logs_dir, domain, "results.json")
+            if os.path.exists(result_file):
+                try:
+                    with open(result_file, "r", encoding="utf-8") as f:
+                        raw_res = json.load(f)
+                    res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
+                    
+                    sec = res.get('Security Analysis', {})
+                    if isinstance(sec, dict):
+                        for v in sec.get('vulnerabilities', []):
+                            if isinstance(v, dict):
+                                alerts.append({
+                                    "domain": domain,
+                                    "title": v.get("type", v.get("title", "Vulnerability")),
+                                    "severity": (v.get("severity", "Medium") or "Medium").upper(),
+                                    "description": v.get("description", v.get("detail", ""))[:120],
+                                    "module": "Security Analysis"
+                                })
+                                
+                    acs = res.get('Advanced Content Scan', {})
+                    if isinstance(acs, dict):
+                        for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
+                            findings = acs.get(key, [])
+                            if isinstance(findings, list):
+                                for f in findings:
+                                    if isinstance(f, dict):
+                                        alerts.append({
+                                            "domain": domain,
+                                            "title": f.get("type", f.get("vuln_type", key.replace('_', ' ').title())),
+                                            "severity": (f.get("severity", "Medium") or "Medium").upper(),
+                                            "description": f.get("description", f.get("value", ""))[:120],
+                                            "module": "Advanced Content Scan"
+                                        })
+                except Exception:
+                    pass
+    severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+    seen = set()
+    unique_alerts = []
+    for a in alerts:
+        key = (a["domain"], a["title"])
+        if key not in seen:
+            seen.add(key)
+            unique_alerts.append(a)
+    unique_alerts.sort(key=lambda x: severity_order.get(x["severity"], 5))
+    return unique_alerts[:15]
 
 
 @app.get('/api/system-health')
