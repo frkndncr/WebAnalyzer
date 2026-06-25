@@ -1453,26 +1453,575 @@ const RenderSeoAnalysis = ({ data }) => {
 };
 
 const RenderGeoAnalysis = ({ data }) => {
+  if (!data) return <div style={{ color: 'var(--text-secondary)' }}>No GEO Analysis data available.</div>;
+
+  const geoScoreObj = data['GEO Score'] || {};
+  const { score: scoreVal, grade: gradeVal } = extractScore(geoScoreObj);
+  const llmsTxt = data['LLMs Optimization (llms.txt)'] || {};
+  const webMcp = data['WebMCP Integration'] || {};
+  const aiCrawlers = data['AI Crawler Directives'] || {};
+
+  const getScoreColor = (val) => {
+    if (val >= 80) return 'var(--accent-green)';
+    if (val >= 50) return 'var(--accent-orange)';
+    return 'var(--accent-red)';
+  };
+
+  const scoreColor = getScoreColor(scoreVal ?? 0);
+  const strokeDashoffset = 251.2 - (251.2 * (scoreVal ?? 0)) / 100;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Top Section: Score and Overview */}
+      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="glass-panel" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.5rem',
+          padding: '1.5rem',
+          borderRadius: '12px',
+          flex: '1 1 300px',
+          borderLeft: `4px solid ${scoreColor}`
+        }}>
+          {/* Circular SVG Gauge */}
+          <div style={{ position: 'relative', width: '90px', height: '90px', flexShrink: 0 }}>
+            <svg width="90" height="90" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke={scoreColor}
+                strokeWidth="8"
+                strokeDasharray="251.2"
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 1s ease' }}
+              />
+            </svg>
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: scoreColor }}>{scoreVal ?? 0}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>GEO Score</div>
+            </div>
+          </div>
+          <div>
+            <h4 style={{ margin: '0 0 4px 0', fontFamily: 'var(--font-cyber)', fontSize: '1rem' }}>Generative Engine Optimization</h4>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Evaluates target discoverability and integration maturity for LLM engines, AI search crawlers, and WebMCP agents.
+            </p>
+            <div style={{ marginTop: '8px' }}>
+              <span className="badge" style={{
+                background: `${scoreColor}15`,
+                color: scoreColor,
+                border: `1px solid ${scoreColor}`,
+                fontSize: '0.8rem',
+                fontFamily: 'var(--font-cyber)'
+              }}>
+                Grade: {gradeVal || 'F'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid of details */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+        {/* llms.txt optimization */}
+        <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-primary)', fontFamily: 'var(--font-cyber)' }}>
+              🤖 LLMs Optimization
+            </span>
+            <span className={`badge ${llmsTxt.status === 'Found' ? 'badge-green' : 'badge-orange'}`} style={{ fontSize: '10px' }}>
+              {llmsTxt.status || 'Not Found'}
+            </span>
+          </div>
+          <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ color: 'var(--text-secondary)' }}>
+              Presence of standard machine-readable description files (`llms.txt`) for indexing.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>Discovered files:</span>
+              {llmsTxt.files && llmsTxt.files !== 'None' ? (
+                llmsTxt.files.split(',').map((f, i) => (
+                  <span key={i} className="badge badge-blue" style={{ fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
+                    {f.trim()}
+                  </span>
+                ))
+              ) : (
+                <span style={{ color: 'var(--accent-red)', fontSize: '0.8rem', fontWeight: 'bold' }}>None Detected</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* WebMCP Integration */}
+        <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-primary)', fontFamily: 'var(--font-cyber)' }}>
+              🔌 WebMCP Integration
+            </span>
+            <span className={`badge ${webMcp.status === 'Found' ? 'badge-green' : 'badge-blue'}`} style={{ fontSize: '10px' }}>
+              {webMcp.status || 'Not Found'}
+            </span>
+          </div>
+          <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ color: 'var(--text-secondary)' }}>
+              Model Context Protocol (MCP) handlers and metadata for AI agent interaction.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>MCP Endpoints:</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{webMcp.endpoints && webMcp.endpoints !== 'None' ? webMcp.endpoints : '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>HTML Features:</span>
+                <span style={{ fontSize: '0.8rem', textAlign: 'right' }}>{webMcp.html_features && webMcp.html_features !== 'None' ? webMcp.html_features : '—'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Robots.txt AI Crawlers */}
+      {aiCrawlers && aiCrawlers.bots && (
+        <div className="glass-panel" style={{ padding: '1.2rem', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '6px' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-primary)', fontFamily: 'var(--font-cyber)' }}>
+              🕷️ AI Crawler robots.txt Directives
+            </span>
+            <span className={`badge ${aiCrawlers.status === 'Permissive' ? 'badge-green' : 'badge-orange'}`} style={{ fontSize: '10px' }}>
+              {aiCrawlers.status || 'Unknown'} Policy
+            </span>
+          </div>
+          <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Policies configured in `robots.txt` regulating AI agents and scrapers:
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem' }}>
+            {Object.entries(aiCrawlers.bots).map(([bot, status]) => {
+              const isAllowed = status.toLowerCase().includes('allow');
+              const isBlocked = status.toLowerCase().includes('block');
+              const statusColor = isAllowed ? 'var(--accent-green)' : isBlocked ? 'var(--accent-red)' : 'var(--accent-orange)';
+              return (
+                <div key={bot} style={{
+                  padding: '8px 10px',
+                  background: 'rgba(255,255,255,0.01)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', fontWeight: '500' }}>{bot}</span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-cyber)',
+                    color: statusColor,
+                    padding: '2px 6px',
+                    background: `${statusColor}10`,
+                    borderRadius: '4px',
+                    border: `1px solid ${statusColor}30`
+                  }}>
+                    {status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const RenderWebArchiveSpy = ({ data }) => {
+  if (!data) return <div style={{ color: 'var(--text-secondary)' }}>No Web Archive Spy data available.</div>;
+
+  const secrets = data.secrets || [];
+  const totalSecrets = data.total_secrets_found ?? secrets.length;
+  const message = data.message;
+
+  if (totalSecrets === 0) {
+    return (
+      <div className="glass-panel" style={{
+        padding: '2rem',
+        borderRadius: '12px',
+        textAlign: 'center',
+        border: '1px solid rgba(57, 255, 20, 0.2)',
+        background: 'linear-gradient(135deg, rgba(57,255,20,0.02) 0%, rgba(0,0,0,0) 100%)'
+      }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.8rem' }}>🛡️</div>
+        <h4 style={{ margin: '0 0 6px 0', fontFamily: 'var(--font-cyber)', color: 'var(--accent-green)', letterSpacing: '0.5px' }}>
+          WAYBACK MACHINE SECRETS SHIELDED
+        </h4>
+        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '550px', margin: '0 auto' }}>
+          No historical API keys, tokens, or credentials detected in files archived by the Wayback Machine ({message || 'Clean history'}).
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-        {Object.entries(data).map(([key, value]) => {
-          if (key === 'GEO Score') return null;
+      <div className="glass-panel" style={{
+        padding: '1rem 1.25rem',
+        borderRadius: '8px',
+        borderLeft: '4px solid var(--accent-red)',
+        background: 'rgba(255, 85, 85, 0.02)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <strong style={{ color: 'var(--accent-red)', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)' }}>
+            ⚠️ LEAKED HISTORICAL SECRETS DETECTED
+          </strong>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            Wayback Machine archive contains historical snapshots exposing credentials in scripts/configurations.
+          </div>
+        </div>
+        <span className="badge badge-red" style={{ fontSize: '0.85rem', padding: '4px 10px', fontFamily: 'var(--font-mono)' }}>
+          {totalSecrets} leak{totalSecrets > 1 ? 's' : ''} found
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+        {secrets.map((secret, index) => {
+          const isHigh = secret.severity?.toLowerCase() === 'high';
+          const badgeColor = isHigh ? 'var(--accent-red)' : 'var(--accent-orange)';
           return (
-            <div key={key} className="glass-panel" style={{ padding: '1rem', borderRadius: '10px' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>{key}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                {typeof value === 'object' ? (
-                  <div>
-                    <div>Status: <span style={{ fontWeight: 'bold', color: value.status === 'Found' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>{value.status}</span></div>
-                    {value.files && value.files !== 'None' && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', opacity: 0.8, marginTop: '4px' }}>Files: {value.files}</div>}
-                    {value.endpoints && value.endpoints !== 'None' && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', opacity: 0.8, marginTop: '4px' }}>Endpoints: {value.endpoints}</div>}
-                  </div>
-                ) : String(value)}
+            <div key={index} className="glass-panel" style={{ padding: '1.25rem', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>🔑</span>
+                  <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{secret.type}</span>
+                </div>
+                <span className="badge" style={{
+                  background: `${badgeColor}15`,
+                  color: badgeColor,
+                  border: `1px solid ${badgeColor}`,
+                  fontSize: '10px'
+                }}>
+                  {secret.severity || 'Medium'} Severity
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div style={{
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.8rem',
+                  color: 'var(--accent-green)',
+                  border: '1px solid var(--panel-border)',
+                  wordBreak: 'break-all'
+                }}>
+                  Value: {secret.value}
+                </div>
+
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <strong>Source Asset: </strong>
+                  <a href={secret.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                    {secret.file_url}
+                  </a>
+                </div>
+
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <strong>Wayback Archive Snapshot: </strong>
+                  <a href={secret.wayback_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-purple)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                    View Wayback Capture 🔍
+                  </a>
+                </div>
+
+                {secret.context && (
+                  <details style={{ marginTop: '4px' }}>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-secondary)', userSelect: 'none' }}>
+                      Show Code Context Match
+                    </summary>
+                    <div style={{
+                      marginTop: '6px',
+                      background: 'rgba(0, 0, 0, 0.4)',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                      borderLeft: '3px solid var(--accent-blue)',
+                      overflowX: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all'
+                    }}>
+                      {secret.context}
+                    </div>
+                  </details>
+                )}
               </div>
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+};
+
+const RenderPhishingProtection = ({ data }) => {
+  if (!data) return <div style={{ color: 'var(--text-secondary)' }}>No Phishing Protection data available.</div>;
+
+  const scannedCount = data.total_candidates_scanned ?? 0;
+  const activeCount = data.total_active_phishing_domains ?? 0;
+  const phishingDomains = data.phishing_domains || [];
+
+  if (activeCount === 0) {
+    return (
+      <div className="glass-panel" style={{
+        padding: '2.5rem 2rem',
+        borderRadius: '12px',
+        textAlign: 'center',
+        border: '1px solid rgba(57, 255, 20, 0.2)',
+        background: 'linear-gradient(135deg, rgba(57,255,20,0.02) 0%, rgba(0,0,0,0) 100%)'
+      }}>
+        <div style={{ fontSize: '3rem', marginBottom: '0.8rem', color: 'var(--accent-green)' }}>🛡️</div>
+        <h4 style={{ margin: '0 0 6px 0', fontFamily: 'var(--font-cyber)', color: 'var(--accent-green)', letterSpacing: '1px' }}>
+          NO ACTIVE PHISHING THREATS DETECTED
+        </h4>
+        <p style={{ margin: '0 auto 1.2rem auto', fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '550px' }}>
+          We generated typosquatted, homoglyph lookalike, and phishing variation domains, and monitored active DNS resolutions. No active typosquatting servers were detected.
+        </p>
+        <div style={{ display: 'inline-flex', gap: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+          <div style={{ textAlign: 'left' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Candidates Scanned</span>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{scannedCount}</div>
+          </div>
+          <div style={{ width: '1px', background: 'var(--panel-border)' }}></div>
+          <div style={{ textAlign: 'left' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', textTransform: 'uppercase' }}>Active Threats</span>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'var(--font-mono)', color: 'var(--accent-green)' }}>0</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+      <div className="glass-panel" style={{
+        padding: '1.2rem 1.5rem',
+        borderRadius: '10px',
+        borderLeft: '4px solid var(--accent-red)',
+        background: 'rgba(255, 85, 85, 0.03)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div>
+          <strong style={{ color: 'var(--accent-red)', fontSize: '1rem', fontFamily: 'var(--font-cyber)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="status-indicator alert-pulse" style={{ width: '10px', height: '10px', background: 'var(--accent-red)', display: 'inline-block' }}></span>
+            CRITICAL PHISHING RISK DETECTED
+          </strong>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            Active domains using typosquatting/homoglyphs detected resolving to IP addresses. These could host spoofed logins.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '6px 12px', borderRadius: '6px' }}>
+          <div>
+            <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>SCANNED</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>{scannedCount}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '10px', color: 'var(--accent-red)' }}>ACTIVE</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-mono)', color: 'var(--accent-red)' }}>{activeCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table className="cyber-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid var(--panel-border)', textAlign: 'left' }}>
+              <th style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>TYPOSQUAT TARGET DOMAIN</th>
+              <th style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>RESOLVED IP ADDRESS(ES)</th>
+              <th style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>RISK LEVEL</th>
+              <th style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {phishingDomains.map((item, idx) => (
+              <tr key={idx} style={{ borderBottom: '1px solid var(--panel-border)' }}>
+                <td style={{ padding: '12px', fontWeight: 'bold', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)' }}>
+                  {item.domain}
+                </td>
+                <td style={{ padding: '12px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {Array.isArray(item.ips) ? (
+                      item.ips.map((ip, i) => (
+                        <span key={i} className="badge badge-blue" style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{ip}</span>
+                      ))
+                    ) : (
+                      <span className="badge badge-blue" style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{String(item.ips)}</span>
+                    )}
+                  </div>
+                </td>
+                <td style={{ padding: '12px' }}>
+                  <span className="badge badge-red" style={{ fontSize: '10px', textTransform: 'uppercase' }}>
+                    {item.severity || 'HIGH'}
+                  </span>
+                </td>
+                <td style={{ padding: '12px' }}>
+                  <span style={{
+                    color: 'var(--accent-red)',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase'
+                  }}>
+                    ● {item.status || 'Active'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const RenderSslSanAssociation = ({ data }) => {
+  if (!data) return <div style={{ color: 'var(--text-secondary)' }}>No SSL SAN Association data available.</div>;
+
+  const associated = data.associated_domains || [];
+  const totalSan = data.total_san_domains ?? associated.length;
+  const [searchTerm, setSearchTerm] = useState('');
+
+  if (totalSan === 0 || associated.length === 0) {
+    return (
+      <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '10px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+        No associated SSL Subject Alternative Names (SAN) domains found.
+      </div>
+    );
+  }
+
+  const filteredDomains = associated.filter(d => d.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+      {/* Header and Search */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            SSL Subject Alternative Names
+          </span>
+          <h4 style={{ margin: '4px 0 0 0', fontSize: '1.1rem', fontFamily: 'var(--font-cyber)' }}>
+            Associated Domain Graph Nodes ({totalSan})
+          </h4>
+        </div>
+
+        {associated.length > 8 && (
+          <input
+            type="text"
+            className="input-glass"
+            placeholder="🔍 Search SAN nodes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.85rem',
+              borderRadius: '6px',
+              width: '220px',
+              border: '1px solid var(--panel-border)',
+              background: 'rgba(0,0,0,0.3)',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)'
+            }}
+          />
+        )}
+      </div>
+
+      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        These domains are cryptographically linked under the same certificate authority scope. Shared certificates often reveal development, staging, or partner infrastructures.
+      </p>
+
+      {/* Domain Node Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: '0.75rem',
+        maxHeight: '400px',
+        overflowY: 'auto',
+        padding: '8px',
+        background: 'rgba(0,0,0,0.15)',
+        borderRadius: '8px',
+        border: '1px solid var(--panel-border)'
+      }}>
+        {filteredDomains.map((dom, idx) => {
+          const isWildcard = dom.startsWith('*.');
+          const badgeClass = isWildcard ? 'badge-purple' : 'badge-blue';
+          
+          return (
+            <div
+              key={idx}
+              className="glass-panel"
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                border: isWildcard ? '1px solid rgba(191, 64, 191, 0.25)' : '1px solid var(--panel-border)',
+                background: isWildcard ? 'rgba(191, 64, 191, 0.02)' : 'rgba(255,255,255,0.01)',
+                transition: 'all 0.2s ease',
+                cursor: 'default',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = isWildcard 
+                  ? '0 0 10px rgba(191, 64, 191, 0.2)' 
+                  : '0 0 10px rgba(0, 242, 254, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.8rem',
+                color: isWildcard ? 'var(--accent-purple)' : 'var(--text-primary)',
+                wordBreak: 'break-all',
+                marginRight: '6px'
+              }}>
+                {dom}
+              </span>
+              
+              <span className={`badge ${badgeClass}`} style={{
+                fontSize: '9px',
+                padding: '1px 5px',
+                textTransform: 'uppercase',
+                flexShrink: 0
+              }}>
+                {isWildcard ? 'Wildcard' : 'Node'}
+              </span>
+            </div>
+          );
+        })}
+        {filteredDomains.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            No matching SAN domains found.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1549,6 +2098,15 @@ const ModuleResultRenderer = ({ moduleName, moduleData, activeFilter }) => {
       break;
     case 'GEO Analysis':
       content = <RenderGeoAnalysis data={moduleData} />;
+      break;
+    case 'Web Archive Spy':
+      content = <RenderWebArchiveSpy data={moduleData} />;
+      break;
+    case 'Phishing Domain Protection':
+      content = <RenderPhishingProtection data={moduleData} />;
+      break;
+    case 'SSL SAN Association':
+      content = <RenderSslSanAssociation data={moduleData} />;
       break;
     case 'Subdomain Discovery':
       if (Array.isArray(moduleData)) {
