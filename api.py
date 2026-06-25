@@ -332,8 +332,8 @@ async def get_recent_scans():
                         scan_date = datetime.fromtimestamp(mtime).isoformat()
                         
                         with open(result_file, "r", encoding="utf-8") as f:
-                            res = json.load(f)
-                            
+                            raw_res = json.load(f)
+                        res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
                         sec_res = res.get("Security Analysis", {})
                         score = sec_res.get("security_score", None) if isinstance(sec_res, dict) else None
                         grade = sec_res.get("security_grade", None) if isinstance(sec_res, dict) else None
@@ -382,7 +382,7 @@ async def get_global_stats():
         }
 
 @app.get('/api/threat-intel/{domain}')
-async def get_threat_intel(domain: str):
+async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force: bool = False):
     """Extract comprehensive threat intelligence from all scan modules"""
     result_path = os.path.join('logs', domain, 'results.json')
     intel = {
@@ -399,9 +399,80 @@ async def get_threat_intel(domain: str):
         'has_data': False,
         'attack_path': {'graph': {'nodes': [], 'edges': []}, 'exploit_chains': []},
         'archive_secrets': [],
+        'is_scanning': False,
+        'scan_progress': None,
     }
 
-    if not os.path.exists(result_path):
+    should_trigger = False
+    if force or not os.path.exists(result_path):
+        should_trigger = True
+    else:
+        try:
+            with open(result_path, 'r', encoding='utf-8') as f:
+                raw_res = json.load(f)
+            res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+            if not res or not isinstance(res, dict):
+                should_trigger = True
+        except Exception:
+            should_trigger = True
+
+    if should_trigger:
+        if os.path.exists(result_path):
+            try:
+                os.remove(result_path)
+            except Exception:
+                pass
+        
+        if domain in ACTIVE_SCANS:
+            if ACTIVE_SCANS[domain].get('current_module') == 'Finished':
+                ACTIVE_SCANS.pop(domain, None)
+            else:
+                intel['is_scanning'] = True
+                intel['scan_progress'] = {
+                    'total': ACTIVE_SCANS[domain].get('total', 16),
+                    'completed': ACTIVE_SCANS[domain].get('completed', 0),
+                    'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
+                }
+                return intel
+
+        if domain not in ACTIVE_SCANS:
+            modules_list = [
+                "Domain Information", "DNS Records", "SEO Analysis", "Web Technologies",
+                "Security Analysis", "Advanced Content Scan", "Contact Spy", "Subdomain Discovery",
+                "Subdomain Takeover", "CloudFlare Bypass", "Nmap Zero Day Scan", "GEO Analysis",
+                "Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"
+            ]
+            module_functions = {
+                "Domain Information": lambda d: get_domain_info(d),
+                "DNS Records": lambda d: DNSAnalyzer().get_dns_records(d),
+                "SEO Analysis": analyze_advanced_seo,
+                "Web Technologies": detect_web_technologies,
+                "Security Analysis": analyze_security,
+                "Advanced Content Scan": lambda d: AdvancedContentScanner(d).run(),
+                "Contact Spy": lambda d: GlobalDomainScraper(d).crawl(),
+                "Subdomain Discovery": lambda d: run_subfinder(d),
+                "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
+                "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
+                "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
+                "GEO Analysis": analyze_geo,
+                "Web Archive Spy": lambda d: ArchiveSpy(d).run(),
+                "Phishing Domain Protection": lambda d: PhishingDetector(d).run(),
+                "SSL SAN Association": lambda d: SSLAssociation(d).run(),
+                "Attack Path Planner": lambda d: AttackPathPlanner(d).run()
+            }
+            ACTIVE_SCANS[domain] = {
+                "total": len(modules_list),
+                "completed": 0,
+                "current_module": "Initializing Auto Scan...",
+                "results": {}
+            }
+            background_tasks.add_task(run_scan_background, domain, modules_list, module_functions)
+            intel['is_scanning'] = True
+            intel['scan_progress'] = {
+                'total': len(modules_list),
+                'completed': 0,
+                'current_module': 'Initializing Auto Scan...'
+            }
         return intel
 
     try:
@@ -412,15 +483,21 @@ async def get_threat_intel(domain: str):
         pass
 
     with open(result_path, 'r', encoding='utf-8') as f:
-        res = json.load(f)
+        raw_res = json.load(f)
+    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
 
     intel['has_data'] = True
 
     # ── Security Analysis → CVEs + risk score ──
     sec = res.get('Security Analysis', {})
     if isinstance(sec, dict):
-        intel['risk_score'] = sec.get('security_score', 0)
-        intel['security_grade'] = sec.get('security_grade', None)
+        score_val = sec.get('security_score', 0)
+        if isinstance(score_val, dict):
+            intel['risk_score'] = score_val.get('overall_score', 0)
+            intel['security_grade'] = score_val.get('grade', None)
+        else:
+            intel['risk_score'] = score_val
+            intel['security_grade'] = sec.get('security_grade', None)
         vulns = sec.get('vulnerabilities', [])
         if isinstance(vulns, list):
             for v in vulns:
@@ -594,7 +671,7 @@ async def get_threat_intel(domain: str):
 
 
 @app.get('/api/network-map/{domain}')
-async def get_network_map(domain: str):
+async def get_network_map(domain: str, background_tasks: BackgroundTasks, force: bool = False):
     """Retrieve comprehensive network topology data for a domain"""
     result_path = os.path.join('logs', domain, 'results.json')
     network = {
@@ -609,13 +686,85 @@ async def get_network_map(domain: str):
         'has_data': False,
         'phishing_domains': [],
         'associated_sans': [],
+        'is_scanning': False,
+        'scan_progress': None,
     }
 
-    if not os.path.exists(result_path):
+    should_trigger = False
+    if force or not os.path.exists(result_path):
+        should_trigger = True
+    else:
+        try:
+            with open(result_path, 'r', encoding='utf-8') as f:
+                raw_res = json.load(f)
+            res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+            if not res or not isinstance(res, dict):
+                should_trigger = True
+        except Exception:
+            should_trigger = True
+
+    if should_trigger:
+        if os.path.exists(result_path):
+            try:
+                os.remove(result_path)
+            except Exception:
+                pass
+        
+        if domain in ACTIVE_SCANS:
+            if ACTIVE_SCANS[domain].get('current_module') == 'Finished':
+                ACTIVE_SCANS.pop(domain, None)
+            else:
+                network['is_scanning'] = True
+                network['scan_progress'] = {
+                    'total': ACTIVE_SCANS[domain].get('total', 16),
+                    'completed': ACTIVE_SCANS[domain].get('completed', 0),
+                    'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
+                }
+                return network
+
+        if domain not in ACTIVE_SCANS:
+            modules_list = [
+                "Domain Information", "DNS Records", "SEO Analysis", "Web Technologies",
+                "Security Analysis", "Advanced Content Scan", "Contact Spy", "Subdomain Discovery",
+                "Subdomain Takeover", "CloudFlare Bypass", "Nmap Zero Day Scan", "GEO Analysis",
+                "Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"
+            ]
+            module_functions = {
+                "Domain Information": lambda d: get_domain_info(d),
+                "DNS Records": lambda d: DNSAnalyzer().get_dns_records(d),
+                "SEO Analysis": analyze_advanced_seo,
+                "Web Technologies": detect_web_technologies,
+                "Security Analysis": analyze_security,
+                "Advanced Content Scan": lambda d: AdvancedContentScanner(d).run(),
+                "Contact Spy": lambda d: GlobalDomainScraper(d).crawl(),
+                "Subdomain Discovery": lambda d: run_subfinder(d),
+                "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
+                "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
+                "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
+                "GEO Analysis": analyze_geo,
+                "Web Archive Spy": lambda d: ArchiveSpy(d).run(),
+                "Phishing Domain Protection": lambda d: PhishingDetector(d).run(),
+                "SSL SAN Association": lambda d: SSLAssociation(d).run(),
+                "Attack Path Planner": lambda d: AttackPathPlanner(d).run()
+            }
+            ACTIVE_SCANS[domain] = {
+                "total": len(modules_list),
+                "completed": 0,
+                "current_module": "Initializing Auto Scan...",
+                "results": {}
+            }
+            background_tasks.add_task(run_scan_background, domain, modules_list, module_functions)
+            network['is_scanning'] = True
+            network['scan_progress'] = {
+                'total': len(modules_list),
+                'completed': 0,
+                'current_module': 'Initializing Auto Scan...'
+            }
         return network
 
     with open(result_path, 'r', encoding='utf-8') as f:
-        res = json.load(f)
+        raw_res = json.load(f)
+    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
 
     network['has_data'] = True
 
