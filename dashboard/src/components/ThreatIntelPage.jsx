@@ -63,36 +63,48 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   }, []);
 
   /* ── Fetch threat intel for a domain ── */
-  const loadIntel = useCallback(async (targetDomain) => {
+  const loadIntel = useCallback(async (targetDomain, isPolling = false) => {
     if (!targetDomain || !targetDomain.trim()) return;
     const target = targetDomain.trim().toLowerCase();
-    setLoading(true);
-    setError('');
-    setIntelData(null);
-    setActiveTab('overview');
-    setSelectedNode(null);
+    if (!isPolling) {
+      setLoading(true);
+      setError('');
+      setIntelData(null);
+      setActiveTab('overview');
+      setSelectedNode(null);
+    }
     try {
       const res = await fetch(getApiUrl('/api/threat-intel/' + encodeURIComponent(target)));
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
       const data = await res.json();
       setIntelData(data);
 
-      /* Sync sliders to API values */
-      if (data.attack_surface != null) setAttackSurface(data.attack_surface);
-      if (data.vuln_density != null) setVulnDensity(data.vuln_density);
-      if (data.exposure_level != null) setExposure(data.exposure_level);
+      if (data.is_scanning) {
+        setLoading(true);
+        // Poll again in 3 seconds
+        setTimeout(() => loadIntel(target, true), 3000);
+      } else {
+        setLoading(false);
+        /* Sync sliders to API values */
+        if (data.attack_surface != null) setAttackSurface(data.attack_surface);
+        if (data.vuln_density != null) setVulnDensity(data.vuln_density);
+        if (data.exposure_level != null) setExposure(data.exposure_level);
 
-      /* Regenerate radar dots based on real IOC count */
-      const iocCount = Array.isArray(data.iocs) ? data.iocs.length : 6;
-      setRadarDots(generateRadarDots(iocCount));
+        /* Regenerate radar dots based on real IOC count */
+        const iocCount = Array.isArray(data.iocs) ? data.iocs.length : 6;
+        setRadarDots(generateRadarDots(iocCount));
+      }
 
       if (setCurrentDomain) {
         setCurrentDomain(target);
       }
     } catch (err) {
-      setError(err.message || 'Failed to load threat intelligence');
-    } finally {
-      setLoading(false);
+      if (!isPolling) {
+        setError(err.message || 'Failed to load threat intelligence');
+        setLoading(false);
+      } else {
+        setTimeout(() => loadIntel(target, true), 5000);
+      }
     }
   }, [setCurrentDomain]);
 
@@ -368,10 +380,16 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
             </svg>
           </div>
           <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '1rem', color: 'var(--accent-blue)', marginBottom: '0.5rem', letterSpacing: '3px' }}>
-            SCANNING THREAT DATABASE
+            {intelData?.is_scanning ? 'AUTO-TRIGGERED SECURITY SCAN IN PROGRESS' : 'SCANNING THREAT DATABASE'}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            Correlating IOCs, mapping MITRE techniques, assessing risk vectors...
+            {intelData?.is_scanning ? (
+              <>
+                Running module: <span style={{ color: 'var(--accent-orange)' }}>{intelData?.scan_progress?.current_module}</span> ({intelData?.scan_progress?.completed}/{intelData?.scan_progress?.total})
+              </>
+            ) : (
+              'Correlating IOCs, mapping MITRE techniques, assessing risk vectors...'
+            )}
           </div>
         </div>
       )}

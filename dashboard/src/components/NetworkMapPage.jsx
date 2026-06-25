@@ -797,28 +797,40 @@ const NetworkMapPage = () => {
     })();
   }, []);
 
-  /* ── fetch network map data ── */
-  const fetchData = async (targetDomain) => {
+  const fetchData = async (targetDomain, isPolling = false) => {
     const clean = targetDomain.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!clean) return;
-    setLoading(true);
-    setError('');
-    setData(null);
-    setActiveDomain(clean);
-    setScanAnim(true);
+    if (!isPolling) {
+      setLoading(true);
+      setError('');
+      setData(null);
+      setActiveDomain(clean);
+      setScanAnim(true);
+    }
     try {
       const res = await fetch(getApiUrl('/api/network-map/' + encodeURIComponent(clean)));
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const json = await res.json();
       setData(json);
-      if (!json.has_data) {
-        setError('No network data available. Run a scan first.');
+      
+      if (json.is_scanning) {
+        setLoading(true);
+        setTimeout(() => fetchData(clean, true), 3000);
+      } else {
+        setLoading(false);
+        setTimeout(() => setScanAnim(false), 2200);
+        if (!json.has_data) {
+          setError('No network data available. Run a scan first.');
+        }
       }
     } catch (e) {
-      setError(e.message || 'Failed to fetch network data.');
-    } finally {
-      setLoading(false);
-      setTimeout(() => setScanAnim(false), 2200);
+      if (!isPolling) {
+        setError(e.message || 'Failed to fetch network data.');
+        setLoading(false);
+        setScanAnim(false);
+      } else {
+        setTimeout(() => fetchData(clean, true), 5000);
+      }
     }
   };
 
@@ -932,10 +944,16 @@ const NetworkMapPage = () => {
         }}>
           <div style={{ fontSize: 52, marginBottom: 16, animation: 'pulse 1.5s ease-in-out infinite' }}>🛰️</div>
           <div style={{ fontFamily: 'var(--font-cyber)', fontSize: 16, color: 'var(--accent-blue)', letterSpacing: 3, marginBottom: 8 }}>
-            SCANNING NETWORK
+            {data?.is_scanning ? 'AUTO-TRIGGERED INFRASTRUCTURE SCAN IN PROGRESS' : 'SCANNING NETWORK'}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
-            Mapping infrastructure for <span style={{ color: 'var(--accent-green)' }}>{activeDomain}</span>
+            {data?.is_scanning ? (
+              <>
+                Target: <span style={{ color: 'var(--accent-green)' }}>{activeDomain}</span> | Running: <span style={{ color: 'var(--accent-orange)' }}>{data?.scan_progress?.current_module}</span> ({data?.scan_progress?.completed}/{data?.scan_progress?.total})
+              </>
+            ) : (
+              <>Mapping infrastructure for <span style={{ color: 'var(--accent-green)' }}>{activeDomain}</span></>
+            )}
           </div>
           {/* animated progress bar */}
           <div style={{

@@ -382,7 +382,7 @@ async def get_global_stats():
         }
 
 @app.get('/api/threat-intel/{domain}')
-async def get_threat_intel(domain: str):
+async def get_threat_intel(domain: str, background_tasks: BackgroundTasks):
     """Extract comprehensive threat intelligence from all scan modules"""
     result_path = os.path.join('logs', domain, 'results.json')
     intel = {
@@ -399,9 +399,57 @@ async def get_threat_intel(domain: str):
         'has_data': False,
         'attack_path': {'graph': {'nodes': [], 'edges': []}, 'exploit_chains': []},
         'archive_secrets': [],
+        'is_scanning': False,
+        'scan_progress': None,
     }
 
     if not os.path.exists(result_path):
+        # Auto-trigger scan if not already running
+        if domain in ACTIVE_SCANS:
+            intel['is_scanning'] = True
+            intel['scan_progress'] = {
+                'total': ACTIVE_SCANS[domain].get('total', 16),
+                'completed': ACTIVE_SCANS[domain].get('completed', 0),
+                'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
+            }
+        else:
+            modules_list = [
+                "Domain Information", "DNS Records", "SEO Analysis", "Web Technologies",
+                "Security Analysis", "Advanced Content Scan", "Contact Spy", "Subdomain Discovery",
+                "Subdomain Takeover", "CloudFlare Bypass", "Nmap Zero Day Scan", "GEO Analysis",
+                "Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"
+            ]
+            module_functions = {
+                "Domain Information": lambda d: get_domain_info(d),
+                "DNS Records": lambda d: DNSAnalyzer().get_dns_records(d),
+                "SEO Analysis": analyze_advanced_seo,
+                "Web Technologies": detect_web_technologies,
+                "Security Analysis": analyze_security,
+                "Advanced Content Scan": lambda d: AdvancedContentScanner(d).run(),
+                "Contact Spy": lambda d: GlobalDomainScraper(d).crawl(),
+                "Subdomain Discovery": lambda d: run_subfinder(d),
+                "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
+                "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
+                "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
+                "GEO Analysis": analyze_geo,
+                "Web Archive Spy": lambda d: ArchiveSpy(d).run(),
+                "Phishing Domain Protection": lambda d: PhishingDetector(d).run(),
+                "SSL SAN Association": lambda d: SSLAssociation(d).run(),
+                "Attack Path Planner": lambda d: AttackPathPlanner(d).run()
+            }
+            ACTIVE_SCANS[domain] = {
+                "total": len(modules_list),
+                "completed": 0,
+                "current_module": "Initializing Auto Scan...",
+                "results": {}
+            }
+            background_tasks.add_task(run_scan_background, domain, modules_list, module_functions)
+            intel['is_scanning'] = True
+            intel['scan_progress'] = {
+                'total': len(modules_list),
+                'completed': 0,
+                'current_module': 'Initializing Auto Scan...'
+            }
         return intel
 
     try:
@@ -594,7 +642,7 @@ async def get_threat_intel(domain: str):
 
 
 @app.get('/api/network-map/{domain}')
-async def get_network_map(domain: str):
+async def get_network_map(domain: str, background_tasks: BackgroundTasks):
     """Retrieve comprehensive network topology data for a domain"""
     result_path = os.path.join('logs', domain, 'results.json')
     network = {
@@ -609,9 +657,57 @@ async def get_network_map(domain: str):
         'has_data': False,
         'phishing_domains': [],
         'associated_sans': [],
+        'is_scanning': False,
+        'scan_progress': None,
     }
 
     if not os.path.exists(result_path):
+        # Auto-trigger scan if not already running
+        if domain in ACTIVE_SCANS:
+            network['is_scanning'] = True
+            network['scan_progress'] = {
+                'total': ACTIVE_SCANS[domain].get('total', 16),
+                'completed': ACTIVE_SCANS[domain].get('completed', 0),
+                'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
+            }
+        else:
+            modules_list = [
+                "Domain Information", "DNS Records", "SEO Analysis", "Web Technologies",
+                "Security Analysis", "Advanced Content Scan", "Contact Spy", "Subdomain Discovery",
+                "Subdomain Takeover", "CloudFlare Bypass", "Nmap Zero Day Scan", "GEO Analysis",
+                "Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"
+            ]
+            module_functions = {
+                "Domain Information": lambda d: get_domain_info(d),
+                "DNS Records": lambda d: DNSAnalyzer().get_dns_records(d),
+                "SEO Analysis": analyze_advanced_seo,
+                "Web Technologies": detect_web_technologies,
+                "Security Analysis": analyze_security,
+                "Advanced Content Scan": lambda d: AdvancedContentScanner(d).run(),
+                "Contact Spy": lambda d: GlobalDomainScraper(d).crawl(),
+                "Subdomain Discovery": lambda d: run_subfinder(d),
+                "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
+                "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
+                "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
+                "GEO Analysis": analyze_geo,
+                "Web Archive Spy": lambda d: ArchiveSpy(d).run(),
+                "Phishing Domain Protection": lambda d: PhishingDetector(d).run(),
+                "SSL SAN Association": lambda d: SSLAssociation(d).run(),
+                "Attack Path Planner": lambda d: AttackPathPlanner(d).run()
+            }
+            ACTIVE_SCANS[domain] = {
+                "total": len(modules_list),
+                "completed": 0,
+                "current_module": "Initializing Auto Scan...",
+                "results": {}
+            }
+            background_tasks.add_task(run_scan_background, domain, modules_list, module_functions)
+            network['is_scanning'] = True
+            network['scan_progress'] = {
+                'total': len(modules_list),
+                'completed': 0,
+                'current_module': 'Initializing Auto Scan...'
+            }
         return network
 
     with open(result_path, 'r', encoding='utf-8') as f:
