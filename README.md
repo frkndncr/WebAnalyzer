@@ -1,8 +1,8 @@
-# 🚀 WebAnalyzer v3.5.0 - Enterprise Domain Security & Intelligence Platform
+# 🚀 WebAnalyzer v3.6.2 - Enterprise Domain Security & Intelligence Platform
 
 <div align="center">
 
-![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.5.0-blue?style=for-the-badge&logo=security&logoColor=white)
+![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.6.2-blue?style=for-the-badge&logo=security&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange?style=for-the-badge&logo=mysql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-red?style=for-the-badge&logo=opensource&logoColor=white)
@@ -24,7 +24,7 @@
   <img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer Dashboard Mockup" width="850px" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); margin-bottom: 25px;" />
 </div>
 
-WebAnalyzer v3.5.0 is the **most advanced** Python-based domain analysis framework designed for cybersecurity professionals, penetration testers, and security researchers. The platform combines reconnaissance, vulnerability assessment, and intelligence gathering with **enterprise-grade bulk processing capabilities**.
+WebAnalyzer v3.6.2 is the **most advanced** Python-based domain analysis framework designed for cybersecurity professionals, penetration testers, and security researchers. The platform combines reconnaissance, vulnerability assessment, and intelligence gathering with **enterprise-grade bulk processing capabilities**.
 
 ### ✨ Revolutionary Features
 
@@ -35,7 +35,7 @@ WebAnalyzer v3.5.0 is the **most advanced** Python-based domain analysis framewo
 🔹 **🛡️ Anti-Detection Arsenal**: IP rotation, user-agent cycling, and advanced stealth capabilities  
 🔹 **🚀 Scalable Architecture**: Support for 1-50 parallel workers with dynamic resource management  
 
-### 🎯 What's Revolutionary in v3.5.0
+### 🎯 What's Revolutionary in v3.6.2
 
 <table>
 <tr>

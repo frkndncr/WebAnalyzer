@@ -23,6 +23,10 @@ from modules.advanced_content_scanner import AdvancedContentScanner
 from modules.cloudflare_bypass import CloudflareBypass
 from modules.nmap_zero_day import UltraAdvancedNetworkScanner
 from modules.geo_analysis import analyze_geo
+from modules.archive_spy import ArchiveSpy
+from modules.phishing_detector import PhishingDetector
+from modules.ssl_association import SSLAssociation
+from modules.attack_path_planner import AttackPathPlanner
 
 app = FastAPI(title="WebAnalyzer API", description="FastAPI Backend for WebAnalyzer React Panel")
 
@@ -65,7 +69,18 @@ async def get_status(domain: str):
     
     result_path = os.path.join("logs", domain, "results.json")
     if os.path.exists(result_path):
-        return {"total": 1, "completed": 1, "current_module": "Finished", "results": {}}
+        try:
+            with open(result_path, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+            scan_info = saved.get("scan_info", {})
+            return {
+                "total": scan_info.get("total_modules", 1),
+                "completed": scan_info.get("successful_modules", 1),
+                "current_module": "Finished",
+                "results": saved.get("results", {})
+            }
+        except Exception:
+            return {"total": 1, "completed": 1, "current_module": "Finished", "results": {}}
         
     raise HTTPException(status_code=404, detail="Scan not found or not active")
 
@@ -86,7 +101,11 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
         "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
         "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
         "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
-        "GEO Analysis": analyze_geo
+        "GEO Analysis": analyze_geo,
+        "Web Archive Spy": lambda d: ArchiveSpy(d).run(),
+        "Phishing Domain Protection": lambda d: PhishingDetector(d).run(),
+        "SSL SAN Association": lambda d: SSLAssociation(d).run(),
+        "Attack Path Planner": lambda d: AttackPathPlanner(d).run()
     }
     
     # Initialize the memory state for tracking
@@ -114,7 +133,9 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
         'Security Analysis': 'heavy', 'Advanced Content Scan': 'heavy',
         'Contact Spy': 'heavy', 'Subdomain Discovery': 'heavy',
         'Subdomain Takeover': 'heavy', 'CloudFlare Bypass': 'heavy',
-        'Nmap Zero Day Scan': 'heavy', 'GEO Analysis': 'light'
+        'Nmap Zero Day Scan': 'heavy', 'GEO Analysis': 'light',
+        'Web Archive Spy': 'heavy', 'Phishing Domain Protection': 'heavy',
+        'SSL SAN Association': 'medium', 'Attack Path Planner': 'medium'
     }
     
     for module_name in selected_modules:
@@ -376,6 +397,8 @@ async def get_threat_intel(domain: str):
         'exposure_level': 0,
         'scan_date': None,
         'has_data': False,
+        'attack_path': {'graph': {'nodes': [], 'edges': []}, 'exploit_chains': []},
+        'archive_secrets': [],
     }
 
     if not os.path.exists(result_path):
@@ -483,6 +506,28 @@ async def get_threat_intel(domain: str):
                     'source': 'Subdomain Takeover',
                 })
 
+    # ── Web Archive Spy → historical secrets ──
+    archive = res.get('Web Archive Spy', {})
+    if isinstance(archive, dict) and 'secrets' in archive:
+        intel['archive_secrets'] = archive['secrets']
+        # Also expose found secrets as CVEs / findings
+        for sec_item in archive['secrets']:
+            intel['cves'].append({
+                'id': sec_item.get('type', 'Historical Leak'),
+                'severity': sec_item.get('severity', 'High').upper(),
+                'cvss': 8.5,
+                'description': f"Exposed credentials found in archive of {sec_item.get('file_url', '')} (Value: {sec_item.get('value', '')})",
+                'status': 'Historical Cache',
+            })
+
+    # ── Attack Path Planner → exploit graph and chains ──
+    path_plan = res.get('Attack Path Planner', {})
+    if isinstance(path_plan, dict):
+        if 'graph' in path_plan:
+            intel['attack_path']['graph'] = path_plan['graph']
+        if 'exploit_chains' in path_plan:
+            intel['attack_path']['exploit_chains'] = path_plan['exploit_chains']
+
     # ── MITRE ATT&CK Mapping ──
     mitre_map = {
         'TA0043': {'name': 'Reconnaissance', 'detected': 0},
@@ -562,6 +607,8 @@ async def get_network_map(domain: str):
         'ssl_info': {},
         'subdomain_takeover': [],
         'has_data': False,
+        'phishing_domains': [],
+        'associated_sans': [],
     }
 
     if not os.path.exists(result_path):
@@ -622,6 +669,16 @@ async def get_network_map(domain: str):
                     ssl_data['issues'].append(v.get('description', v.get('detail', '')))
         network['ssl_info'] = ssl_data
 
+    # ── Phishing Domain Protection → typosquatted domains ──
+    phish = res.get('Phishing Domain Protection', {})
+    if isinstance(phish, dict) and 'phishing_domains' in phish:
+        network['phishing_domains'] = phish['phishing_domains']
+
+    # ── SSL SAN Association → associated certificate hostnames ──
+    ssl_assoc = res.get('SSL SAN Association', {})
+    if isinstance(ssl_assoc, dict) and 'associated_domains' in ssl_assoc:
+        network['associated_sans'] = ssl_assoc['associated_domains']
+
     return network
 
 
@@ -661,7 +718,7 @@ async def get_system_health():
         'platform': platform.system(),
         'active_scans': len(ACTIVE_SCANS),
         'pending_tasks': len(ACS_SECTION_TASKS),
-        'version': '3.3.0'
+        'version': '3.6.2'
     }
 
 
@@ -692,6 +749,6 @@ async def root():
     return {
         "status": "online",
         "name": "WebAnalyzer API",
-        "version": "3.3.0",
+        "version": "3.6.2",
         "docs_url": "/docs"
     }

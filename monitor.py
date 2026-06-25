@@ -41,7 +41,7 @@ def monitor_job(job_id):
                 
                 # Display
                 print("=" * 60)
-                print(f"WebAnalyzer v3.3.0 - Job #{job_id} Monitor")
+                print(f"WebAnalyzer v3.6.2 - Job #{job_id} Monitor")
                 print("=" * 60)
                 
                 print(f"\n📊 Job: {job_info['job_name']}")

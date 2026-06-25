@@ -14,6 +14,10 @@ const MODULE_DATA = [
   { name: 'CloudFlare Bypass', icon: '☁️', description: 'Origin IP discovery behind CF', time: '~15s' },
   { name: 'Nmap Zero Day Scan', icon: '🎯', description: 'Port scan, service fingerprinting', time: '~1m' },
   { name: 'GEO Analysis', icon: '🌍', description: 'IP geolocation, hosting provider', time: '~5s' },
+  { name: 'Web Archive Spy', icon: '🕒', description: 'Wayback CDX Secrets Scraper', time: '~30s' },
+  { name: 'Phishing Domain Protection', icon: '🪞', description: 'Typosquatted domain resolver', time: '~40s' },
+  { name: 'SSL SAN Association', icon: '🔗', description: 'crt.sh & socket certificate mapping', time: '~10s' },
+  { name: 'Attack Path Planner', icon: '🗺️', description: 'Logical exploit chain generator', time: '~5s' },
 ];
 
 const MODULES = MODULE_DATA.map(m => m.name);

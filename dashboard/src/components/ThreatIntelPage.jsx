@@ -21,9 +21,9 @@ const generateRadarDots = (count) => {
 };
 
 /* ─── Component ──────────────────────────────────────────────── */
-const ThreatIntelPage = () => {
+const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   /* ── Domain input & recent scans ── */
-  const [domainInput, setDomainInput] = useState('');
+  const [domainInput, setDomainInput] = useState(domain || '');
   const [recentDomains, setRecentDomains] = useState([]);
 
   /* ── API data state ── */
@@ -32,6 +32,8 @@ const ThreatIntelPage = () => {
   const [error, setError] = useState('');
 
   /* ── UI state ── */
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedNode, setSelectedNode] = useState(null);
   const [cveSearch, setCveSearch] = useState('');
   const [iocSort, setIocSort] = useState({ key: 'confidence', asc: false });
   const [attackSurface, setAttackSurface] = useState(5);
@@ -61,12 +63,14 @@ const ThreatIntelPage = () => {
   }, []);
 
   /* ── Fetch threat intel for a domain ── */
-  const loadIntel = useCallback(async (domain) => {
-    if (!domain || !domain.trim()) return;
-    const target = domain.trim().toLowerCase();
+  const loadIntel = useCallback(async (targetDomain) => {
+    if (!targetDomain || !targetDomain.trim()) return;
+    const target = targetDomain.trim().toLowerCase();
     setLoading(true);
     setError('');
     setIntelData(null);
+    setActiveTab('overview');
+    setSelectedNode(null);
     try {
       const res = await fetch(getApiUrl('/api/threat-intel/' + encodeURIComponent(target)));
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
@@ -81,12 +85,24 @@ const ThreatIntelPage = () => {
       /* Regenerate radar dots based on real IOC count */
       const iocCount = Array.isArray(data.iocs) ? data.iocs.length : 6;
       setRadarDots(generateRadarDots(iocCount));
+
+      if (setCurrentDomain) {
+        setCurrentDomain(target);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load threat intelligence');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setCurrentDomain]);
+
+  /* ── Auto-fetch on mount/domain change ── */
+  useEffect(() => {
+    if (domain) {
+      setDomainInput(domain);
+      loadIntel(domain);
+    }
+  }, [domain, loadIntel]);
 
   /* ── Derived values from API or defaults ── */
   const mitreData = (intelData && Array.isArray(intelData.mitre_techniques)) ? intelData.mitre_techniques : [];
@@ -437,266 +453,363 @@ const ThreatIntelPage = () => {
             </div>
           </div>
 
-          {/* ═══ Top Row: Radar + MITRE ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', marginBottom: '2.5rem', alignItems: 'start' }}>
-
-            {/* ═══ Section B: Threat Radar ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-                ⚡ THREAT_RADAR
-              </h3>
-              <svg width="280" height="280" viewBox="0 0 300 300" style={{ display: 'block', margin: '0 auto' }}>
-                <defs>
-                  <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(0,242,254,0.06)" />
-                    <stop offset="100%" stopColor="rgba(0,242,254,0)" />
-                  </radialGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                  </filter>
-                </defs>
-                {/* Background fill */}
-                <circle cx="150" cy="150" r="130" fill="url(#radarGrad)" />
-                {/* Concentric circles */}
-                {[130, 100, 70, 40].map((r) => (
-                  <circle key={r} cx="150" cy="150" r={r} fill="none" stroke="rgba(0,242,254,0.15)" strokeWidth="1" />
-                ))}
-                {/* Cross lines */}
-                <line x1="150" y1="20" x2="150" y2="280" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
-                <line x1="20" y1="150" x2="280" y2="150" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
-                <line x1="55" y1="55" x2="245" y2="245" stroke="rgba(0,242,254,0.05)" strokeWidth="1" />
-                <line x1="245" y1="55" x2="55" y2="245" stroke="rgba(0,242,254,0.05)" strokeWidth="1" />
-                {/* Sweep */}
-                <g style={{ transformOrigin: '150px 150px', animation: 'radarSweep 4s linear infinite' }}>
-                  <line x1="150" y1="150" x2="150" y2="20" stroke="rgba(0,242,254,0.8)" strokeWidth="2" filter="url(#glow)" />
-                  <path d="M150,150 L150,20 A130,130 0 0,1 242,68 Z" fill="rgba(0,242,254,0.08)" />
-                </g>
-                {/* Threat dots */}
-                {radarDots.map((dot, i) => (
-                  <circle key={i} cx={dot.x} cy={dot.y} r="4" fill={dot.severity} filter="url(#glow)"
-                    style={{ animation: `blinkDot 1.5s ease-in-out ${dot.delay}s infinite` }} />
-                ))}
-                {/* Center dot */}
-                <circle cx="150" cy="150" r="5" fill="#00f2fe" filter="url(#glow)" />
-              </svg>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.8rem' }}>
-                {iocData.length} active threat signatures detected
-              </div>
-            </div>
-
-            {/* ═══ Section C: MITRE ATT&CK Matrix ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-                🎯 MITRE ATT&CK MATRIX
-              </h3>
-              {mitreData.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '0.7rem' }}>
-                  {mitreData.map((cat) => (
-                    <div key={cat.id} className="glass-panel" style={{
-                      padding: '0.9rem',
-                      borderLeft: `3px solid ${mitreColor(cat.detected)}`,
-                      cursor: 'pointer',
-                      transition: 'all 0.25s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = `0 0 18px ${mitreColor(cat.detected)}40`;
-                      e.currentTarget.style.borderColor = `${mitreColor(cat.detected)}60`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '';
-                      e.currentTarget.style.borderColor = '';
-                    }}>
-                      <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.68rem', color: 'var(--text-primary)', marginBottom: '4px', lineHeight: 1.3 }}>
-                        {cat.name}
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                        {cat.id}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                          fontFamily: 'var(--font-cyber)', fontSize: '1.1rem', fontWeight: 900,
-                          color: mitreColor(cat.detected),
-                          textShadow: `0 0 8px ${mitreColor(cat.detected)}60`,
-                        }}>{cat.detected}</span>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>detected</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
-                  No MITRE ATT&CK techniques mapped for this domain.
-                </div>
-              )}
-            </div>
+          {/* ═══ Tab Navigation ═══ */}
+          <div style={{
+            display: 'flex', gap: '8px', marginBottom: '2rem', flexWrap: 'wrap',
+            borderBottom: '1px solid var(--panel-border)', paddingBottom: '8px',
+          }}>
+            {[
+              { id: 'overview', label: 'Threat Overview', icon: '📊' },
+              { id: 'cves', label: 'CVEs & IOCs', icon: '🛡️' },
+              { id: 'archive', label: 'Wayback Secrets', icon: '🕒' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`btn-outline${activeTab === tab.id ? ' active' : ''}`}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSelectedNode(null);
+                }}
+                style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.82rem', padding: '8px 20px',
+                  borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px',
+                  background: activeTab === tab.id ? 'rgba(0,242,254,0.1)' : 'transparent',
+                  borderColor: activeTab === tab.id ? 'var(--accent-blue)' : 'var(--panel-border)',
+                  color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer', transition: 'all 0.2s ease',
+                }}
+              >
+                <span>{tab.icon}</span> {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* ═══ Section D: CVE Database Search ═══ */}
-          <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              🛡️ CVE DATABASE
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
-                borderRadius: '4px', background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
-                border: '1px solid rgba(0,242,254,0.2)',
-              }}>
-                {cveData.length} entries
-              </span>
-            </h3>
-            <input
-              className="input-glass"
-              placeholder="Search CVE ID or description..."
-              value={cveSearch}
-              onChange={(e) => setCveSearch(e.target.value)}
-              style={{ marginBottom: '1rem', maxWidth: '450px' }}
-            />
-            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
-                <thead>
-                  <tr>
-                    {['CVE ID', 'Severity', 'CVSS', 'Description', 'Status'].map((h) => (
-                      <th key={h} style={{
-                        background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
-                        fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
-                        color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
-                        fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
-                      }}>{h}</th>
+          {/* ═══ Tab Content: Overview ═══ */}
+          {activeTab === 'overview' && (
+            <div className="animate-fade-in">
+              <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', marginBottom: '2.5rem', alignItems: 'start' }}>
+                {/* Section B: Threat Radar */}
+                <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
+                    ⚡ THREAT_RADAR
+                  </h3>
+                  <svg width="280" height="280" viewBox="0 0 300 300" style={{ display: 'block', margin: '0 auto' }}>
+                    <defs>
+                      <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="rgba(0,242,254,0.06)" />
+                        <stop offset="100%" stopColor="rgba(0,242,254,0)" />
+                      </radialGradient>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                      </filter>
+                    </defs>
+                    <circle cx="150" cy="150" r="130" fill="url(#radarGrad)" />
+                    {[130, 100, 70, 40].map((r) => (
+                      <circle key={r} cx="150" cy="150" r={r} fill="none" stroke="rgba(0,242,254,0.15)" strokeWidth="1" />
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCVEs.map((cve, idx) => (
-                    <tr key={cve.id + '-' + idx} style={{ transition: 'background 0.2s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = ''}>
-                      <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-blue)', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        {cve.id}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        <span style={severityStyle(cve.severity)}>{cve.severity}</span>
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: cve.cvss >= 9 ? '#ff0055' : cve.cvss >= 7 ? '#ff9f1c' : '#00f2fe', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        {Number(cve.cvss).toFixed(1)}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', color: 'var(--text-secondary)', fontSize: '0.8rem', maxWidth: '400px', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                        {cve.description}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', ...statusStyle(cve.status) }}>
-                        {cve.status}
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredCVEs.length === 0 && (
-                    <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No matching CVEs found.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    <line x1="150" y1="20" x2="150" y2="280" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
+                    <line x1="20" y1="150" x2="280" y2="150" stroke="rgba(0,242,254,0.08)" strokeWidth="1" />
+                    <g style={{ transformOrigin: '150px 150px', animation: 'radarSweep 4s linear infinite' }}>
+                      <line x1="150" y1="150" x2="150" y2="20" stroke="rgba(0,242,254,0.8)" strokeWidth="2" filter="url(#glow)" />
+                      <path d="M150,150 L150,20 A130,130 0 0,1 242,68 Z" fill="rgba(0,242,254,0.08)" />
+                    </g>
+                    {radarDots.map((dot, i) => (
+                      <circle key={i} cx={dot.x} cy={dot.y} r="4" fill={dot.severity} filter="url(#glow)"
+                        style={{ animation: `blinkDot 1.5s ease-in-out ${dot.delay}s infinite` }} />
+                    ))}
+                    <circle cx="150" cy="150" r="5" fill="#00f2fe" filter="url(#glow)" />
+                  </svg>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.8rem' }}>
+                    {iocData.length} active threat signatures detected
+                  </div>
+                </div>
 
-          {/* ═══ Bottom Row: IOC + Risk Calculator ═══ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', marginBottom: '2rem' }}>
-
-            {/* ═══ Section E: IOC Table ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                🔍 INDICATORS OF COMPROMISE
-                <span style={{
-                  fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
-                  borderRadius: '4px', background: 'rgba(218,34,255,0.1)', color: '#da22ff',
-                  border: '1px solid rgba(218,34,255,0.2)',
-                }}>
-                  {iocData.length} IOCs
-                </span>
-              </h3>
-              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
-                  <thead>
-                    <tr>
-                      {[
-                        { key: 'type', label: 'Type' },
-                        { key: 'value', label: 'Value' },
-                        { key: 'confidence', label: 'Confidence' },
-                        { key: 'firstSeen', label: 'First Seen' },
-                        { key: 'source', label: 'Source' },
-                      ].map((col) => (
-                        <th key={col.key} onClick={() => toggleSort(col.key)} style={{
-                          background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
-                          fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
-                          color: iocSort.key === col.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                          borderBottom: '1px solid var(--panel-border)', fontFamily: 'var(--font-mono)',
-                          cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+                {/* Section C: MITRE ATT&CK Matrix */}
+                <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
+                    🎯 MITRE ATT&CK MATRIX
+                  </h3>
+                  {mitreData.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '0.7rem' }}>
+                      {mitreData.map((cat) => (
+                        <div key={cat.id} className="glass-panel" style={{
+                          padding: '0.9rem',
+                          borderLeft: `3px solid ${mitreColor(cat.detected)}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.25s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = `0 0 18px ${mitreColor(cat.detected)}40`;
+                          e.currentTarget.style.borderColor = `${mitreColor(cat.detected)}60`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = '';
+                          e.currentTarget.style.borderColor = '';
                         }}>
-                          {col.label} {iocSort.key === col.key ? (iocSort.asc ? '▲' : '▼') : ''}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedIOCs.length > 0 ? sortedIOCs.map((ioc, i) => (
-                      <tr key={i} style={{ transition: 'background 0.2s' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = ''}>
-                        <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                          <span style={{
-                            display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem',
-                            fontWeight: 600, fontFamily: 'var(--font-mono)',
-                            background: 'rgba(218,34,255,0.1)', color: '#da22ff', border: '1px solid rgba(218,34,255,0.25)',
-                          }}>{ioc.type}</span>
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(48,54,61,0.3)', wordBreak: 'break-all' }}>
-                          {ioc.value}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '50px', height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                              <div style={{
-                                width: `${ioc.confidence}%`, height: '100%', borderRadius: '3px',
-                                background: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe',
-                              }} />
-                            </div>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe' }}>
-                              {ioc.confidence}%
-                            </span>
+                          <div style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.68rem', color: 'var(--text-primary)', marginBottom: '4px', lineHeight: 1.3 }}>
+                            {cat.name}
                           </div>
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
-                          {ioc.firstSeen}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.9rem', fontSize: '0.8rem', color: 'var(--accent-blue)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
-                          {ioc.source}
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No IOCs detected.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                            {cat.id}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontFamily: 'var(--font-cyber)', fontSize: '1.1rem', fontWeight: 900,
+                              color: mitreColor(cat.detected),
+                              textShadow: `0 0 8px ${mitreColor(cat.detected)}60`,
+                            }}>{cat.detected}</span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>detected</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                      No MITRE ATT&CK techniques mapped for this domain.
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* ═══ Section F: Risk Score Calculator ═══ */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-                📊 RISK_CALCULATOR
-              </h3>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                <canvas ref={riskCanvasRef} style={{ width: '180px', height: '180px' }} />
-              </div>
-              <RiskSlider label="ATTACK_SURFACE" value={attackSurface} setValue={setAttackSurface} emoji="🎯" />
-              <RiskSlider label="VULN_DENSITY" value={vulnDensity} setValue={setVulnDensity} emoji="🐛" />
-              <RiskSlider label="EXPOSURE_LEVEL" value={exposure} setValue={setExposure} emoji="🌐" />
-              <div style={{
-                marginTop: '1rem', padding: '0.8rem', borderRadius: '6px',
-                background: `${riskColor}10`, border: `1px solid ${riskColor}30`,
-                textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
-              }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Composite Risk: </span>
-                <span style={{ color: riskColor, fontWeight: 700, fontSize: '0.9rem' }}>{riskScore.toFixed(1)} / 10.0</span>
+              {/* Section F: Risk Score Calculator */}
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
+                  📊 RISK_CALCULATOR
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <canvas ref={riskCanvasRef} style={{ width: '180px', height: '180px' }} />
+                  </div>
+                  <div>
+                    <RiskSlider label="ATTACK_SURFACE" value={attackSurface} setValue={setAttackSurface} emoji="🎯" />
+                    <RiskSlider label="VULN_DENSITY" value={vulnDensity} setValue={setVulnDensity} emoji="🐛" />
+                    <RiskSlider label="EXPOSURE_LEVEL" value={exposure} setValue={setExposure} emoji="🌐" />
+                    <div style={{
+                      marginTop: '1rem', padding: '0.8rem', borderRadius: '6px',
+                      background: `${riskColor}10`, border: `1px solid ${riskColor}30`,
+                      textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
+                    }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Composite Risk: </span>
+                      <span style={{ color: riskColor, fontWeight: 700, fontSize: '0.9rem' }}>{riskScore.toFixed(1)} / 10.0</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ═══ Tab Content: CVEs & IOCs ═══ */}
+          {activeTab === 'cves' && (
+            <div className="animate-fade-in">
+              {/* Section D: CVE Database Search */}
+              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🛡️ CVE DATABASE
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(0,242,254,0.1)', color: 'var(--accent-blue)',
+                    border: '1px solid rgba(0,242,254,0.2)',
+                  }}>
+                    {cveData.length} entries
+                  </span>
+                </h3>
+                <input
+                  className="input-glass"
+                  placeholder="Search CVE ID or description..."
+                  value={cveSearch}
+                  onChange={(e) => setCveSearch(e.target.value)}
+                  style={{ marginBottom: '1rem', maxWidth: '450px' }}
+                />
+                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                    <thead>
+                      <tr>
+                        {['CVE ID', 'Severity', 'CVSS', 'Description', 'Status'].map((h) => (
+                          <th key={h} style={{
+                            background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                            fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
+                            fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCVEs.map((cve, idx) => (
+                        <tr key={cve.id + '-' + idx} style={{ transition: 'background 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-blue)', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {cve.id}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <span style={severityStyle(cve.severity)}>{cve.severity}</span>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: cve.cvss >= 9 ? '#ff0055' : cve.cvss >= 7 ? '#ff9f1c' : '#00f2fe', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {Number(cve.cvss).toFixed(1)}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', color: 'var(--text-secondary)', fontSize: '0.8rem', maxWidth: '400px', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {cve.description}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', ...statusStyle(cve.status) }}>
+                            {cve.status}
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredCVEs.length === 0 && (
+                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No matching CVEs found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Section E: IOC Table */}
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🔍 INDICATORS OF COMPROMISE
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(218,34,255,0.1)', color: '#da22ff',
+                    border: '1px solid rgba(218,34,255,0.2)',
+                  }}>
+                    {iocData.length} IOCs
+                  </span>
+                </h3>
+                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                    <thead>
+                      <tr>
+                        {[
+                          { key: 'type', label: 'Type' },
+                          { key: 'value', label: 'Value' },
+                          { key: 'confidence', label: 'Confidence' },
+                          { key: 'firstSeen', label: 'First Seen' },
+                          { key: 'source', label: 'Source' },
+                        ].map((col) => (
+                          <th key={col.key} onClick={() => toggleSort(col.key)} style={{
+                            background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                            fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            color: iocSort.key === col.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                            borderBottom: '1px solid var(--panel-border)', fontFamily: 'var(--font-mono)',
+                            cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+                          }}>
+                            {col.label} {iocSort.key === col.key ? (iocSort.asc ? '▲' : '▼') : ''}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedIOCs.length > 0 ? sortedIOCs.map((ioc, i) => (
+                        <tr key={i} style={{ transition: 'background 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <span style={{
+                              display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem',
+                              fontWeight: 600, fontFamily: 'var(--font-mono)',
+                              background: 'rgba(218,34,255,0.1)', color: '#da22ff', border: '1px solid rgba(218,34,255,0.25)',
+                            }}>{ioc.type}</span>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(48,54,61,0.3)', wordBreak: 'break-all' }}>
+                            {ioc.value}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '50px', height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                <div style={{
+                                  width: `${ioc.confidence}%`, height: '100%', borderRadius: '3px',
+                                  background: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe',
+                                }} />
+                              </div>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: ioc.confidence > 90 ? '#ff0055' : ioc.confidence > 75 ? '#ff9f1c' : '#00f2fe' }}>
+                                {ioc.confidence}%
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
+                            {ioc.firstSeen}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontSize: '0.8rem', color: 'var(--accent-blue)', borderBottom: '1px solid rgba(48,54,61,0.3)', whiteSpace: 'nowrap' }}>
+                            {ioc.source}
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>No IOCs detected.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ Tab Content: Wayback Secrets ═══ */}
+          {activeTab === 'archive' && (
+            <div className="animate-fade-in">
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.85rem', fontFamily: 'var(--font-cyber)', marginBottom: '1rem', color: 'var(--text-secondary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🕒 WAYBACK MACHINE HISTORICAL SECRETS
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem', padding: '2px 8px',
+                    borderRadius: '4px', background: 'rgba(255,159,28,0.1)', color: 'var(--accent-orange)',
+                    border: '1px solid rgba(255,159,28,0.2)',
+                  }}>
+                    {(intelData.archive_secrets || []).length} secrets found
+                  </span>
+                </h3>
+                <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                    <thead>
+                      <tr>
+                        {['Secret Type', 'Exposed Value', 'File Location', 'Context Snippet', 'Severity'].map((h) => (
+                          <th key={h} style={{
+                            background: 'rgba(13,17,23,0.6)', padding: '0.7rem 0.9rem', textAlign: 'left',
+                            fontWeight: 600, fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                            color: 'var(--text-secondary)', borderBottom: '1px solid var(--panel-border)',
+                            fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(intelData.archive_secrets || []).length > 0 ? intelData.archive_secrets.map((sec, idx) => (
+                        <tr key={idx} style={{ transition: 'background 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,242,254,0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-blue)', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            {sec.type}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', fontFamily: 'var(--font-mono)', color: '#ff0055', fontWeight: 600, borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <code>{sec.value}</code>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <a href={sec.wayback_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-green)', textDecoration: 'none' }}>
+                              {sec.file_url.split('/').pop()}
+                            </a>
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', color: 'var(--text-secondary)', fontSize: '0.8rem', maxWidth: '350px', borderBottom: '1px solid rgba(48,54,61,0.3)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {sec.context}
+                          </td>
+                          <td style={{ padding: '0.6rem 0.9rem', borderBottom: '1px solid rgba(48,54,61,0.3)' }}>
+                            <span style={severityStyle(sec.severity ? sec.severity.toUpperCase() : 'HIGH')}>{sec.severity || 'High'}</span>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                            No historical secrets detected in Web Archive crawls. Enable "Web Archive Spy" during scan parameters configuration.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

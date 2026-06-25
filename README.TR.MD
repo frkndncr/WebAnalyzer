@@ -1,8 +1,8 @@
-# 🚀 WebAnalyzer v3.5.0 - Kurumsal Domain Güvenlik ve İstihbarat Platformu
+# 🚀 WebAnalyzer v3.6.2 - Kurumsal Domain Güvenlik ve İstihbarat Platformu
 
 <div align="center">
 
-![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.5.0-blue?style=for-the-badge&logo=security&logoColor=white)
+![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.6.2-blue?style=for-the-badge&logo=security&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange?style=for-the-badge&logo=mysql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-red?style=for-the-badge&logo=opensource&logoColor=white)
@@ -24,7 +24,7 @@
   <img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer Dashboard Mockup" width="850px" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); margin-bottom: 25px;" />
 </div>
 
-WebAnalyzer v3.5.0, siber güvenlik uzmanları, penetrasyon testçileri ve güvenlik araştırmacıları için tasarlanmış **en gelişmiş** Python tabanlı domain analiz çerçevesidir. Platform, keşif, güvenlik açığı değerlendirmesi ve istihbarat toplama işlemlerini **kurumsal seviyede toplu işleme yetenekleri** ile birleştirir.
+WebAnalyzer v3.6.2, siber güvenlik uzmanları, penetrasyon testçileri ve güvenlik araştırmacıları için tasarlanmış **en gelişmiş** Python tabanlı domain analiz çerçevesidir. Platform, keşif, güvenlik açığı değerlendirmesi ve istihbarat toplama işlemlerini **kurumsal seviyede toplu işleme yetenekleri** ile birleştirir.
 
 ### ✨ Devrimsel Özellikler
 
@@ -35,7 +35,7 @@ WebAnalyzer v3.5.0, siber güvenlik uzmanları, penetrasyon testçileri ve güve
 🔹 **🛡️ Anti-Tespit Cephaneliği**: IP rotasyonu, kullanıcı ajanı döngüsü ve gelişmiş gizlilik yetenekleri  
 🔹 **🚀 Ölçeklenebilir Mimari**: Dinamik kaynak yönetimi ile 1-50 paralel işçi desteği  
 
-### 🎯 v3.5.0'da Devrimsel Yenilikler
+### 🎯 v3.6.2'de Devrimsel Yenilikler
 
 <table>
 <tr>

@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.6.2] - 2026-06-25
+
+### Fixed
+- Synced console banner and monitor terminal output versions to `v3.6.2`.
+- Fixed dashboard SettingsPage and Sidebar footer versioning mismatches.
+- Verified and finalized production React assets compilation.
+
+## [3.6.1] - 2026-06-24
+
+### Added
+- Integrated `curl_cffi` for JA3 TLS fingerprinting evasion and `httpx` HTTP/2 support.
+- Built Tor Control SOCKS5 proxy rotation using raw socket connection signals.
+- Configured dynamic cookie persistence and automated Cloudflare anti-bot retry loops.
+
+## [3.5.0] - 2026-06-17
+
+### Added
+- Integrated Web Archive Spy module for hunting historical leaked secrets.
+- Integrated Attack Path Planner module with graphical exploit chains.
+- Integrated Phishing Domain Protection for discovering typosquatted/spoofed hostnames.
+- Integrated SSL SAN Association mapping module to discover certificate-linked hostnames.
+
+## [3.4.0] - 2026-06-16
+
+### Added
+- Rewrote the frontend using React & Vite to deliver the Elite Cyber Security Command Center Dashboard v2.0.
+- Wired real-time Web sockets and API endpoints for Threat Intelligence, Network Topology, and Settings modules.
+- Added dynamic interactive finding filters based on Critical/High/Medium/Low vulnerabilities.
+- Added collapsible section limits in result views to improve dashboard readability.
+
 ## [3.3.0] - 2026-06-16
 
 ### Added
