@@ -20,7 +20,7 @@ function App() {
       case 'new_scan':
         return <ScanForm setCurrentDomain={setCurrentDomain} setActiveTab={setActiveTab} />;
       case 'results':
-        return <ResultsPanel domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
+        return <ResultsPanel key={currentDomain} domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
       case 'advanced_scanner':
         return <AdvancedScannerPanel domain={currentDomain} />;
       case 'attack_path':

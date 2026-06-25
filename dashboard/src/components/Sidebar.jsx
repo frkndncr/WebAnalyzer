@@ -148,7 +148,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 WEBANALYZER
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.65rem', marginTop: '2px', fontFamily: 'var(--font-mono)', letterSpacing: '1px' }}>
-                SEC_AUDIT v3.3.0
+                SEC_AUDIT v3.6.2
               </p>
             </div>
           )}

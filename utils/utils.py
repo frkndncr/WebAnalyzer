@@ -26,15 +26,15 @@ def display_banner():
         banner_text.append(" ██║███╗██║██╔══╝  ██╔══██╗██╔══██║██║╚██╗██║██╔══██║╚════██║ ███╔╝  ██╔══╝  ██╔══██╗\n", style="bold magenta")
         banner_text.append(" ╚███╔███╔╝███████╗██████╔╝██║  ██║██║ ╚████║██║  ██║      ██║███████╗███████╗██║  ██║\n", style="bold blue")
         banner_text.append("  ╚══╝╚══╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝      ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝\n", style="bold blue")
-        banner_text.append("\n          🚀 Enterprise Domain Security & OSINT Analysis Platform v3.3\n", style="bold yellow")
+        banner_text.append("\n          🚀 Enterprise Domain Security & OSINT Analysis Platform v3.6.2\n", style="bold yellow")
         banner_text.append("              Created by Furkan Dinçer & Course Contributors\n", style="italic white")
         
-        console.print(Panel(banner_text, border_style="bright_blue", title="[bold white]WebAnalyzer v3.3[/bold white]", subtitle="[bold yellow]System Initialized[/bold yellow]"))
+        console.print(Panel(banner_text, border_style="bright_blue", title="[bold white]WebAnalyzer v3.6.2[/bold white]", subtitle="[bold yellow]System Initialized[/bold yellow]"))
     except ImportError:
         banner = """
         \033[92m
         ╔══════════════════════════════════════════════════════╗
-        ║     [-] WebAnalyzer     V3.3.0                       ║ 
+        ║     [-] WebAnalyzer     V3.6.2                       ║ 
         ║         Analyze domains with precision and style!    ║
         ╠══════════════════════════════════════════════════════╣
         ║         Coder: Furkan DINCER @f3rrkan                ║

@@ -1,7 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component } from 'react';
 import EducationModal from './EducationModal';
 import InteractiveJson from './InteractiveJson';
 import { getApiUrl } from '../config';
+
+/* ── Universal Score Extractor ──
+ * Handles all backend score formats:
+ *   - integer: 68
+ *   - string: "50/100"
+ *   - object: {Score: "50/100", Percentage: "50.0%", Grade: "D"}
+ *   - object: {overall_score: 77, grade: "C", ...}
+ */
+const extractScore = (raw) => {
+  if (raw == null) return { score: null, grade: null };
+  if (typeof raw === 'number') return { score: raw, grade: null };
+  if (typeof raw === 'string') {
+    const m = raw.match(/(\d+)/); 
+    return { score: m ? parseInt(m[1], 10) : null, grade: null };
+  }
+  if (typeof raw === 'object') {
+    let s = raw.overall_score ?? raw.score ?? raw.Score ?? null;
+    if (typeof s === 'string') { const m2 = s.match(/(\d+)/); s = m2 ? parseInt(m2[1], 10) : null; }
+    const g = raw.grade ?? raw.Grade ?? raw.security_grade ?? null;
+    return { score: s, grade: g };
+  }
+  return { score: null, grade: null };
+};
+
+/* ── Safe Text Renderer ──
+ * Prevents React crash when an object is accidentally rendered as a child.
+ * Converts any non-primitive to a readable string.
+ */
+const safeText = (val) => {
+  if (val == null) return '';
+  if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (typeof val === 'object') {
+    // Try common display-friendly fields first
+    if (val.provider) return String(val.provider);
+    if (val.status) return String(val.status);
+    if (val.name) return String(val.name);
+    if (val.Score) return String(val.Score);
+    if (val.value) return String(val.value);
+    return JSON.stringify(val);
+  }
+  return String(val);
+};
 
 // Specialized Markdown/Highlight parser for making vulnerabilities bold
 const HighlightVuln = ({ text }) => {
@@ -152,7 +194,7 @@ const VulnerabilityCard = ({ finding }) => {
 };
 
 /* ── Severity Breakdown Bar ── */
-const SeverityBar = ({ results }) => {
+const SeverityBar = ({ results, activeFilter, onSelectSeverity }) => {
   const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
 
   if (results) {
@@ -186,31 +228,79 @@ const SeverityBar = ({ results }) => {
   ];
 
   return (
-    <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem' }}>
+    <div className="glass-panel" style={{ 
+      padding: '1.2rem 1.5rem', 
+      marginBottom: '1.5rem', 
+      borderLeft: activeFilter && ['critical', 'high', 'medium', 'low', 'info'].includes(activeFilter) 
+        ? `4px solid var(--accent-${activeFilter === 'low' ? 'gray' : activeFilter === 'critical' ? 'red' : activeFilter === 'high' ? 'orange' : activeFilter === 'medium' ? 'blue' : 'green'})` 
+        : '1px solid var(--panel-border)' 
+    }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
         <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-cyber)', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)' }}>
-          Severity Breakdown
+          Severity Filter (Click to Filter)
         </span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-          {total} finding{total !== 1 ? 's' : ''}
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {activeFilter !== 'all' && (
+            <button 
+              className="btn-outline" 
+              onClick={() => onSelectSeverity('all')}
+              style={{ padding: '2px 8px', fontSize: '10px', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Clear Filter
+            </button>
+          )}
+          <span>{total} finding{total !== 1 ? 's' : ''}</span>
         </span>
       </div>
-      <div style={{ display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.6rem' }}>
+      <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', marginBottom: '0.8rem', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>
         {segments.map(seg => {
           const pct = total > 0 ? (counts[seg.key] / total) * 100 : 0;
+          const isSelected = activeFilter === seg.key;
           return pct > 0 ? (
-            <div key={seg.key} style={{ width: `${pct}%`, background: seg.color, transition: 'width 0.5s ease' }} />
+            <div 
+              key={seg.key} 
+              onClick={() => onSelectSeverity(seg.key)}
+              title={`Filter by ${seg.label} (${counts[seg.key]} findings)`}
+              style={{ 
+                width: `${pct}%`, 
+                background: seg.color, 
+                transition: 'all 0.3s ease',
+                opacity: activeFilter === 'all' || isSelected ? 1 : 0.35,
+                transform: isSelected ? 'scaleY(1.3)' : 'none',
+                position: 'relative'
+              }} 
+            />
           ) : null;
         })}
       </div>
-      <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
-        {segments.map(seg => counts[seg.key] > 0 && (
-          <div key={seg.key} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: seg.color }} />
-            <span style={{ color: 'var(--text-secondary)' }}>{seg.label}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: seg.color }}>{counts[seg.key]}</span>
-          </div>
-        ))}
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        {segments.map(seg => {
+          if (counts[seg.key] === 0) return null;
+          const isSelected = activeFilter === seg.key;
+          return (
+            <div 
+              key={seg.key} 
+              onClick={() => onSelectSeverity(isSelected ? 'all' : seg.key)}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                background: isSelected ? 'rgba(255,255,255,0.05)' : 'transparent',
+                border: isSelected ? `1px solid ${seg.color}` : '1px solid transparent',
+                transition: 'all 0.2s ease',
+                opacity: activeFilter === 'all' || isSelected ? 1 : 0.5
+              }}
+            >
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: seg.color }} />
+              <span style={{ color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: isSelected ? 'bold' : 'normal' }}>{seg.label}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: seg.color, fontWeight: 'bold' }}>{counts[seg.key]}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -257,7 +347,7 @@ const RenderDnsRecords = ({ data }) => {
               padding: '2px 8px',
               borderRadius: '4px'
             }}>
-              {audit.grade || 'N/A'} ({audit.score}/100)
+              {safeText(audit.grade) || 'N/A'} ({safeText(audit.score)}/100)
             </span>
           </div>
         )}
@@ -273,7 +363,7 @@ const RenderDnsRecords = ({ data }) => {
                 <span style={{ fontSize: '0.85rem', color: audit.spf.status === 'Found' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                   ● {audit.spf.status}
                 </span>
-                {audit.spf.record && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: '6px', opacity: 0.8, color: 'var(--text-secondary)' }}>{audit.spf.record}</div>}
+                {audit.spf.record && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: '6px', opacity: 0.8, color: 'var(--text-secondary)' }}>{safeText(audit.spf.record)}</div>}
               </div>
             )}
             {audit.dmarc && (
@@ -282,7 +372,7 @@ const RenderDnsRecords = ({ data }) => {
                 <span style={{ fontSize: '0.85rem', color: audit.dmarc.status === 'Found' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                   ● {audit.dmarc.status}
                 </span>
-                {audit.dmarc.record && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: '6px', opacity: 0.8, color: 'var(--text-secondary)' }}>{audit.dmarc.record}</div>}
+                {audit.dmarc.record && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: '6px', opacity: 0.8, color: 'var(--text-secondary)' }}>{safeText(audit.dmarc.record)}</div>}
               </div>
             )}
             {audit.dnssec && (
@@ -340,20 +430,34 @@ const RenderDnsRecords = ({ data }) => {
 };
 
 const RenderDomainInfo = ({ data }) => {
+  const { score: scoreVal, grade: gradeVal } = extractScore(data['Security Score']);
+  
+  const getIcon = (key) => {
+    const k = key.toLowerCase();
+    if (k.includes('ip')) return '🌐';
+    if (k.includes('registrar')) return '🏢';
+    if (k.includes('date') || k.includes('expiry') || k.includes('created') || k.includes('updated')) return '📅';
+    if (k.includes('status')) return '🚦';
+    if (k.includes('whois')) return '🔍';
+    if (k.includes('name server') || k.includes('ns')) return '🏷️';
+    if (k.includes('ssl')) return '🔒';
+    return '📄';
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        {data['Security Score'] != null && (
-          <div className="glass-panel" style={{ padding: '10px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🛡️ Domain Security:</span>
-            <span style={{ fontWeight: 'bold', color: data['Security Score'] >= 75 ? 'var(--accent-green)' : 'var(--accent-orange)' }}>
-              {data['Security Score']}/100
+        {scoreVal != null && (
+          <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '4px solid var(--accent-green)' }}>
+            <span style={{ fontSize: '0.95rem' }}>🛡️ Domain Security:</span>
+            <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: scoreVal >= 75 ? 'var(--accent-green)' : 'var(--accent-orange)' }}>
+              {gradeVal ? `${gradeVal} (${scoreVal}/100)` : `${scoreVal}/100`}
             </span>
           </div>
         )}
         {data['HTTP Status'] && (
-          <div className="glass-panel" style={{ padding: '10px 16px', borderRadius: '8px' }}>
-            <span>🌐 Status: </span>
+          <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🚦 Status: </span>
             <span style={{ color: String(data['HTTP Status']).startsWith('2') ? 'var(--accent-green)' : 'var(--accent-orange)', fontWeight: 'bold' }}>
               {data['HTTP Status']}
             </span>
@@ -361,93 +465,41 @@ const RenderDomainInfo = ({ data }) => {
         )}
       </div>
 
-      <div className="glass-panel" style={{ padding: '1rem', overflowX: 'auto' }}>
-        <table className="cyber-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {Object.entries(data).map(([key, value]) => {
-              if (value == null || value === '') return null;
-              if (Array.isArray(value)) {
-                if (value.length === 0) return null;
-                return (
-                  <tr key={key} style={{ borderBottom: '1px solid var(--panel-border)' }}>
-                    <td style={{ padding: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', width: '35%', verticalAlign: 'top' }}>{key}</td>
-                    <td style={{ padding: '8px', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {value.map((val, idx) => (
-                          <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--panel-border)', wordBreak: 'break-all', color: 'var(--accent-blue)' }}>
-                            {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }
-              if (typeof value === 'object') {
-                if (Object.keys(value).length === 0) return null;
-                return (
-                  <tr key={key} style={{ borderBottom: '1px solid var(--panel-border)' }}>
-                    <td style={{ padding: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', width: '35%', verticalAlign: 'top' }}>{key}</td>
-                    <td style={{ padding: '8px', fontSize: '0.85rem' }}>
-                      <details style={{ width: '100%' }}>
-                        <summary style={{ cursor: 'pointer', color: 'var(--accent-blue)', userSelect: 'none' }}>Show Details ({Object.keys(value).length} items)</summary>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px', background: 'rgba(0,0,0,0.2)' }}>
-                          <tbody>
-                            {Object.entries(value).map(([subK, subV]) => (
-                              <tr key={subK} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                <td style={{ padding: '4px 8px', color: 'var(--text-secondary)', fontSize: '0.75rem', width: '40%' }}>{subK}</td>
-                                <td style={{ padding: '4px 8px', color: 'var(--text-primary)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>
-                                  {typeof subV === 'object' ? JSON.stringify(subV) : String(subV)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </details>
-                    </td>
-                  </tr>
-                );
-              }
-              return (
-                <tr key={key} style={{ borderBottom: '1px solid var(--panel-border)' }}>
-                  <td style={{ padding: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', width: '35%' }}>{key}</td>
-                  <td style={{ padding: '8px', color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>
-                    {String(value)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-const RenderWebTech = ({ data }) => {
-  const score = data['Security Score'];
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {score != null && (
-        <div className="glass-panel" style={{ padding: '10px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', width: 'fit-content' }}>
-          <span>⚙️ Technology Grade:</span>
-          <span style={{ fontWeight: 'bold', color: score >= 80 ? 'var(--accent-green)' : 'var(--accent-orange)' }}>{score}/100</span>
-        </div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
-        {Object.entries(data).map(([key, val]) => {
-          if (key === 'Security Score' || key === 'Technology Security Analysis') return null;
-          const vals = Array.isArray(val) ? val : [val];
-          if (vals.length === 0 || vals[0] === 'Not Detected') return null;
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        {Object.entries(data).map(([key, value]) => {
+          if (value == null || value === '' || key === 'Security Score' || key === 'HTTP Status') return null;
+          
+          const icon = getIcon(key);
+          
           return (
-            <div key={key} className="glass-panel" style={{ padding: '1rem', borderRadius: '10px' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>{key.replace(/_/g, ' ')}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {vals.map((v, i) => (
-                  <span key={i} className="badge badge-blue" style={{ fontSize: '0.8rem', padding: '3px 8px' }}>
-                    {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-                  </span>
-                ))}
+            <div key={key} className="glass-panel" style={{ padding: '1.2rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid var(--panel-border)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', letterSpacing: '0.5px' }}>
+                <span>{icon}</span> {key}
+              </div>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', marginTop: '4px' }}>
+                {Array.isArray(value) ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {value.map((val, idx) => (
+                      <div key={idx} style={{ background: 'rgba(255,255,255,0.02)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--panel-border)', fontSize: '0.8rem' }}>
+                        {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                      </div>
+                    ))}
+                  </div>
+                ) : typeof value === 'object' ? (
+                  <details style={{ width: '100%' }}>
+                    <summary style={{ cursor: 'pointer', color: 'var(--accent-blue)', userSelect: 'none', fontSize: '0.8rem' }}>Show {Object.keys(value).length} items</summary>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', background: 'rgba(0,0,0,0.1)', padding: '6px', borderRadius: '6px' }}>
+                      {Object.entries(value).map(([subK, subV]) => (
+                        <div key={subK} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', padding: '4px 0', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>{subK}:</span>
+                          <span style={{ color: 'var(--text-primary)', textAlign: 'right' }}>{typeof subV === 'object' ? JSON.stringify(subV) : String(subV)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ) : (
+                  String(value)
+                )}
               </div>
             </div>
           );
@@ -457,52 +509,294 @@ const RenderWebTech = ({ data }) => {
   );
 };
 
-const RenderSecurityAnalysis = ({ data }) => {
-  const score = data.security_score;
-  const grade = data.security_grade;
-  const vulns = data.vulnerability_scan || data.vulnerabilities || [];
+/* ── Web Technologies Detail Renderers for Security Keys ── */
+const RenderTechHeaders = ({ headers }) => {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.8rem', width: '100%' }}>
+      {Object.entries(headers).map(([name, info]) => {
+        const present = info.present === true || String(info.present).toLowerCase() === 'true';
+        return (
+          <div key={name} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--panel-border)', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>{name}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+              <span style={{ color: present ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 'bold' }}>
+                {present ? '✓ Present' : '✗ Missing'}
+              </span>
+              {info.value && info.value !== 'Not Set' && (
+                <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', opacity: 0.8, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{info.value}</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const RenderTechVulns = ({ vulns }) => {
+  const entries = Object.entries(vulns).filter(([_, list]) => Array.isArray(list) && list.length > 0);
+  if (entries.length === 0) return <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>✓ No technology vulnerabilities detected.</div>;
   
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        {score != null && (
-          <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🛡️ SECURITY SCORE:</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+      {entries.map(([cat, list]) => (
+        <div key={cat}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--accent-orange)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
+            ⚠️ {cat.replace(/_/g, ' ')}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {list.map((item, idx) => (
+              <div key={idx} style={{ padding: '6px 10px', background: 'rgba(255, 85, 85, 0.03)', borderLeft: '3px solid var(--accent-red)', borderRadius: '0 4px 4px 0', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                {String(item)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const RenderTechDisclosure = ({ disclosure }) => {
+  const entries = Object.entries(disclosure).filter(([_, list]) => Array.isArray(list) && list.length > 0);
+  if (entries.length === 0) return <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>✓ No sensitive information disclosure detected.</div>;
+  
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+      {entries.map(([cat, list]) => (
+        <div key={cat}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>
+            🔍 {cat.replace(/_/g, ' ')}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {list.map((item, idx) => (
+              <div key={idx} style={{ padding: '6px 10px', background: 'rgba(0, 242, 254, 0.03)', borderLeft: '3px solid var(--accent-blue)', borderRadius: '0 4px 4px 0', fontSize: '0.8rem' }}>
+                {String(item)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const RenderTechSSL = ({ ssl }) => {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.8rem', width: '100%' }}>
+      {Object.entries(ssl).map(([key, val]) => {
+        if (val == null || val === '' || typeof val === 'object') return null;
+        const isStrong = String(val).toLowerCase() === 'strong' || String(val).toLowerCase() === 'excellent' || String(val).toLowerCase() === 'secure';
+        return (
+          <div key={key} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--panel-border)', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</span>
             <span style={{ 
               fontWeight: 'bold', 
-              fontSize: '1.2rem',
-              color: score >= 80 ? 'var(--accent-green)' : score >= 60 ? 'var(--accent-orange)' : 'var(--accent-red)' 
+              color: isStrong ? 'var(--accent-green)' : 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)'
             }}>
-              {grade ? `${grade} (${score}/100)` : `${score}/100`}
+              {String(val)}
             </span>
           </div>
-        )}
-        {data.waf_detection && (
-          <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>WAF Protection: </span>
-            <span className="badge badge-purple" style={{ fontSize: '0.85rem' }}>{data.waf_detection}</span>
+        );
+      })}
+    </div>
+  );
+};
+
+const RenderTechServices = ({ services }) => {
+  const entries = Object.entries(services).filter(([_, list]) => Array.isArray(list) && list.length > 0);
+  if (entries.length === 0) return <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No active third-party security services detected.</div>;
+  
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.8rem', width: '100%' }}>
+      {entries.map(([cat, list]) => (
+        <div key={cat} style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+          <strong style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-purple)', textTransform: 'uppercase', marginBottom: '6px' }}>🛡️ {cat}</strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {list.map((item, idx) => (
+              <span key={idx} className="badge badge-purple" style={{ fontSize: '0.8rem' }}>{String(item)}</span>
+            ))}
           </div>
-        )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const RenderTechCookies = ({ cookies }) => {
+  if (!cookies) return null;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.8rem', width: '100%' }}>
+      {Object.entries(cookies).map(([key, val]) => {
+        if (val == null || val === '') return null;
+        if (Array.isArray(val)) {
+          if (val.length === 0) return null;
+          return (
+            <div key={key} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--panel-border)', fontSize: '0.8rem', gridColumn: '1 / -1' }}>
+              <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize', display: 'block', marginBottom: '4px' }}>{key.replace(/_/g, ' ')}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {val.map((item, idx) => <div key={idx} style={{ fontSize: '0.75rem', color: 'var(--accent-orange)' }}>• {String(item)}</div>)}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={key} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--panel-border)', fontSize: '0.8rem' }}>
+            <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize', display: 'block', marginBottom: '2px' }}>{key.replace(/_/g, ' ')}</span>
+            <span style={{ fontWeight: 'bold' }}>{String(val)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const RenderWebTech = ({ data }) => {
+  const { score: scoreVal, grade: gradeVal } = extractScore(data['Security Score']);
+
+  const getTechSectionContent = (key, val) => {
+    if (!val || typeof val !== 'object') return null;
+    
+    switch (key) {
+      case 'Security Headers':
+        return <RenderTechHeaders headers={val} />;
+      case 'Security Vulnerabilities':
+        return <RenderTechVulns vulns={val} />;
+      case 'Information Disclosure':
+        return <RenderTechDisclosure disclosure={val} />;
+      case 'SSL/TLS Security':
+        return <RenderTechSSL ssl={val} />;
+      case 'Security Services':
+        return <RenderTechServices services={val} />;
+      case 'Cookie Security':
+        return <RenderTechCookies cookies={val} />;
+      default:
+        return null;
+    }
+  };
+
+  const securityKeys = ['Security Headers', 'Security Vulnerabilities', 'Information Disclosure', 'SSL/TLS Security', 'Security Services', 'Cookie Security'];
+  
+  const standardTechs = Object.entries(data).filter(([key]) => key !== 'Security Score' && key !== 'Technology Security Analysis' && !securityKeys.includes(key));
+  const securityTechs = Object.entries(data).filter(([key]) => securityKeys.includes(key));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {scoreVal != null && (
+        <div className="glass-panel" style={{ padding: '10px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', width: 'fit-content' }}>
+          <span>⚙️ Technology Grade:</span>
+          <span style={{ fontWeight: 'bold', color: scoreVal >= 80 ? 'var(--accent-green)' : 'var(--accent-orange)' }}>{gradeVal ? `${gradeVal} (${scoreVal}/100)` : `${scoreVal}/100`}</span>
+        </div>
+      )}
+      
+      {/* Standard detected technologies */}
+      <div>
+        <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)' }}>⚙️ DETECTED WEB STACK</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+          {standardTechs.map(([key, val]) => {
+            const vals = Array.isArray(val) ? val : [val];
+            if (vals.length === 0 || vals[0] === 'Not Detected') return null;
+            return (
+              <div key={key} className="glass-panel" style={{ padding: '1rem', borderRadius: '10px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>{key.replace(/_/g, ' ')}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {vals.map((v, i) => (
+                    <span key={i} className="badge badge-blue" style={{ fontSize: '0.8rem', padding: '3px 8px' }}>
+                      {String(v)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {data.security_headers && (
-        <div className="glass-panel" style={{ padding: '1.25rem', borderRadius: '12px' }}>
-          <h4 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)' }}>HTTP SECURITY HEADERS</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {Object.entries(data.security_headers).map(([hdr, status]) => {
-              const present = String(status).toLowerCase().includes('found') || String(status).toLowerCase() === 'present' || String(status).toLowerCase() === 'ok' || String(status).toLowerCase().includes('configured');
+      {/* Security-related analysis of technologies */}
+      {securityTechs.length > 0 && (
+        <div>
+          <h4 style={{ margin: '1rem 0 1rem 0', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-orange)' }}>🛡️ WEB TECH SECURITY ASSESSMENT</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            {securityTechs.map(([key, val]) => {
+              const content = getTechSectionContent(key, val);
+              if (!content) return null;
               return (
-                <div key={hdr} style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{hdr}</span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: present ? 'var(--accent-green)' : 'var(--accent-red)', marginTop: '4px' }}>
-                    {present ? '✓ Set' : '✗ Missing'}
-                  </span>
+                <div key={key} className="glass-panel" style={{ padding: '1.25rem', borderRadius: '12px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontFamily: 'var(--font-cyber)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '6px', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {key}
+                  </div>
+                  {content}
                 </div>
               );
             })}
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const RenderSecurityAnalysis = ({ data, activeFilter }) => {
+  const { score: scoreVal, grade: extractedGrade } = extractScore(data.security_score);
+  const gradeVal = data.security_grade || extractedGrade;
+  const allVulns = data.vulnerability_scan || data.vulnerabilities || [];
+  const vulns = ['critical', 'high', 'medium', 'low', 'info'].includes(activeFilter)
+    ? allVulns.filter(v => v && typeof v === 'object' && (v.severity || 'medium').toLowerCase() === activeFilter)
+    : allVulns;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        {scoreVal != null && (
+          <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🛡️ SECURITY SCORE:</span>
+            <span style={{ 
+              fontWeight: 'bold', 
+              fontSize: '1.2rem',
+              color: scoreVal >= 80 ? 'var(--accent-green)' : scoreVal >= 60 ? 'var(--accent-orange)' : 'var(--accent-red)' 
+            }}>
+              {gradeVal ? `${gradeVal} (${scoreVal}/100)` : `${scoreVal}/100`}
+            </span>
+          </div>
+        )}
+        {data.waf_detection && (
+          <div className="glass-panel" style={{ padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>WAF Protection: </span>
+            <span className="badge badge-purple" style={{ fontSize: '0.85rem' }}>{safeText(data.waf_detection)}</span>
+          </div>
+        )}
+      </div>
+
+      {data.security_headers && (() => {
+        let headersObj = data.security_headers;
+        if (headersObj && headersObj.headers && typeof headersObj.headers === 'object') {
+          headersObj = headersObj.headers;
+        }
+        return (
+          <div className="glass-panel" style={{ padding: '1.25rem', borderRadius: '12px' }}>
+            <h4 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)' }}>HTTP SECURITY HEADERS</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+              {Object.entries(headersObj).map(([hdr, status]) => {
+                let present = false;
+                if (status && typeof status === 'object') {
+                  present = status.present === true || String(status.present).toLowerCase() === 'true' || String(status.status || '').toLowerCase() === 'found' || String(status.present).toLowerCase() === 'present';
+                } else {
+                  present = String(status).toLowerCase().includes('found') || String(status).toLowerCase() === 'present' || String(status).toLowerCase() === 'ok' || String(status).toLowerCase().includes('configured');
+                }
+                return (
+                  <div key={hdr} style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{hdr}</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: present ? 'var(--accent-green)' : 'var(--accent-red)', marginTop: '4px' }}>
+                      {present ? '✓ Set' : '✗ Missing'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {vulns.length > 0 && (
         <div>
@@ -529,78 +823,208 @@ const RenderSecurityAnalysis = ({ data }) => {
   );
 };
 
-const RenderAdvancedContentScan = ({ data }) => {
-  const secrets = data.secrets || [];
-  const jsVulns = data.js_vulnerabilities || [];
-  const ssrf = data.ssrf_vulnerabilities || [];
-  const active = data.active_vulnerabilities || [];
-  const chains = data.exploit_chains || [];
+const RenderAdvancedContentScan = ({ data, activeFilter }) => {
+  const [showAllSecrets, setShowAllSecrets] = React.useState(false);
+  const [showAllJs, setShowAllJs] = React.useState(false);
+  const [showAllSsrf, setShowAllSsrf] = React.useState(false);
+  const [showAllActive, setShowAllActive] = React.useState(false);
+  const [showAllChains, setShowAllChains] = React.useState(false);
+
+  const isSeverityFilter = ['critical', 'high', 'medium', 'low', 'info'].includes(activeFilter);
+  
+  const secrets = (data.secrets || []).filter(s => {
+    if (!isSeverityFilter) return true;
+    const sev = (s.severity || 'critical').toLowerCase();
+    return sev === activeFilter;
+  });
+  
+  const jsVulns = (data.js_vulnerabilities || []).filter(jv => {
+    if (!isSeverityFilter) return true;
+    const sev = (jv.severity || 'high').toLowerCase();
+    return sev === activeFilter;
+  });
+  
+  const ssrf = (data.ssrf_vulnerabilities || []).filter(sv => {
+    if (!isSeverityFilter) return true;
+    const sev = (sv.severity || 'high').toLowerCase();
+    return sev === activeFilter;
+  });
+  
+  const active = (data.active_vulnerabilities || []).filter(av => {
+    if (!isSeverityFilter) return true;
+    const sev = (av.severity || 'high').toLowerCase();
+    return sev === activeFilter;
+  });
+
+  const chains = (data.exploit_chains || []).filter(c => {
+    if (!isSeverityFilter) return true;
+    const sev = (c.severity || 'critical').toLowerCase();
+    return sev === activeFilter;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {secrets.length > 0 && (
-        <div>
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-red)' }}>🔑 LEAKED SECRETS & KEYS ({secrets.length})</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {secrets.map((s, idx) => (
-              <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-red)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <strong style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{s.type || 'Secret API Key'}</strong>
-                  <span className="badge severity-critical" style={{ fontSize: '10px' }}>Conf: {s.confidence || 90}%</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', color: 'var(--accent-orange)' }}>
-                  {s.value}
-                </div>
-                {s.source_url && (
-                  <div style={{ fontSize: '0.75rem', marginTop: '6px', color: 'var(--text-secondary)' }}>
-                    Source file: <span style={{ fontFamily: 'var(--font-mono)' }}>{s.source_url}</span>
+      {/* Secrets section */}
+      {secrets.length > 0 && (() => {
+        const visibleSecrets = showAllSecrets ? secrets : secrets.slice(0, 5);
+        return (
+          <div>
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-red)' }}>🔑 LEAKED SECRETS & KEYS ({secrets.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {visibleSecrets.map((s, idx) => (
+                <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-red)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <strong style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{s.type || 'Secret API Key'}</strong>
+                    <span className="badge severity-critical" style={{ fontSize: '10px' }}>Conf: {s.confidence || 90}%</span>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {jsVulns.length > 0 && (
-        <div>
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-orange)' }}>⚙️ JAVASCRIPT VULNERABILITIES ({jsVulns.length})</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {jsVulns.map((jv, idx) => (
-              <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-orange)' }}>
-                <strong style={{ fontSize: '0.85rem', display: 'block', marginBottom: '4px' }}>{jv.type || 'JS Vulnerability'}</strong>
-                <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{jv.description || jv.detail}</p>
-                <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', opacity: 0.8 }}>
-                  File: {jv.source_url}
+                  <div style={{ fontSize: '0.8rem', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', color: 'var(--accent-orange)' }}>
+                    {s.value}
+                  </div>
+                  {s.source_url && (
+                    <div style={{ fontSize: '0.75rem', marginTop: '6px', color: 'var(--text-secondary)' }}>
+                      Source file: <span style={{ fontFamily: 'var(--font-mono)' }}>{s.source_url}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+              {secrets.length > 5 && (
+                <button 
+                  className="btn-outline" 
+                  onClick={() => setShowAllSecrets(!showAllSecrets)}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content', marginTop: '4px', cursor: 'pointer' }}
+                >
+                  {showAllSecrets ? 'Show Less' : `Show More (+${secrets.length - 5})`}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {chains.length > 0 && (
-        <div>
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-red)' }}>🕸️ AUTOMATED EXPLOIT CHAINS MAPPED ({chains.length})</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {chains.map((c, idx) => (
-              <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-red)' }}>
-                <strong style={{ fontSize: '0.9rem', color: 'var(--accent-red)', display: 'block', marginBottom: '6px' }}>Chain #{idx+1}: {c.name || 'Exploit Sequence'}</strong>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
-                  {c.steps && c.steps.map((step, sidx) => (
-                    <React.Fragment key={sidx}>
-                      <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--panel-border)' }}>
-                        {step}
-                      </span>
-                      {sidx < c.steps.length - 1 && <span style={{ color: 'var(--accent-red)' }}>➔</span>}
-                    </React.Fragment>
-                  ))}
+      {/* Javascript Vulnerabilities */}
+      {jsVulns.length > 0 && (() => {
+        const visibleJs = showAllJs ? jsVulns : jsVulns.slice(0, 5);
+        return (
+          <div>
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-orange)' }}>⚙️ JAVASCRIPT VULNERABILITIES ({jsVulns.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {visibleJs.map((jv, idx) => (
+                <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-orange)' }}>
+                  <strong style={{ fontSize: '0.85rem', display: 'block', marginBottom: '4px' }}>{jv.type || 'JS Vulnerability'}</strong>
+                  <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{jv.description || jv.detail}</p>
+                  <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', opacity: 0.8 }}>
+                    File: {jv.source_url}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+              {jsVulns.length > 5 && (
+                <button 
+                  className="btn-outline" 
+                  onClick={() => setShowAllJs(!showAllJs)}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content', marginTop: '4px', cursor: 'pointer' }}
+                >
+                  {showAllJs ? 'Show Less' : `Show More (+${jsVulns.length - 5})`}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* SSRF Vulnerabilities */}
+      {ssrf.length > 0 && (() => {
+        const visibleSsrf = showAllSsrf ? ssrf : ssrf.slice(0, 5);
+        return (
+          <div>
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-orange)' }}>🌐 SSRF VULNERABILITIES ({ssrf.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {visibleSsrf.map((s, idx) => (
+                <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-orange)' }}>
+                  <strong style={{ fontSize: '0.85rem', display: 'block', marginBottom: '4px' }}>{s.type || 'SSRF Risk'}</strong>
+                  <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{s.description || s.detail}</p>
+                  {s.url && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>URL: {s.url}</div>}
+                </div>
+              ))}
+              {ssrf.length > 5 && (
+                <button 
+                  className="btn-outline" 
+                  onClick={() => setShowAllSsrf(!showAllSsrf)}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content', marginTop: '4px', cursor: 'pointer' }}
+                >
+                  {showAllSsrf ? 'Show Less' : `Show More (+${ssrf.length - 5})`}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Active Vulnerabilities */}
+      {active.length > 0 && (() => {
+        const visibleActive = showAllActive ? active : active.slice(0, 5);
+        return (
+          <div>
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-red)' }}>🔬 ACTIVE VULNERABILITIES ({active.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {visibleActive.map((av, idx) => (
+                <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-red)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <strong style={{ fontSize: '0.85rem' }}>{av.type || av.title || 'Active Exploit Opportunity'}</strong>
+                    <span className={`badge severity-${(av.severity || 'high').toLowerCase()}`}>{av.severity || 'High'}</span>
+                  </div>
+                  <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{av.description || av.detail}</p>
+                  {av.payload && <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '4px', wordBreak: 'break-all', color: 'var(--accent-orange)' }}>Payload: {av.payload}</div>}
+                </div>
+              ))}
+              {active.length > 5 && (
+                <button 
+                  className="btn-outline" 
+                  onClick={() => setShowAllActive(!showAllActive)}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content', marginTop: '4px', cursor: 'pointer' }}
+                >
+                  {showAllActive ? 'Show Less' : `Show More (+${active.length - 5})`}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Exploit Chains */}
+      {chains.length > 0 && (() => {
+        const visibleChains = showAllChains ? chains : chains.slice(0, 5);
+        return (
+          <div>
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-cyber)', color: 'var(--accent-red)' }}>🕸️ AUTOMATED EXPLOIT CHAINS MAPPED ({chains.length})</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {visibleChains.map((c, idx) => (
+                <div key={idx} className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-red)' }}>
+                  <strong style={{ fontSize: '0.9rem', color: 'var(--accent-red)', display: 'block', marginBottom: '6px' }}>Chain #{idx+1}: {c.name || 'Exploit Sequence'}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+                    {c.steps && c.steps.map((step, sidx) => (
+                      <React.Fragment key={sidx}>
+                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--panel-border)' }}>
+                          {step}
+                        </span>
+                        {sidx < c.steps.length - 1 && <span style={{ color: 'var(--accent-red)' }}>➔</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {chains.length > 5 && (
+                <button 
+                  className="btn-outline" 
+                  onClick={() => setShowAllChains(!showAllChains)}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content', marginTop: '4px', cursor: 'pointer' }}
+                >
+                  {showAllChains ? 'Show Less' : `Show More (+${chains.length - 5})`}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {secrets.length === 0 && jsVulns.length === 0 && ssrf.length === 0 && active.length === 0 && chains.length === 0 && (
         <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -620,13 +1044,25 @@ const RenderContactSpy = ({ data }) => {
   
   if (Array.isArray(pageResults)) {
     pageResults.forEach(pr => {
-      if (pr.emails) pr.emails.forEach(e => emails.push({ val: e, source: pr.url }));
-      if (pr.phones) pr.phones.forEach(p => phones.push({ val: p, source: pr.url }));
+      if (pr.emails) pr.emails.forEach(e => emails.push({ val: typeof e === 'object' ? (e.email || e.value || JSON.stringify(e)) : e, source: pr.url }));
+      if (pr.phones) pr.phones.forEach(p => phones.push({ val: typeof p === 'object' ? (p.phone || p.value || JSON.stringify(p)) : p, source: pr.url }));
       if (pr.social_media) {
-        Object.entries(pr.social_media).forEach(([platform, urls]) => {
-          const urlList = Array.isArray(urls) ? urls : [urls];
-          urlList.forEach(u => socials.push({ platform, val: u, source: pr.url }));
-        });
+        if (Array.isArray(pr.social_media)) {
+          // New format: array of {platform, username, url, found_on}
+          pr.social_media.forEach(sm => {
+            if (typeof sm === 'object' && sm) {
+              socials.push({ platform: sm.platform || 'Unknown', val: sm.url || sm.value || '', source: sm.found_on || pr.url });
+            } else {
+              socials.push({ platform: 'Link', val: String(sm), source: pr.url });
+            }
+          });
+        } else if (typeof pr.social_media === 'object') {
+          // Old format: {platform: [urls]} or {platform: url}
+          Object.entries(pr.social_media).forEach(([platform, urls]) => {
+            const urlList = Array.isArray(urls) ? urls : [urls];
+            urlList.forEach(u => socials.push({ platform, val: typeof u === 'object' ? (u.url || JSON.stringify(u)) : String(u), source: pr.url }));
+          });
+        }
       }
     });
   }
@@ -701,8 +1137,11 @@ const RenderContactSpy = ({ data }) => {
   );
 };
 
-const RenderSubdomainTakeover = ({ data }) => {
-  const vulns = data.vulnerable_subdomains || [];
+const RenderSubdomainTakeover = ({ data, activeFilter }) => {
+  const allVulns = data.vulnerable_subdomains || [];
+  const vulns = ['critical', 'high', 'medium', 'low', 'info'].includes(activeFilter)
+    ? allVulns.filter(v => v && typeof v === 'object' && (v.severity || 'high').toLowerCase() === activeFilter)
+    : allVulns;
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -792,9 +1231,26 @@ const RenderCloudFlareBypass = ({ data }) => {
   );
 };
 
-const RenderNmapScan = ({ data }) => {
-  const ports = data.port_scan || [];
-  const vulns = data.zero_day_vulnerabilities || [];
+const RenderNmapScan = ({ data, activeFilter }) => {
+  let ports = [];
+  if (data.port_scan) {
+    if (Array.isArray(data.port_scan)) {
+      ports = data.port_scan;
+    } else if (typeof data.port_scan === 'object') {
+      ports = Object.entries(data.port_scan).map(([portNum, details]) => ({
+        port: portNum,
+        service: typeof details === 'object' && details ? (details.service || '') : '',
+        state: typeof details === 'object' && details ? (details.state || details.status || '') : String(details),
+        product: typeof details === 'object' && details ? (details.product || '') : '',
+        version: typeof details === 'object' && details ? (details.version || '') : '',
+        ...(typeof details === 'object' ? details : {})
+      }));
+    }
+  }
+  const allVulns = data.zero_day_vulnerabilities || [];
+  const vulns = ['critical', 'high', 'medium', 'low', 'info'].includes(activeFilter)
+    ? allVulns.filter(v => v && typeof v === 'object' && (v.severity || 'medium').toLowerCase() === activeFilter)
+    : allVulns;
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -947,15 +1403,15 @@ const RenderNestedValue = ({ value }) => {
 };
 
 const RenderSeoAnalysis = ({ data }) => {
-  const score = data['SEO Score'] || 80;
+  const { score: seoScoreVal, grade: seoGradeVal } = extractScore(data['SEO Score']);
   const seoSections = Object.entries(data).filter(([k]) => k !== 'SEO Score');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {score != null && (
+      {seoScoreVal != null && (
         <div className="glass-panel" style={{ padding: '10px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', width: 'fit-content' }}>
           <span>📊 SEO Score:</span>
-          <span style={{ fontWeight: 'bold', color: score >= 80 ? 'var(--accent-green)' : 'var(--accent-orange)' }}>{score}/100</span>
+          <span style={{ fontWeight: 'bold', color: seoScoreVal >= 80 ? 'var(--accent-green)' : 'var(--accent-orange)' }}>{seoGradeVal ? `${seoGradeVal} (${seoScoreVal}/100)` : `${seoScoreVal}/100`}</span>
         </div>
       )}
       
@@ -1022,7 +1478,35 @@ const RenderGeoAnalysis = ({ data }) => {
   );
 };
 
-const ModuleResultRenderer = ({ moduleName, moduleData }) => {
+/* ── Error Boundary: prevents one module from crashing the whole page ── */
+class ModuleErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error(`[ResultsPanel] Module "${this.props.moduleName}" crashed:`, error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-orange)', color: 'var(--accent-orange)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+          ⚠️ Render error in module <strong>{this.props.moduleName}</strong>: {String(this.state.error?.message || 'Unknown error')}
+          <details style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <summary style={{ cursor: 'pointer' }}>Stack trace</summary>
+            <pre style={{ whiteSpace: 'pre-wrap', marginTop: '4px' }}>{String(this.state.error?.stack || '')}</pre>
+          </details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const ModuleResultRenderer = ({ moduleName, moduleData, activeFilter }) => {
   if (moduleData && moduleData.error) {
     return (
       <div className="glass-panel" style={{ padding: '1rem', borderLeft: '4px solid var(--accent-red)', color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
@@ -1043,22 +1527,22 @@ const ModuleResultRenderer = ({ moduleName, moduleData }) => {
       content = <RenderWebTech data={moduleData} />;
       break;
     case 'Security Analysis':
-      content = <RenderSecurityAnalysis data={moduleData} />;
+      content = <RenderSecurityAnalysis data={moduleData} activeFilter={activeFilter} />;
       break;
     case 'Advanced Content Scan':
-      content = <RenderAdvancedContentScan data={moduleData} />;
+      content = <RenderAdvancedContentScan data={moduleData} activeFilter={activeFilter} />;
       break;
     case 'Contact Spy':
       content = <RenderContactSpy data={moduleData} />;
       break;
     case 'Subdomain Takeover':
-      content = <RenderSubdomainTakeover data={moduleData} />;
+      content = <RenderSubdomainTakeover data={moduleData} activeFilter={activeFilter} />;
       break;
     case 'CloudFlare Bypass':
       content = <RenderCloudFlareBypass data={moduleData} />;
       break;
     case 'Nmap Zero Day Scan':
-      content = <RenderNmapScan data={moduleData} />;
+      content = <RenderNmapScan data={moduleData} activeFilter={activeFilter} />;
       break;
     case 'SEO Analysis':
       content = <RenderSeoAnalysis data={moduleData} />;
@@ -1138,12 +1622,15 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [recentScans, setRecentScans] = useState([]);
 
+  // Sync prop changes to activeDomain state
   useEffect(() => {
     if (domain && domain !== activeDomain) {
       setActiveDomain(domain);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
+  // Fetch recent scans once on mount
   useEffect(() => {
     const fetchRecent = async () => {
       try {
@@ -1151,17 +1638,29 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
         if (res.ok) {
           const json = await res.json();
           setRecentScans(json);
+          // If activeDomain is default un-scanned example.com and we have past scans, auto-select the latest one
+          if (activeDomain === 'example.com' && json.length > 0) {
+            const latestDomain = json[0].domain;
+            setActiveDomain(latestDomain);
+            if (setCurrentDomain) {
+              setCurrentDomain(latestDomain);
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching recent scans', err);
       }
     };
     fetchRecent();
-  }, [activeDomain]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let interval;
-    const fetchResults = async () => {
+    const fetchResults = async (showLoading = false) => {
+      if (showLoading) {
+        setLoading(true);
+      }
       try {
         const res = await fetch(getApiUrl(`/api/status/${activeDomain}`));
         if (res.ok) {
@@ -1176,16 +1675,25 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
             setLoading(false);
           }
         } else {
-          setError('Waiting for backend acknowledgment...');
+          setLoading(false);
+          setData(null);
+          if (res.status === 404) {
+            setError(`No scan results found for ${activeDomain}. Run a scan to get started.`);
+          } else {
+            setError('Waiting for backend acknowledgment...');
+          }
+          clearInterval(interval);
         }
-      } catch (err) {
+      } catch {
+        setLoading(false);
+        setData(null);
         setError('Cannot connect to API server.');
+        clearInterval(interval);
       }
     };
 
-    setLoading(true);
-    fetchResults();
-    interval = setInterval(fetchResults, 2000);
+    fetchResults(true);
+    interval = setInterval(() => fetchResults(false), 2000);
     return () => clearInterval(interval);
   }, [activeDomain]);
 
@@ -1216,14 +1724,7 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
     URL.revokeObjectURL(url);
   };
 
-  if (loading && !data) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: '1rem' }}>
-        <div className="status-indicator pending" style={{ width: '20px', height: '20px' }}></div>
-        <p style={{ color: 'var(--text-secondary)' }}>Initializing Scan Pipeline for {activeDomain}...</p>
-      </div>
-    );
-  }
+
 
   const progressPercent = data && data.total ? Math.round((data.completed / data.total) * 100) : 0;
   const isFinished = data && data.current_module === 'Finished';
@@ -1237,7 +1738,23 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
 
   const filteredEntries = data && data.results
     ? Object.entries(data.results).filter(([moduleName, moduleData]) => {
+        // Exclude Attack Path Planner since it has its own dedicated tab
+        if (moduleName === 'Attack Path Planner') return false;
+
         if (activeFilter === 'all') return true;
+        if (activeFilter === 'errors') return moduleData && moduleData.error;
+        
+        if (['critical', 'high', 'medium', 'low', 'info'].includes(activeFilter)) {
+          const vulns = Array.isArray(moduleData)
+            ? moduleData
+            : Array.isArray(moduleData?.vulnerabilities)
+              ? moduleData.vulnerabilities
+              : Array.isArray(moduleData?.vulnerable_subdomains)
+                ? moduleData.vulnerable_subdomains
+                : [];
+          return vulns.some(v => v && typeof v === 'object' && (v.severity || v.confidence || 'medium').toLowerCase() === activeFilter);
+        }
+
         const cats = categorizeModule(moduleName, moduleData);
         return cats.includes(activeFilter);
       })
@@ -1318,7 +1835,7 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
         </div>
       </div>
 
-      {data && data.results && <SeverityBar results={data.results} />}
+      {data && data.results && <SeverityBar results={data.results} activeFilter={activeFilter} onSelectSeverity={setActiveFilter} />}
 
       {data && !isFinished && (
         <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2.5rem' }}>
@@ -1334,7 +1851,14 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
         </div>
       )}
 
-      {error && !data && (
+      {loading && !data && (
+        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div className="status-indicator pending" style={{ width: '20px', height: '20px', margin: '0 auto 1rem auto' }}></div>
+          <p>Initializing Scan Pipeline for {activeDomain}...</p>
+        </div>
+      )}
+
+      {error && !data && !loading && (
         <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', borderStyle: 'dashed' }}>
           <p>{error}</p>
         </div>
@@ -1385,7 +1909,9 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
           </div>
           
           <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '12px' }}>
-            <ModuleResultRenderer moduleName={moduleName} moduleData={moduleData} />
+            <ModuleErrorBoundary moduleName={moduleName}>
+              <ModuleResultRenderer moduleName={moduleName} moduleData={moduleData} activeFilter={activeFilter} />
+            </ModuleErrorBoundary>
           </div>
         </div>
       ))}
