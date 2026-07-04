@@ -18,6 +18,15 @@
 
 ---
 
+## 🌐 Live Demonstration & Panel Deployment
+
+The WebAnalyzer platform is now fully deployed and available for real-time domain audits:
+
+* 🖥️ **Interactive Cyberpunk Dashboard (Frontend)**: [webanalyzer.c4softwarestudio.com](https://webanalyzer.c4softwarestudio.com/)
+* ⚡ **Analiz Motoru & REST API (Backend)**: [webanalyzer-api.onrender.com](https://webanalyzer-api.onrender.com)
+
+---
+
 ## 🌟 Overview
 
 <div align="center">
