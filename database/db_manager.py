@@ -32,6 +32,8 @@ class DatabaseManager:
             return
         
         with self.pool_lock:
+            if self.pool is None:
+                try:
                     self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
                     logging.info("Database connection pool created successfully")
                     self._initialize_schema()
