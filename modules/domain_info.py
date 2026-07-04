@@ -167,8 +167,28 @@ def query_whois_server(domain, server, port=43, timeout=10):
         return None
 
 
+def scrape_whois_web(domain):
+    """Scrapes raw WHOIS data from whois.com when port 43 socket connections fail"""
+    import urllib.request
+    import re
+    import html as html_lib
+    url = f"https://www.whois.com/whois/{domain}"
+    req = urllib.request.Request(
+        url, 
+        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    )
+    try:
+        html_content = urllib.request.urlopen(req, timeout=8).read().decode('utf-8')
+        match = re.search(r'class="df-raw"[^>]*>(.*?)</pre>', html_content, re.DOTALL | re.IGNORECASE)
+        if match:
+            return html_lib.unescape(match.group(1))
+    except Exception:
+        pass
+    return None
+
+
 def get_whois_data(domain):
-    """Python socket ile WHOIS sorgula - sistem komutu gerektirmez"""
+    """WHOIS bilgilerini sorgular ve çözümler - Port 43 soket ve Web Kazıma fallback desteğiyle"""
     whois_info = {
         "Registrar Company": "Unknown",
         "Creation Date": "Unknown",
@@ -183,28 +203,33 @@ def get_whois_data(domain):
         # WHOIS sunucusunu belirle
         whois_server = get_whois_server(domain)
         
-        # İlk sorgu
+        # İlk sorgu (socket port 43)
         output = query_whois_server(domain, whois_server)
         
+        # Yönlendirme kontrolü
+        if output:
+            referral_match = re.search(r'Registrar WHOIS Server:\s*(.+)', output, re.IGNORECASE)
+            if referral_match:
+                referral_server = referral_match.group(1).strip()
+                referral_server = referral_server.replace('whois://', '').replace('http://', '').replace('https://', '')
+                referral_output = query_whois_server(domain, referral_server)
+                if referral_output:
+                    output = referral_output
+        
+        # Soket başarısız olduysa web kazıma ile whois.com üzerinden dene
+        if not output:
+            output = scrape_whois_web(domain)
+
         if not output:
             whois_info["Error"] = "WHOIS sunucusuna bağlanılamadı"
             return whois_info
         
-        # Bazı TLD'ler yönlendirme yapar (örn: .com -> specific registrar)
-        referral_match = re.search(r'Registrar WHOIS Server:\s*(.+)', output, re.IGNORECASE)
-        if referral_match:
-            referral_server = referral_match.group(1).strip()
-            # Protokolü temizle
-            referral_server = referral_server.replace('whois://', '').replace('http://', '').replace('https://', '')
-            
-            # Yönlendirilen sunucudan tekrar sorgula
-            referral_output = query_whois_server(domain, referral_server)
-            if referral_output:
-                output = referral_output
+        # Temizlik
+        output_clean = output.replace('\r\n', '\n')
         
         # Registrar
-        for pattern in [r"Registrar:\s*(.+)", r"Registrar Name:\s*(.+)", r"Registrar Organization:\s*(.+)"]:
-            match = re.search(pattern, output, re.IGNORECASE)
+        for pattern in [r"Registrar:\s*(.+)", r"Registrar Name:\s*(.+)", r"Registrar Organization:\s*(.+)", r"Organization Name\s*:\s*(.+)"]:
+            match = re.search(pattern, output_clean, re.IGNORECASE)
             if match:
                 whois_info["Registrar Company"] = match.group(1).strip()
                 break
@@ -213,13 +238,15 @@ def get_whois_data(domain):
         for pattern in [
             r"Creation Date:\s*(.+)",
             r"Created Date:\s*(.+)",
+            r"Created on\.+:\s*(.+)",
+            r"Created on:\s*(.+)",
             r"Created:\s*(.+)",
             r"created:\s*(.+)",
             r"Registration Time:\s*(.+)"
         ]:
-            match = re.search(pattern, output, re.IGNORECASE)
+            match = re.search(pattern, output_clean, re.IGNORECASE)
             if match:
-                whois_info["Creation Date"] = match.group(1).strip().split('\n')[0]
+                whois_info["Creation Date"] = match.group(1).strip().split('\n')[0].strip('.')
                 break
         
         # Expiry Date
@@ -227,56 +254,63 @@ def get_whois_data(domain):
             r"Registry Expiry Date:\s*(.+)",
             r"Registrar Registration Expiration Date:\s*(.+)",
             r"Expir(?:y|ation) Date:\s*(.+)",
+            r"Expires on\.+:\s*(.+)",
+            r"Expires on:\s*(.+)",
             r"expires:\s*(.+)",
             r"Expiration Time:\s*(.+)"
         ]:
-            match = re.search(pattern, output, re.IGNORECASE)
+            match = re.search(pattern, output_clean, re.IGNORECASE)
             if match:
-                whois_info["Expiry Date"] = match.group(1).strip().split('\n')[0]
+                whois_info["Expiry Date"] = match.group(1).strip().split('\n')[0].strip('.')
                 break
         
         # Updated Date
         for pattern in [
             r"Updated Date:\s*(.+)",
             r"Last Updated:\s*(.+)",
+            r"Last Update Time:\s*(.+)",
             r"last-update:\s*(.+)",
             r"Modified Date:\s*(.+)"
         ]:
-            match = re.search(pattern, output, re.IGNORECASE)
+            match = re.search(pattern, output_clean, re.IGNORECASE)
             if match:
-                whois_info["Last Updated"] = match.group(1).strip().split('\n')[0]
+                whois_info["Last Updated"] = match.group(1).strip().split('\n')[0].strip('.')
                 break
         
         # Domain Status
-        statuses = re.findall(r"(?:Domain )?Status:\s*(.+)", output, re.IGNORECASE)
+        statuses = re.findall(r"(?:Domain )?Status:\s*(.+)", output_clean, re.IGNORECASE)
         if statuses:
             whois_info["Domain Status"] = [s.strip().split()[0] for s in statuses[:3]]
         else:
             whois_info["Domain Status"] = ["Unknown"]
         
         # Registrant
-        for pattern in [
-            r"Registrant Name:\s*(.+)",
-            r"Registrant:\s*(.+)",
-            r"Registrant Organization:\s*(.+)",
-            r"Registrant Contact Name:\s*(.+)"
-        ]:
-            match = re.search(pattern, output, re.IGNORECASE)
-            if match:
-                value = match.group(1).strip().split('\n')[0]
-                if value:
-                    whois_info["Registrant"] = value
-                    break
+        reg_match = re.search(r"\*\*\s*Registrant:\s*\n([^\n\*]+)", output_clean, re.IGNORECASE)
+        if reg_match and reg_match.group(1).strip() and "Hidden" not in reg_match.group(1):
+            whois_info["Registrant"] = reg_match.group(1).strip()
+        else:
+            for pattern in [
+                r"Registrant Name:\s*(.+)",
+                r"Registrant:\s*(.+)",
+                r"Registrant Organization:\s*(.+)",
+                r"Registrant Contact Name:\s*(.+)"
+            ]:
+                match = re.search(pattern, output_clean, re.IGNORECASE)
+                if match:
+                    value = match.group(1).strip().split('\n')[0]
+                    if value:
+                        whois_info["Registrant"] = value
+                        break
         
         # Privacy Protection
-        privacy_keywords = ["REDACTED", "Privacy", "GDPR", "Protected", "Proxy", "PRIVATE"]
-        if any(keyword.lower() in output.lower() for keyword in privacy_keywords):
+        privacy_keywords = ["REDACTED", "Privacy", "GDPR", "Protected", "Proxy", "PRIVATE", "Hidden upon user request"]
+        if any(keyword.lower() in output_clean.lower() for keyword in privacy_keywords):
             whois_info["Privacy Protection"] = "Active"
         else:
             whois_info["Privacy Protection"] = "Inactive"
         
         # Name Servers (ek bilgi)
-        nameservers = re.findall(r"Name Server:\s*(.+)", output, re.IGNORECASE)
+        nameservers = re.findall(r"Name Server:\s*(.+)", output_clean, re.IGNORECASE)
         if nameservers:
             whois_info["WHOIS Name Servers"] = [ns.strip().lower() for ns in nameservers[:4]]
             
