@@ -8,6 +8,8 @@ import json
 import asyncio
 import logging
 
+from typing import Optional, Dict, List
+
 # Suppress noisy WHOIS socket connection error logs in console
 logging.getLogger("whois").setLevel(logging.CRITICAL)
 logging.getLogger("whois.whois").setLevel(logging.CRITICAL)
