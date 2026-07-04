@@ -144,12 +144,19 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
             func = module_functions[module_name]
             delay_type = module_weights.get(module_name, 'medium')
             
-            # For simplicity, we just safely execute it synchronously here
+            # Run blocking modules in a thread executor to keep the event loop responsive
             try:
-                if asyncio.iscoroutinefunction(func):
-                    res = await func(domain)
-                else:
+                async_modules = {"Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"}
+                if module_name in async_modules or asyncio.iscoroutinefunction(func):
                     res = func(domain)
+                    if asyncio.iscoroutine(res):
+                        res = await res
+                else:
+                    # Run synchronous function in a thread executor
+                    loop = asyncio.get_running_loop()
+                    def sync_wrapper():
+                        return func(domain)
+                    res = await loop.run_in_executor(None, sync_wrapper)
                     if asyncio.iscoroutine(res):
                         res = await res
                 results[module_name] = res
@@ -332,8 +339,8 @@ async def get_recent_scans():
                         scan_date = datetime.fromtimestamp(mtime).isoformat()
                         
                         with open(result_file, "r", encoding="utf-8") as f:
-                            res = json.load(f)
-                            
+                            raw_res = json.load(f)
+                        res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
                         sec_res = res.get("Security Analysis", {})
                         score = sec_res.get("security_score", None) if isinstance(sec_res, dict) else None
                         grade = sec_res.get("security_grade", None) if isinstance(sec_res, dict) else None
@@ -382,7 +389,7 @@ async def get_global_stats():
         }
 
 @app.get('/api/threat-intel/{domain}')
-async def get_threat_intel(domain: str, background_tasks: BackgroundTasks):
+async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force: bool = False):
     """Extract comprehensive threat intelligence from all scan modules"""
     result_path = os.path.join('logs', domain, 'results.json')
     intel = {
@@ -403,16 +410,39 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks):
         'scan_progress': None,
     }
 
-    if not os.path.exists(result_path):
-        # Auto-trigger scan if not already running
+    should_trigger = False
+    if force or not os.path.exists(result_path):
+        should_trigger = True
+    else:
+        try:
+            with open(result_path, 'r', encoding='utf-8') as f:
+                raw_res = json.load(f)
+            res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+            if not res or not isinstance(res, dict):
+                should_trigger = True
+        except Exception:
+            should_trigger = True
+
+    if should_trigger:
+        if os.path.exists(result_path):
+            try:
+                os.remove(result_path)
+            except Exception:
+                pass
+        
         if domain in ACTIVE_SCANS:
-            intel['is_scanning'] = True
-            intel['scan_progress'] = {
-                'total': ACTIVE_SCANS[domain].get('total', 16),
-                'completed': ACTIVE_SCANS[domain].get('completed', 0),
-                'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
-            }
-        else:
+            if ACTIVE_SCANS[domain].get('current_module') == 'Finished':
+                ACTIVE_SCANS.pop(domain, None)
+            else:
+                intel['is_scanning'] = True
+                intel['scan_progress'] = {
+                    'total': ACTIVE_SCANS[domain].get('total', 16),
+                    'completed': ACTIVE_SCANS[domain].get('completed', 0),
+                    'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
+                }
+                return intel
+
+        if domain not in ACTIVE_SCANS:
             modules_list = [
                 "Domain Information", "DNS Records", "SEO Analysis", "Web Technologies",
                 "Security Analysis", "Advanced Content Scan", "Contact Spy", "Subdomain Discovery",
@@ -460,15 +490,21 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks):
         pass
 
     with open(result_path, 'r', encoding='utf-8') as f:
-        res = json.load(f)
+        raw_res = json.load(f)
+    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
 
     intel['has_data'] = True
 
     # ── Security Analysis → CVEs + risk score ──
     sec = res.get('Security Analysis', {})
     if isinstance(sec, dict):
-        intel['risk_score'] = sec.get('security_score', 0)
-        intel['security_grade'] = sec.get('security_grade', None)
+        score_val = sec.get('security_score', 0)
+        if isinstance(score_val, dict):
+            intel['risk_score'] = score_val.get('overall_score', 0)
+            intel['security_grade'] = score_val.get('grade', None)
+        else:
+            intel['risk_score'] = score_val
+            intel['security_grade'] = sec.get('security_grade', None)
         vulns = sec.get('vulnerabilities', [])
         if isinstance(vulns, list):
             for v in vulns:
@@ -642,7 +678,7 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks):
 
 
 @app.get('/api/network-map/{domain}')
-async def get_network_map(domain: str, background_tasks: BackgroundTasks):
+async def get_network_map(domain: str, background_tasks: BackgroundTasks, force: bool = False):
     """Retrieve comprehensive network topology data for a domain"""
     result_path = os.path.join('logs', domain, 'results.json')
     network = {
@@ -661,16 +697,39 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks):
         'scan_progress': None,
     }
 
-    if not os.path.exists(result_path):
-        # Auto-trigger scan if not already running
+    should_trigger = False
+    if force or not os.path.exists(result_path):
+        should_trigger = True
+    else:
+        try:
+            with open(result_path, 'r', encoding='utf-8') as f:
+                raw_res = json.load(f)
+            res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+            if not res or not isinstance(res, dict):
+                should_trigger = True
+        except Exception:
+            should_trigger = True
+
+    if should_trigger:
+        if os.path.exists(result_path):
+            try:
+                os.remove(result_path)
+            except Exception:
+                pass
+        
         if domain in ACTIVE_SCANS:
-            network['is_scanning'] = True
-            network['scan_progress'] = {
-                'total': ACTIVE_SCANS[domain].get('total', 16),
-                'completed': ACTIVE_SCANS[domain].get('completed', 0),
-                'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
-            }
-        else:
+            if ACTIVE_SCANS[domain].get('current_module') == 'Finished':
+                ACTIVE_SCANS.pop(domain, None)
+            else:
+                network['is_scanning'] = True
+                network['scan_progress'] = {
+                    'total': ACTIVE_SCANS[domain].get('total', 16),
+                    'completed': ACTIVE_SCANS[domain].get('completed', 0),
+                    'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
+                }
+                return network
+
+        if domain not in ACTIVE_SCANS:
             modules_list = [
                 "Domain Information", "DNS Records", "SEO Analysis", "Web Technologies",
                 "Security Analysis", "Advanced Content Scan", "Contact Spy", "Subdomain Discovery",
@@ -711,7 +770,8 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks):
         return network
 
     with open(result_path, 'r', encoding='utf-8') as f:
-        res = json.load(f)
+        raw_res = json.load(f)
+    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
 
     network['has_data'] = True
 
@@ -789,7 +849,9 @@ async def get_vulnerability_stats():
             if os.path.exists(result_file):
                 try:
                     with open(result_file, 'r', encoding='utf-8') as f:
-                        res = json.load(f)
+                        raw_res = json.load(f)
+                    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+                    
                     sec = res.get('Security Analysis', {})
                     if isinstance(sec, dict):
                         for v in sec.get('vulnerabilities', []):
@@ -798,9 +860,91 @@ async def get_vulnerability_stats():
                                 if sev in stats:
                                     stats[sev] += 1
                                 stats['total'] += 1
+
+                    acs = res.get('Advanced Content Scan', {})
+                    if isinstance(acs, dict):
+                        for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
+                            findings = acs.get(key, [])
+                            if isinstance(findings, list):
+                                for f in findings:
+                                    if isinstance(f, dict):
+                                        sev = (f.get('severity', 'medium') or 'medium').lower()
+                                        if sev in stats:
+                                            stats[sev] += 1
+                                        stats['total'] += 1
                 except Exception:
                     pass
     return stats
+
+
+@app.get('/api/active-scans')
+async def get_active_scans():
+    """Get detailed list of active scans"""
+    res = []
+    for domain, info in list(ACTIVE_SCANS.items()):
+        current = info.get("current_module", "Scanning...")
+        if current != "Finished":
+            res.append({
+                "domain": domain,
+                "total": info.get("total", 16),
+                "completed": info.get("completed", 0),
+                "current_module": current
+            })
+    return res
+
+
+@app.get('/api/recent-alerts')
+async def get_recent_alerts():
+    """Retrieve actual list of vulnerabilities parsed from all scanned targets"""
+    alerts = []
+    logs_dir = "logs"
+    if os.path.exists(logs_dir):
+        for domain in os.listdir(logs_dir):
+            result_file = os.path.join(logs_dir, domain, "results.json")
+            if os.path.exists(result_file):
+                try:
+                    with open(result_file, "r", encoding="utf-8") as f:
+                        raw_res = json.load(f)
+                    res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
+                    
+                    sec = res.get('Security Analysis', {})
+                    if isinstance(sec, dict):
+                        for v in sec.get('vulnerabilities', []):
+                            if isinstance(v, dict):
+                                alerts.append({
+                                    "domain": domain,
+                                    "title": v.get("type", v.get("title", "Vulnerability")),
+                                    "severity": (v.get("severity", "Medium") or "Medium").upper(),
+                                    "description": v.get("description", v.get("detail", ""))[:120],
+                                    "module": "Security Analysis"
+                                })
+                                
+                    acs = res.get('Advanced Content Scan', {})
+                    if isinstance(acs, dict):
+                        for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
+                            findings = acs.get(key, [])
+                            if isinstance(findings, list):
+                                for f in findings:
+                                    if isinstance(f, dict):
+                                        alerts.append({
+                                            "domain": domain,
+                                            "title": f.get("type", f.get("vuln_type", key.replace('_', ' ').title())),
+                                            "severity": (f.get("severity", "Medium") or "Medium").upper(),
+                                            "description": f.get("description", f.get("value", ""))[:120],
+                                            "module": "Advanced Content Scan"
+                                        })
+                except Exception:
+                    pass
+    severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+    seen = set()
+    unique_alerts = []
+    for a in alerts:
+        key = (a["domain"], a["title"])
+        if key not in seen:
+            seen.add(key)
+            unique_alerts.append(a)
+    unique_alerts.sort(key=lambda x: severity_order.get(x["severity"], 5))
+    return unique_alerts[:15]
 
 
 @app.get('/api/system-health')

@@ -769,9 +769,9 @@ const TABS = [
   { id: 'associated', label: 'Associated SAN', icon: '🔗' },
 ];
 
-const NetworkMapPage = () => {
+const NetworkMapPage = ({ domain: initialDomain, setCurrentDomain }) => {
   /* ── state ── */
-  const [domain, setDomain]             = useState('');
+  const [domain, setDomain]             = useState(initialDomain || '');
   const [activeDomain, setActiveDomain] = useState('');
   const [data, setData]                 = useState(null);
   const [loading, setLoading]           = useState(false);
@@ -797,7 +797,7 @@ const NetworkMapPage = () => {
     })();
   }, []);
 
-  const fetchData = async (targetDomain, isPolling = false) => {
+  const fetchData = async (targetDomain, isPolling = false, force = false) => {
     const clean = targetDomain.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!clean) return;
     if (!isPolling) {
@@ -808,14 +808,15 @@ const NetworkMapPage = () => {
       setScanAnim(true);
     }
     try {
-      const res = await fetch(getApiUrl('/api/network-map/' + encodeURIComponent(clean)));
+      const url = getApiUrl('/api/network-map/' + encodeURIComponent(clean) + (force ? '?force=true' : ''));
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const json = await res.json();
       setData(json);
       
       if (json.is_scanning) {
         setLoading(true);
-        setTimeout(() => fetchData(clean, true), 3000);
+        setTimeout(() => fetchData(clean, true, false), 3000);
       } else {
         setLoading(false);
         setTimeout(() => setScanAnim(false), 2200);
@@ -823,18 +824,30 @@ const NetworkMapPage = () => {
           setError('No network data available. Run a scan first.');
         }
       }
+
+      if (setCurrentDomain) {
+        setCurrentDomain(clean);
+      }
     } catch (e) {
       if (!isPolling) {
         setError(e.message || 'Failed to fetch network data.');
         setLoading(false);
         setScanAnim(false);
       } else {
-        setTimeout(() => fetchData(clean, true), 5000);
+        setTimeout(() => fetchData(clean, true, false), 5000);
       }
     }
   };
 
-  const handleScan = () => fetchData(domain);
+  /* ── Auto-fetch on mount/domain change ── */
+  useEffect(() => {
+    if (initialDomain) {
+      setDomain(initialDomain);
+      fetchData(initialDomain, false, false);
+    }
+  }, [initialDomain]);
+
+  const handleScan = () => fetchData(domain, false, true);
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleScan(); };
 
   /* ── derived stats ── */
@@ -913,7 +926,7 @@ const NetworkMapPage = () => {
               <button
                 key={i}
                 className="btn-outline"
-                onClick={() => { setDomain(d); fetchData(d); }}
+                onClick={() => { setDomain(d); fetchData(d, false, false); }}
                 style={{
                   fontFamily: 'var(--font-mono)', fontSize: 11,
                   padding: '4px 12px', borderRadius: 20,

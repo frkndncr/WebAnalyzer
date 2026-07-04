@@ -63,7 +63,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   }, []);
 
   /* ── Fetch threat intel for a domain ── */
-  const loadIntel = useCallback(async (targetDomain, isPolling = false) => {
+  const loadIntel = useCallback(async (targetDomain, isPolling = false, force = false) => {
     if (!targetDomain || !targetDomain.trim()) return;
     const target = targetDomain.trim().toLowerCase();
     if (!isPolling) {
@@ -74,7 +74,8 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
       setSelectedNode(null);
     }
     try {
-      const res = await fetch(getApiUrl('/api/threat-intel/' + encodeURIComponent(target)));
+      const url = getApiUrl('/api/threat-intel/' + encodeURIComponent(target) + (force ? '?force=true' : ''));
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
       const data = await res.json();
       setIntelData(data);
@@ -82,7 +83,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
       if (data.is_scanning) {
         setLoading(true);
         // Poll again in 3 seconds
-        setTimeout(() => loadIntel(target, true), 3000);
+        setTimeout(() => loadIntel(target, true, false), 3000);
       } else {
         setLoading(false);
         /* Sync sliders to API values */
@@ -103,7 +104,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
         setError(err.message || 'Failed to load threat intelligence');
         setLoading(false);
       } else {
-        setTimeout(() => loadIntel(target, true), 5000);
+        setTimeout(() => loadIntel(target, true, false), 5000);
       }
     }
   }, [setCurrentDomain]);
@@ -112,7 +113,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   useEffect(() => {
     if (domain) {
       setDomainInput(domain);
-      loadIntel(domain);
+      loadIntel(domain, false, false);
     }
   }, [domain, loadIntel]);
 
@@ -265,7 +266,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   /* ── Handle form submit ── */
   const handleLoadIntel = (e) => {
     e.preventDefault();
-    loadIntel(domainInput);
+    loadIntel(domainInput, false, true);
   };
 
   /* ── Handle dropdown select ── */
@@ -273,7 +274,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
     const val = e.target.value;
     if (val) {
       setDomainInput(val);
-      loadIntel(val);
+      loadIntel(val, false, false);
     }
   };
 

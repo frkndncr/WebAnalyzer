@@ -713,24 +713,37 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
   }, []);
 
   /* ── load intel ── */
-  const loadIntel = useCallback(async (target) => {
+  const loadIntel = useCallback(async (target, isPolling = false, force = false) => {
     if (!target?.trim()) return;
     const clean = target.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    setLoading(true);
-    setError('');
-    setIntel(null);
-    setSelectedNode(null);
-    setExpandedSteps({});
+    if (!isPolling) {
+      setLoading(true);
+      setError('');
+      setIntel(null);
+      setSelectedNode(null);
+      setExpandedSteps({});
+    }
     try {
-      const res = await fetch(getApiUrl('/api/threat-intel/' + encodeURIComponent(clean)));
+      const url = getApiUrl('/api/threat-intel/' + encodeURIComponent(clean) + (force ? '?force=true' : ''));
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       const data = await res.json();
       setIntel(data);
       if (setCurrentDomain) setCurrentDomain(clean);
+
+      if (data.is_scanning) {
+        setLoading(true);
+        setTimeout(() => loadIntel(clean, true, false), 3000);
+      } else {
+        setLoading(false);
+      }
     } catch (e) {
-      setError(e.message || 'Failed to load threat intelligence');
-    } finally {
-      setLoading(false);
+      if (!isPolling) {
+        setError(e.message || 'Failed to load threat intelligence');
+        setLoading(false);
+      } else {
+        setTimeout(() => loadIntel(clean, true, false), 5000);
+      }
     }
   }, [setCurrentDomain]);
 
@@ -738,7 +751,7 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
   useEffect(() => {
     if (domain) {
       setDomainInput(domain);
-      loadIntel(domain);
+      loadIntel(domain, false, false);
     }
   }, [domain, loadIntel]);
 
@@ -780,7 +793,7 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
       </div>
 
       {/* ── DOMAIN INPUT ── */}
-      <form onSubmit={e => { e.preventDefault(); loadIntel(domainInput); }}
+      <form onSubmit={e => { e.preventDefault(); loadIntel(domainInput, false, true); }}
         className="glass-panel" style={{ padding: '18px 20px', borderRadius: 14, marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 240, position: 'relative' }}>
@@ -793,7 +806,7 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
             <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' }}>🎯</span>
           </div>
           {recentDomains.length > 0 && (
-            <select className="input-glass" value="" onChange={e => { setDomainInput(e.target.value); loadIntel(e.target.value); }}
+            <select className="input-glass" value="" onChange={e => { setDomainInput(e.target.value); loadIntel(e.target.value, false, false); }}
               style={{ fontFamily: 'var(--font-mono)', fontSize: 12, minWidth: 180, background: 'rgba(13,17,23,0.6)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
               <option value="">📂 Recent Scans...</option>
               {recentDomains.map(d => (
@@ -814,7 +827,7 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
           <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-secondary)' }}>Quick:</span>
             {recentDomains.slice(0, 8).map(d => (
-              <button key={d} type="button" className="btn-outline" onClick={() => { setDomainInput(d); loadIntel(d); }}
+              <button key={d} type="button" className="btn-outline" onClick={() => { setDomainInput(d); loadIntel(d, false, false); }}
                 style={{ fontFamily: 'var(--font-mono)', fontSize: 10, padding: '3px 10px', borderRadius: 20 }}>
                 {d}
               </button>
@@ -847,10 +860,16 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🗺️</div>
           </div>
           <div style={{ fontFamily: 'var(--font-cyber)', fontSize: 14, color: 'var(--accent-blue)', letterSpacing: 3, marginBottom: 8 }}>
-            CONSTRUCTING ATTACK MAP
+            {intel?.is_scanning ? 'AUTO-TRIGGERED SECURITY SCAN IN PROGRESS' : 'CONSTRUCTING ATTACK MAP'}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 20 }}>
-            Aggregating CVEs · Mapping exploit chains · Modeling kill chain...
+            {intel?.is_scanning ? (
+              <>
+                Running module: <span style={{ color: 'var(--accent-orange)' }}>{intel?.scan_progress?.current_module}</span> ({intel?.scan_progress?.completed}/{intel?.scan_progress?.total})
+              </>
+            ) : (
+              'Aggregating CVEs · Mapping exploit chains · Modeling kill chain...'
+            )}
           </div>
           <div style={{ maxWidth: 360, margin: '0 auto', height: 3, borderRadius: 3, background: 'rgba(0,242,254,0.1)', overflow: 'hidden' }}>
             <div style={{
