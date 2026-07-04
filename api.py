@@ -95,33 +95,27 @@ def get_safe_wrapper(module_func):
 
 @app.get("/api/results/{domain}")
 async def get_results(domain: str):
-    """Retrieve saved JSON results for a domain"""
-    result_path = os.path.join("logs", domain, "results.json")
-    if os.path.exists(result_path):
-        with open(result_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+    """Retrieve saved JSON results for a domain (checking local disk first, then MySQL DB fallback)"""
+    res = load_results_from_file_or_db(domain)
+    if res:
+        return res
     raise HTTPException(status_code=404, detail="Results not found")
 
 @app.get("/api/status/{domain}")
 async def get_status(domain: str):
-    """Retrieve realtime progression status of a scan"""
+    """Retrieve realtime progression status of a scan (checking local disk first, then MySQL DB fallback)"""
     if domain in ACTIVE_SCANS:
         return ACTIVE_SCANS[domain]
     
-    result_path = os.path.join("logs", domain, "results.json")
-    if os.path.exists(result_path):
-        try:
-            with open(result_path, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-            scan_info = saved.get("scan_info", {})
-            return {
-                "total": scan_info.get("total_modules", 1),
-                "completed": scan_info.get("successful_modules", 1),
-                "current_module": "Finished",
-                "results": saved.get("results", {})
-            }
-        except Exception:
-            return {"total": 1, "completed": 1, "current_module": "Finished", "results": {}}
+    res = load_results_from_file_or_db(domain)
+    if res:
+        completed_count = len([k for k, v in res.items() if isinstance(v, dict) and "error" not in v])
+        return {
+            "total": 16,
+            "completed": completed_count or 16,
+            "current_module": "Finished",
+            "results": res
+        }
         
     raise HTTPException(status_code=404, detail="Scan not found or not active")
 
@@ -210,12 +204,162 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
                 
             ACTIVE_SCANS[domain]["completed"] += 1
 
-    ACTIVE_SCANS[domain]["current_module"] = "Writing to disk..."
+    ACTIVE_SCANS[domain]["current_module"] = "Writing to disk & database..."
     # Save logic directly to logs/domain/results.json
     save_results_to_json(domain, results)
     
+    # Save logic directly to MySQL database as a permanent backup!
+    save_scan_results_to_db(domain, results)
+    
     ACTIVE_SCANS[domain]["current_module"] = "Finished"
     executor.cleanup()
+
+
+def save_scan_results_to_db(domain: str, results: dict):
+    """Saves all scan results, technologies, and vulnerabilities to the database as a backup"""
+    try:
+        from database.db_manager import db_manager
+        
+        # 1. Ensure the 'Dashboard Single Scans' job exists
+        job_id = None
+        jobs = db_manager.execute_query(
+            "SELECT id FROM scan_jobs WHERE job_name = 'Dashboard Single Scans' LIMIT 1",
+            commit=False
+        )
+        if jobs:
+            job_id = jobs[0]['id']
+        else:
+            job_id = db_manager.create_scan_job("Dashboard Single Scans", 1)
+            
+        if not job_id:
+            return
+            
+        # 2. Ensure the domain exists in domains table under this job
+        domain_id = None
+        doms = db_manager.execute_query(
+            "SELECT id FROM domains WHERE job_id = %s AND domain = %s LIMIT 1",
+            (job_id, domain),
+            commit=False
+        )
+        if doms:
+            domain_id = doms[0]['id']
+        else:
+            query = "INSERT INTO domains (job_id, domain, status, priority) VALUES (%s, %s, 'completed', 5)"
+            domain_id = db_manager.execute_query(query, (job_id, domain))
+            
+        if not domain_id:
+            return
+            
+        # Update domain status
+        db_manager.update_domain_status(domain_id, 'completed')
+        
+        # 3. Save each module's result
+        for module_name, module_data in results.items():
+            if not module_data:
+                continue
+            if module_name == "scan_info":
+                continue
+                
+            risk_level = 'low'
+            score = 100
+            
+            if isinstance(module_data, dict):
+                if "error" in module_data:
+                    serialized_data = json.dumps(module_data, ensure_ascii=False)
+                    query = """
+                        INSERT INTO scan_results 
+                        (domain_id, module_name, status, risk_level, score, execution_time, result_data, error_message, created_at)
+                        VALUES (%s, %s, 'failed', 'low', 100, 1.0, %s, %s, NOW())
+                        ON DUPLICATE KEY UPDATE status='failed', error_message=VALUES(error_message), updated_at=NOW()
+                    """
+                    db_manager.execute_query(query, (domain_id, module_name, serialized_data, str(module_data["error"])))
+                    continue
+                
+                vulns = module_data.get("vulnerabilities", []) or module_data.get("vulnerable_subdomains", [])
+                if vulns:
+                    risk_level = 'high'
+                    score = 40
+                
+                sec_score = module_data.get("security_score", None) or module_data.get("security_grade", None)
+                if sec_score:
+                    if isinstance(sec_score, dict) and "overall_score" in sec_score:
+                        score = int(sec_score["overall_score"])
+                    elif isinstance(sec_score, (int, float)):
+                        score = int(sec_score)
+            
+            db_manager.save_scan_result(
+                domain_id=domain_id,
+                module_name=module_name,
+                result_data=module_data,
+                risk_level=risk_level,
+                score=score,
+                execution_time=1.5
+            )
+            
+            try:
+                db_manager.save_vulnerabilities_from_result(domain_id, module_name, module_data)
+            except Exception as ve:
+                logging.error(f"Error extracting vulnerabilities for DB: {ve}")
+                
+            if module_name == "Web Technologies" and isinstance(module_data, dict):
+                try:
+                    techs = []
+                    for tech_cat, tech_val in module_data.items():
+                        if tech_cat in ["vulnerabilities", "waf_detected", "cookies"]:
+                            continue
+                        if isinstance(tech_val, str) and tech_val != "Unknown":
+                            techs.append({
+                                'category': tech_cat,
+                                'name': tech_val,
+                                'version': None,
+                                'confidence': 100
+                            })
+                    db_manager.save_technologies_bulk(domain_id, techs)
+                except Exception as te:
+                    logging.error(f"Error saving technologies for DB: {te}")
+                    
+        logging.info(f"Successfully backed up scan results for {domain} to MySQL database!")
+    except Exception as e:
+        logging.error(f"Database backup failed for domain {domain}: {e}")
+
+
+def load_results_from_file_or_db(domain: str) -> Optional[dict]:
+    """Loads results dictionary from local logs folder or falls back to MySQL database"""
+    result_path = os.path.join("logs", domain, "results.json")
+    if os.path.exists(result_path):
+        try:
+            with open(result_path, "r", encoding="utf-8") as f:
+                raw_res = json.load(f)
+            return raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
+        except Exception:
+            pass
+            
+    try:
+        from database.db_manager import db_manager
+        doms = db_manager.execute_query(
+            "SELECT id FROM domains WHERE domain = %s ORDER BY id DESC LIMIT 1",
+            (domain,),
+            commit=False
+        )
+        if doms:
+            domain_id = doms[0]['id']
+            rows = db_manager.execute_query(
+                "SELECT module_name, result_data FROM scan_results WHERE domain_id = %s",
+                (domain_id,),
+                commit=False
+            )
+            if rows:
+                db_results = {}
+                for row in rows:
+                    try:
+                        db_results[row['module_name']] = json.loads(row['result_data'])
+                    except Exception:
+                        pass
+                if db_results:
+                    return db_results
+    except Exception as e:
+        logging.error(f"Database fallback failed to load results for {domain}: {e}")
+    return None
 
 
 # ─── Advanced Content Scanner per-section scanning ───
@@ -453,18 +597,11 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force
         'scan_progress': None,
     }
 
-    should_trigger = False
-    if force or not os.path.exists(result_path):
-        should_trigger = True
-    else:
-        try:
-            with open(result_path, 'r', encoding='utf-8') as f:
-                raw_res = json.load(f)
-            res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
-            if not res or not isinstance(res, dict):
-                should_trigger = True
-        except Exception:
-            should_trigger = True
+    res = None
+    if not force:
+        res = load_results_from_file_or_db(domain)
+
+    should_trigger = not res
 
     if should_trigger:
         if os.path.exists(result_path):
@@ -526,16 +663,13 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force
         return intel
 
     try:
-        mtime = os.path.getmtime(result_path)
         from datetime import datetime
-        intel['scan_date'] = datetime.fromtimestamp(mtime).isoformat()
+        intel['scan_date'] = datetime.now().isoformat()
     except Exception:
         pass
 
-    with open(result_path, 'r', encoding='utf-8') as f:
-        raw_res = json.load(f)
-    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
-
+    if not res:
+        res = {}
     intel['has_data'] = True
 
     # ── Security Analysis → CVEs + risk score ──
@@ -740,18 +874,11 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, force:
         'scan_progress': None,
     }
 
-    should_trigger = False
-    if force or not os.path.exists(result_path):
-        should_trigger = True
-    else:
-        try:
-            with open(result_path, 'r', encoding='utf-8') as f:
-                raw_res = json.load(f)
-            res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
-            if not res or not isinstance(res, dict):
-                should_trigger = True
-        except Exception:
-            should_trigger = True
+    res = None
+    if not force:
+        res = load_results_from_file_or_db(domain)
+
+    should_trigger = not res
 
     if should_trigger:
         if os.path.exists(result_path):
@@ -812,10 +939,8 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, force:
             }
         return network
 
-    with open(result_path, 'r', encoding='utf-8') as f:
-        raw_res = json.load(f)
-    res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
-
+    if not res:
+        res = {}
     network['has_data'] = True
 
     # ── DNS Records ──
