@@ -1,17 +1,19 @@
 FROM python:3.10-slim
 
-# Install system dependencies (git, nmap, wget, ca-certificates)
+# Install system dependencies (git, nmap, wget, ca-certificates, unzip)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     nmap \
     wget \
     ca-certificates \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install precompiled subfinder binary directly (v2.6.6)
-RUN wget -q https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.tar.gz && \
-    tar -xzvf subfinder_2.6.6_linux_amd64.tar.gz -C /usr/local/bin/ subfinder && \
-    rm subfinder_2.6.6_linux_amd64.tar.gz
+# Download and install precompiled subfinder binary directly (v2.14.0)
+RUN wget -q https://github.com/projectdiscovery/subfinder/releases/download/v2.14.0/subfinder_2.14.0_linux_amd64.zip && \
+    unzip subfinder_2.14.0_linux_amd64.zip && \
+    mv subfinder /usr/local/bin/subfinder && \
+    rm subfinder_2.14.0_linux_amd64.zip
 
 WORKDIR /app
 
