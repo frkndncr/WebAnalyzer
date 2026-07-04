@@ -1,10 +1,7 @@
 # --- Stage 1: Build Subfinder ---
-FROM golang:1.21-alpine AS subfinder-builder
+FROM golang:1.22-alpine AS subfinder-builder
 RUN apk add --no-cache git
-WORKDIR /build
-RUN git clone https://github.com/projectdiscovery/subfinder.git && \
-    cd subfinder/cmd/subfinder && \
-    go build -ldflags "-s -w" -o /usr/local/bin/subfinder
+RUN go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 
 # --- Stage 2: Final Backend Image ---
 FROM python:3.10-slim
@@ -16,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy subfinder from builder stage
-COPY --from=subfinder-builder /usr/local/bin/subfinder /usr/local/bin/subfinder
+COPY --from=subfinder-builder /go/bin/subfinder /usr/local/bin/subfinder
 
 WORKDIR /app
 
