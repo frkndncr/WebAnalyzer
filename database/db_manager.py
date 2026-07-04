@@ -32,13 +32,53 @@ class DatabaseManager:
             return
         
         with self.pool_lock:
-            if self.pool is None:
-                try:
                     self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
                     logging.info("Database connection pool created successfully")
+                    self._initialize_schema()
                 except Error as e:
-                    logging.debug(f"MySQL unavailable (standalone mode): {e}")
+                    logging.error(f"Error creating connection pool: {e}")
                     raise RuntimeError(f"Database connection pool initialization failed: {e}") from e
+
+    def _initialize_schema(self):
+        """Initializes database schema from schema.sql if tables do not exist"""
+        import os
+        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+        if not os.path.exists(schema_path):
+            schema_path = 'database/schema.sql'
+            
+        if os.path.exists(schema_path):
+            try:
+                with open(schema_path, 'r', encoding='utf-8') as f:
+                    schema_sql = f.read()
+                
+                # Split commands by semicolon, ignoring comments
+                commands = []
+                current_command = []
+                for line in schema_sql.splitlines():
+                    line_stripped = line.strip()
+                    if not line_stripped or line_stripped.startswith('--') or line_stripped.startswith('/*'):
+                        continue
+                    current_command.append(line)
+                    if line_stripped.endswith(';'):
+                        commands.append('\n'.join(current_command))
+                        current_command = []
+                
+                # Run each command on a separate connection
+                conn = self.pool.get_connection()
+                cursor = conn.cursor()
+                for cmd in commands:
+                    if cmd.strip():
+                        try:
+                            cursor.execute(cmd)
+                        except Error as err:
+                            # Ignore if table already exists or other non-critical issues
+                            logging.debug(f"Schema command warning: {err}")
+                conn.commit()
+                cursor.close()
+                conn.close()
+                logging.info("Database schema checked/initialized successfully")
+            except Exception as e:
+                logging.error(f"Failed to auto-initialize database schema: {e}")
     
     def get_connection(self):
         """Connection pool'dan bağlantı al - retry logic"""
