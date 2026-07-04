@@ -18,6 +18,15 @@
 
 ---
 
+## 🌐 Canlı Gösterim & Panel Kurulumu
+
+WebAnalyzer platformu artık tamamen canlı yayındadır ve gerçek zamanlı alan adı denetimleri için kullanılabilir:
+
+* 🖥️ **İnteraktif Cyberpunk Dashboard (Arayüz)**: [webanalyzer.c4softwarestudio.com](https://webanalyzer.c4softwarestudio.com/)
+* ⚡ **Analiz Motoru & REST API (Backend)**: [webanalyzer-api.onrender.com](https://webanalyzer-api.onrender.com)
+
+---
+
 ## 🌟 Genel Bakış
 
 <div align="center">
