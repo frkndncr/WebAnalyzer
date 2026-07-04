@@ -384,8 +384,8 @@ class SubdomainTakeover:
             # Check website availability
             website_info = self.check_website_availability(subdomain)
             
-            # Check domain registration
-            whois_info = self.get_domain_registration_info(subdomain)
+            # Check domain registration - optimized to None (fetched lazily below)
+            whois_info = None
             
             # Check for additional misconfigurations
             misconfiguration = self.check_for_misconfigurations(dns_info, website_info)
@@ -481,6 +481,7 @@ class SubdomainTakeover:
             
             # If a vulnerability was detected, build the complete result
             if vulnerability_detected:
+                whois_info = self.get_domain_registration_info(subdomain)
                 result = {
                     "subdomain": subdomain,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

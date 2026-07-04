@@ -6,6 +6,11 @@ import time
 import os
 import json
 import asyncio
+import logging
+
+# Suppress noisy WHOIS socket connection error logs in console
+logging.getLogger("whois").setLevel(logging.CRITICAL)
+logging.getLogger("whois.whois").setLevel(logging.CRITICAL)
 
 # WebAnalyzer dependencies
 from utils.utils import save_results_to_json
@@ -171,6 +176,8 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
         if module_name in module_functions:
             ACTIVE_SCANS[domain]["current_module"] = module_name
             func = module_functions[module_name]
+            if module_name == "AttackPathPlanner":
+                func = lambda d: AttackPathPlanner(d, findings=results).run()
             delay_type = module_weights.get(module_name, 'medium')
             
             # Run blocking modules in a thread executor to keep the event loop responsive

@@ -5,8 +5,9 @@ import json
 logger = logging.getLogger("modules.attack_path_planner")
 
 class AttackPathPlanner:
-    def __init__(self, domain):
+    def __init__(self, domain, findings=None):
         self.domain = domain
+        self.findings = findings
         self.output_dir = os.path.join("logs", self.domain)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
@@ -17,14 +18,16 @@ class AttackPathPlanner:
         logger.info(f"Starting Attack Path Exploit Chain Planner for {self.domain}")
         
         # Load other results to aggregate findings
-        results_file = os.path.join(self.output_dir, "results.json")
-        findings = {}
-        if os.path.exists(results_file):
-            try:
-                with open(results_file, "r", encoding="utf-8") as f:
-                    findings = json.load(f)
-            except Exception as e:
-                logger.error(f"Error loading findings for attack planner: {e}")
+        findings = self.findings
+        if not findings:
+            results_file = os.path.join(self.output_dir, "results.json")
+            findings = {}
+            if os.path.exists(results_file):
+                try:
+                    with open(results_file, "r", encoding="utf-8") as f:
+                        findings = json.load(f)
+                except Exception as e:
+                    logger.error(f"Error loading findings for attack planner: {e}")
 
         # Construct nodes and edges for the exploit chain graph
         nodes = []
