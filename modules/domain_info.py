@@ -345,7 +345,7 @@ def get_ssl_certificate_info(domain):
 
 
 def get_dns_records(domain):
-    """DNS kayıtlarını al - genişletilmiş"""
+    """DNS kayıtlarını al - dnspython kütüphanesi kullanarak"""
     dns_info = {
         "nameservers": [],
         "mx_records": [],
@@ -354,61 +354,57 @@ def get_dns_records(domain):
         "dmarc": None
     }
     
+    try:
+        import dns.resolver
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 2.0
+        resolver.lifetime = 2.0
+    except ImportError:
+        return dns_info
+
     # Nameservers
     try:
-        result = subprocess.run(
-            ["nslookup", "-type=NS", domain],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            nameservers = re.findall(r'nameserver = (.+)', result.stdout)
-            dns_info["nameservers"] = [ns.strip('.') for ns in nameservers]
-    except:
+        ns_ans = resolver.resolve(domain, "NS")
+        for rdata in ns_ans:
+            dns_info["nameservers"].append(str(rdata.target).strip('.'))
+    except Exception:
         pass
-    
+        
     # MX Records
     try:
-        result = subprocess.run(
-            ["nslookup", "-type=MX", domain],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            mx_records = re.findall(r'mail exchanger = \d+ (.+)', result.stdout)
-            dns_info["mx_records"] = [mx.strip('.') for mx in mx_records]
-    except:
+        mx_ans = resolver.resolve(domain, "MX")
+        for rdata in mx_ans:
+            dns_info["mx_records"].append(str(rdata.exchange).strip('.'))
+    except Exception:
         pass
-    
-    # TXT Records (SPF, DMARC, vb.)
+        
+    # TXT Records
     try:
-        result = subprocess.run(
-            ["nslookup", "-type=TXT", domain],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            txt_records = re.findall(r'"([^"]+)"', result.stdout)
-            dns_info["txt_records"] = txt_records
-            
-            # SPF
-            for txt in txt_records:
-                if txt.startswith('v=spf1'):
-                    dns_info["spf"] = txt
-                elif txt.startswith('v=DMARC1'):
-                    dns_info["dmarc"] = txt
-    except:
+        txt_ans = resolver.resolve(domain, "TXT")
+        for rdata in txt_ans:
+            txt_val = "".join([t.decode('utf-8', errors='ignore') if isinstance(t, bytes) else str(t) for t in rdata.strings])
+            dns_info["txt_records"].append(txt_val)
+            if txt_val.startswith("v=spf1"):
+                dns_info["spf"] = txt_val
+    except Exception:
         pass
-    
+        
+    # DMARC Record (Check _dmarc.domain)
+    try:
+        dmarc_ans = resolver.resolve(f"_dmarc.{domain}", "TXT")
+        for rdata in dmarc_ans:
+            txt_val = "".join([t.decode('utf-8', errors='ignore') if isinstance(t, bytes) else str(t) for t in rdata.strings])
+            if txt_val.startswith("v=DMARC1"):
+                dns_info["dmarc"] = txt_val
+    except Exception:
+        pass
+        
     # Format output
     if dns_info["nameservers"]:
         dns_info["nameservers"] = ", ".join(dns_info["nameservers"][:3])
     else:
         dns_info["nameservers"] = "Bulunamadı"
-    
+        
     return dns_info
 
 
