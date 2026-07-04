@@ -12,6 +12,13 @@ import logging
 logging.getLogger("whois").setLevel(logging.CRITICAL)
 logging.getLogger("whois.whois").setLevel(logging.CRITICAL)
 
+import warnings
+try:
+    from bs4 import XMLParsedAsHTMLWarning
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+except ImportError:
+    pass
+
 # WebAnalyzer dependencies
 from utils.utils import save_results_to_json
 from utils.module_wrapper import execute_modules_safely, ModuleExecutor
