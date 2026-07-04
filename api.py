@@ -1,7 +1,8 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import time
 import os
 import json
 import asyncio
@@ -41,6 +42,34 @@ app.add_middleware(
 
 # Global dictionary to track active scans
 ACTIVE_SCANS = {}
+
+# Rate Limiting configuration: {ip: [timestamps]}
+RATE_LIMIT_STORE = {}
+RATE_LIMIT_MAX_REQUESTS = 60  # Max 60 requests per minute
+RATE_LIMIT_WINDOW = 60  # 60 seconds
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    if client_ip != "unknown":
+        if client_ip not in RATE_LIMIT_STORE:
+            RATE_LIMIT_STORE[client_ip] = []
+        
+        # Remove timestamps older than the window
+        RATE_LIMIT_STORE[client_ip] = [t for t in RATE_LIMIT_STORE[client_ip] if now - t < RATE_LIMIT_WINDOW]
+        
+        if len(RATE_LIMIT_STORE[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Too many requests. Please slow down your requests."}
+            )
+        
+        RATE_LIMIT_STORE[client_ip].append(now)
+        
+    response = await call_next(request)
+    return response
 
 class ScanRequest(BaseModel):
     domain: str
