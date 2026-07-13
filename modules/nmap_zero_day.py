@@ -117,43 +117,49 @@ class UltraAdvancedNetworkScanner:
         # Nmap tarama argümanları
         scan_args = '-sV -Pn -A -T5 -p-' if self.aggressive_mode else '-sV -Pn -F -T5'
         
-        # Taramayı thread içinde çalıştır
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            scan_result = await loop.run_in_executor(
-                executor, 
-                lambda: self.nm.scan(target, arguments=scan_args)
-            )
-        
-        services = {}
-        open_ports = []
-        
-        # Tarama sonuçlarını işleme
         try:
-            for proto in self.nm[target].all_protocols():
-                ports = self.nm[target][proto].keys()
-                for port in ports:
-                    service = self.nm[target][proto][port]
-                    
-                    if service.get('state') == 'open':
-                        port_info = {
-                            'port': port,
-                            'state': service.get('state', ''),
-                            'service': service.get('name', 'unknown'),
-                            'version': service.get('product', '') + ' ' + service.get('version', ''),
-                            'product': service.get('product', ''),
-                            'cpe': service.get('cpe', [])
-                        }
+            # Taramayı thread içinde çalıştır
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                scan_result = await loop.run_in_executor(
+                    executor, 
+                    lambda: self.nm.scan(target, arguments=scan_args)
+                )
+            
+            services = {}
+            open_ports = []
+            
+            # Tarama sonuçlarını işleme
+            if target in self.nm:
+                for proto in self.nm[target].all_protocols():
+                    ports = self.nm[target][proto].keys()
+                    for port in ports:
+                        service = self.nm[target][proto][port]
                         
-                        open_ports.append(port)
-                        services[port] = port_info
+                        if service.get('state') == 'open':
+                            port_info = {
+                                'port': port,
+                                'state': service.get('state', ''),
+                                'service': service.get('name', 'unknown'),
+                                'version': service.get('product', '') + ' ' + service.get('version', ''),
+                                'product': service.get('product', ''),
+                                'cpe': service.get('cpe', [])
+                            }
+                            
+                            open_ports.append(port)
+                            services[port] = port_info
+                            
+                if open_ports:
+                    return {
+                        'open_ports': open_ports,
+                        'services': services
+                    }
         except Exception as e:
             print(f"Port scan error: {e}")
         
-        return {
-            'open_ports': open_ports,
-            'services': services
-        }
+        # Fallback to socket scan if Nmap failed, was blocked or returned no open ports
+        print("[INFO] Nmap scan failed or returned no ports. Falling back to built-in async socket scanner...")
+        return await self.fallback_socket_scan(target)
 
     def _calculate_severity(self, cve):
         """
