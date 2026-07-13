@@ -104,7 +104,18 @@ class UltraAdvancedNetworkScanner:
             except Exception:
                 pass
                 
-        await asyncio.gather(*(scan_port(port) for port in common_ports))
+        import random
+        # Randomize port order to evade simple firewall signatures
+        ports_to_scan = list(common_ports)
+        random.shuffle(ports_to_scan)
+        
+        # Scan in batches of 4 with a small delay to avoid triggering blocklists
+        batch_size = 4
+        for i in range(0, len(ports_to_scan), batch_size):
+            batch = ports_to_scan[i:i+batch_size]
+            await asyncio.gather(*(scan_port(port) for port in batch))
+            await asyncio.sleep(0.3)
+            
         return {
             'open_ports': sorted(open_ports),
             'services': services

@@ -782,6 +782,15 @@ class AdvancedContentScanner:
 
     VERSION = "4.0.0"
 
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.2420.65",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ]
+
     def __init__(
         self,
         domain: str,
@@ -974,6 +983,11 @@ class AdvancedContentScanner:
         self._throttle()
         kw.setdefault("timeout", self.timeout)
         kw.setdefault("verify", self.verify_ssl)
+        
+        # Rotate User-Agent to bypass signature profiling
+        import random
+        self.session.headers.update({"User-Agent": random.choice(self.USER_AGENTS)})
+        
         try:
             resp = self.session.request(method, url, **kw)
             # WAF detection (L5 adaptive)
@@ -999,6 +1013,13 @@ class AdvancedContentScanner:
                 return None
         except requests.exceptions.RequestException as e:
             self.logger.debug(f"Request {url}: {e}")
+            with self._lock:
+                self._waf_triggered_count += 1
+                if self._waf_triggered_count > 5:
+                    self.logger.warning(f"[WAF/Block] Connection error repeatedly on {url} — increasing rate limit and backing off")
+                    self.rate_limit = min(self.rate_limit + 0.2, 2.0)
+                    time.sleep(4)
+                    self._waf_triggered_count = 0
             return None
 
     # ──────────────────────────────────────────────────────────────────────
