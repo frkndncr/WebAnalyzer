@@ -512,9 +512,24 @@ const SettingsPage = () => {
               </div>
 
               {/* Export Buttons */}
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <button
                   className="btn-primary"
+                  onClick={() => handleExport('html')}
+                  disabled={!selectedDomain}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                    borderColor: '#38bdf8',
+                  }}
+                >
+                  <span style={{ fontSize: '1rem' }}>🛡️</span> Executive Report (PDF/HTML)
+                </button>
+                <button
+                  className="btn-outline"
                   onClick={() => handleExport('json')}
                   disabled={!selectedDomain}
                   style={{

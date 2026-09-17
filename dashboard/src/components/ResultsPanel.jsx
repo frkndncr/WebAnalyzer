@@ -2282,6 +2282,12 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
     URL.revokeObjectURL(url);
   };
 
+  const exportReport = () => {
+    if (!activeDomain) return;
+    const url = getApiUrl(`/api/report/${encodeURIComponent(activeDomain)}`);
+    window.open(url, '_blank');
+  };
+
 
 
   const progressPercent = data && data.total ? Math.round((data.completed / data.total) * 100) : 0;
@@ -2365,18 +2371,35 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
         
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
           {data && isFinished && (
-            <button
-              className="btn-outline"
-              onClick={exportJSON}
-              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Export JSON
-            </button>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <button
+                className="btn-primary"
+                onClick={exportReport}
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  borderColor: '#38bdf8',
+                }}
+              >
+                <span>🛡️</span> Executive Report (PDF)
+              </button>
+              <button
+                className="btn-outline"
+                onClick={exportJSON}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export JSON
+              </button>
+            </div>
           )}
           {data && (
             <div className="glass-panel" style={{ padding: '1rem', display: 'flex', gap: '2rem' }}>

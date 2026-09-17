@@ -24,6 +24,7 @@ The WebAnalyzer platform is now fully deployed and available for real-time domai
 
 * 🖥️ **Interactive Cyberpunk Dashboard (Frontend)**: [webanalyzer.c4softwarestudio.com](https://webanalyzer.c4softwarestudio.com/)
 * ⚡ **Analiz Motoru & REST API (Backend)**: [webanalyzer-api.onrender.com](https://webanalyzer-api.onrender.com)
+* 📝 **Deep-Dive Architecture Article (Medium)**: [Read on Medium](https://medium.com/@frkndncr/webanalyzer-next-gen-domain-reconnaissance-vulnerability-scanner-94fe899a64d1)
 
 ---
 

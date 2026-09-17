@@ -57,6 +57,12 @@ from modules.cloudflare_bypass import CloudflareBypass
 from modules.nmap_zero_day import UltraAdvancedNetworkScanner
 from modules.geo_analysis import analyze_geo
 
+try:
+    from modules.report_generator import save_html_report
+    REPORT_GENERATOR_AVAILABLE = True
+except ImportError:
+    REPORT_GENERATOR_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -1066,6 +1072,9 @@ async def main():
         try:
             save_results_to_json(domain, results)
             print(f"\n💾 Results saved to: logs/{domain}/results.json")
+            if REPORT_GENERATOR_AVAILABLE:
+                report_path = save_html_report(domain, results)
+                print(f"📄 Executive audit report generated: {report_path}")
         except Exception as e:
             logger.error(f"Failed to save results: {e}")
         
@@ -1084,6 +1093,7 @@ async def main():
         parser.add_argument("-m", "--modules", help="Comma-separated module names or numbers (or 'all')")
         parser.add_argument("-t", "--threads", type=int, help="Max parallel workers (concurrency)")
         parser.add_argument("--silent", action="store_true", help="Print only final JSON scan outputs")
+        parser.add_argument("--report", choices=["html", "pdf", "all"], help="Generate executive audit report (HTML/PDF)")
         
         args = parser.parse_args()
         
@@ -1135,6 +1145,10 @@ async def main():
             
             try:
                 save_results_to_json(clean_domain, results)
+                if REPORT_GENERATOR_AVAILABLE:
+                    report_file = save_html_report(clean_domain, results)
+                    if not args.silent:
+                        print(f"[✔] Executive audit report saved: {report_file}")
             except Exception as e:
                 logger.error(f"Error saving results: {e}")
                 

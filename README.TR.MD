@@ -24,6 +24,7 @@ WebAnalyzer platformu artık tamamen canlı yayındadır ve gerçek zamanlı ala
 
 * 🖥️ **İnteraktif Cyberpunk Dashboard (Arayüz)**: [webanalyzer.c4softwarestudio.com](https://webanalyzer.c4softwarestudio.com/)
 * ⚡ **Analiz Motoru & REST API (Backend)**: [webanalyzer-api.onrender.com](https://webanalyzer-api.onrender.com)
+* 📝 **Mimari & Mühendislik Detayları (Medium)**: [Medium'da Oku](https://medium.com/@frkndncr/webanalyzer-next-gen-domain-reconnaissance-vulnerability-scanner-94fe899a64d1)
 
 ---
 

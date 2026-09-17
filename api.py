@@ -1,5 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
-from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi.responses import PlainTextResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import time
@@ -42,6 +42,7 @@ from modules.archive_spy import ArchiveSpy
 from modules.phishing_detector import PhishingDetector
 from modules.ssl_association import SSLAssociation
 from modules.attack_path_planner import AttackPathPlanner
+from modules.report_generator import generate_executive_report
 
 app = FastAPI(title="WebAnalyzer API", description="FastAPI Backend for WebAnalyzer React Panel")
 
@@ -1132,17 +1133,18 @@ async def get_system_health():
     }
 
 
+@app.get('/api/report/{domain}')
 @app.get('/api/export/{domain}/{fmt}')
-async def export_results(domain: str, fmt: str):
-    """Export scan results in JSON or CSV format"""
-    result_path = os.path.join('logs', domain, 'results.json')
-    if not os.path.exists(result_path):
-        raise HTTPException(status_code=404, detail='Results not found')
-    with open(result_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    if fmt == 'json':
+async def export_results(domain: str, fmt: str = 'html'):
+    """Export scan results in JSON, CSV, or executive HTML/PDF report format with database fallback"""
+    fmt_lower = fmt.lower()
+    data = load_results_from_file_or_db(domain)
+    if not data:
+        raise HTTPException(status_code=404, detail=f'No scan results found for {domain}')
+        
+    if fmt_lower == 'json':
         return data
-    elif fmt == 'csv':
+    elif fmt_lower == 'csv':
         lines = ['Module,Status,Findings']
         for module, result in data.items():
             count = len(result) if isinstance(result, list) else (
@@ -1150,8 +1152,11 @@ async def export_results(domain: str, fmt: str):
             )
             lines.append(f'{module},completed,{count}')
         return PlainTextResponse(content='\n'.join(lines), media_type='text/csv')
+    elif fmt_lower in ['html', 'pdf', 'report']:
+        report_html = generate_executive_report(domain, data)
+        return HTMLResponse(content=report_html, media_type='text/html')
     else:
-        raise HTTPException(status_code=400, detail=f'Unsupported format: {fmt}')
+        raise HTTPException(status_code=400, detail=f'Unsupported format: {fmt}. Supported: json, csv, html, pdf')
 
 
 @app.get("/")
