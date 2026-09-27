@@ -31,6 +31,41 @@ from utils.result_analysis import (
     extract_alerts,
     sort_and_dedupe_alerts,
 )
+from utils.safety import classify_target, RateLimiter, demo_mode_enabled
+
+# Public-demo guardrails. Only enforced when DEMO_MODE is enabled, so
+# self-hosted instances keep full capability (e.g. scanning internal networks).
+_SCAN_RATE_LIMITER = RateLimiter(
+    max_requests=int(os.getenv("DEMO_RATE_LIMIT", "10")),
+    window_seconds=int(os.getenv("DEMO_RATE_WINDOW", "600")),
+)
+
+
+def _client_key(request: Request) -> str:
+    """Best-effort client identifier for rate limiting (honours proxies)."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def enforce_demo_guards(request: Request, domain: str):
+    """Rate-limit and block internal scan targets when DEMO_MODE is on.
+
+    No-op when DEMO_MODE is off.
+    """
+    if not demo_mode_enabled():
+        return
+    allowed, retry_after = _SCAN_RATE_LIMITER.check(_client_key(request))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit reached — this is a public demo. Try again in {retry_after}s.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    ok, reason = classify_target(domain)
+    if not ok:
+        raise HTTPException(status_code=403, detail=f"Target not allowed: {reason}")
 
 # Modules
 from modules.domain_info import get_domain_info
@@ -130,9 +165,10 @@ async def get_status(domain: str):
     raise HTTPException(status_code=404, detail="Scan not found or not active")
 
 @app.post("/api/scan")
-async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
+async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, http_request: Request):
     """Starts an background scan and returns immediately"""
-    
+    enforce_demo_guards(http_request, request.domain)
+
     # Redefine the dictionary to pass to execute_modules_safely
     module_functions = {
         "Domain Information": lambda d: get_domain_info(d),
@@ -431,8 +467,9 @@ class ACSAllRequest(BaseModel):
 ACS_SECTION_TASKS = {}
 
 @app.post("/api/scan/section")
-async def scan_acs_section(request: ACSSectionRequest, background_tasks: BackgroundTasks):
+async def scan_acs_section(request: ACSSectionRequest, background_tasks: BackgroundTasks, http_request: Request):
     """Run a single ACS section for a domain"""
+    enforce_demo_guards(http_request, request.domain)
     task_key = f"{request.domain}::{request.section}"
     ACS_SECTION_TASKS[task_key] = {"status": "running", "result": None, "error": None}
     background_tasks.add_task(_run_acs_section, request.domain, request.section, task_key)
@@ -447,8 +484,9 @@ async def acs_section_status(domain: str, section: str):
     raise HTTPException(status_code=404, detail="Section task not found")
 
 @app.post("/api/scan/acs-all")
-async def scan_acs_all(request: ACSAllRequest, background_tasks: BackgroundTasks):
+async def scan_acs_all(request: ACSAllRequest, background_tasks: BackgroundTasks, http_request: Request):
     """Run the full Advanced Content Scanner"""
+    enforce_demo_guards(http_request, request.domain)
     task_key = f"{request.domain}::acs_full"
     ACS_SECTION_TASKS[task_key] = {"status": "running", "result": None, "error": None}
     background_tasks.add_task(_run_acs_full, request.domain, task_key)

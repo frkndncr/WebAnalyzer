@@ -74,6 +74,8 @@ cd dashboard && npm install && npm run dev   # http://localhost:5173
 
 The database is optional for single scans (results also persist to `logs/<domain>/results.json`). To enable durable storage, set `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — the schema auto-initializes on first connect.
 
+> **Hosting a public instance?** Set `DEMO_MODE=true` to rate-limit scan requests per client and refuse internal/private/reserved targets (SSRF protection). It's off by default so self-hosted users can scan their own infrastructure. See [`.env.example`](.env.example).
+
 ---
 
 ## What it does
