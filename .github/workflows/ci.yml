@@ -51,6 +51,11 @@ jobs:
         cd dashboard
         npm ci
 
+    - name: Test frontend
+      run: |
+        cd dashboard
+        npm run test
+
     - name: Build frontend
       run: |
         cd dashboard
