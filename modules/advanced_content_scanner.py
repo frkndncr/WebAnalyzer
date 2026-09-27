@@ -69,6 +69,17 @@ try:
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
+# Pure analysis helpers (extracted for unit testing). Works whether this module
+# is imported as part of the package or run directly.
+try:
+    from modules.content_analysis import (
+        shannon_entropy, risk_score, mask_secret, short_hash, root_domain, js_vuln_severity,
+    )
+except ImportError:
+    from content_analysis import (
+        shannon_entropy, risk_score, mask_secret, short_hash, root_domain, js_vuln_severity,
+    )
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  DATA CLASSES
 # ═══════════════════════════════════════════════════════════════════════════
@@ -960,8 +971,7 @@ class AdvancedContentScanner:
 
     @staticmethod
     def _root_domain(netloc: str) -> str:
-        parts = netloc.split(".")
-        return ".".join(parts[-2:]) if len(parts) >= 2 else netloc
+        return root_domain(netloc)
 
     def _on_sigint(self, sig, frame):
         self.logger.warning("Interrupted — saving state…")
@@ -1106,10 +1116,7 @@ class AdvancedContentScanner:
 
     def _risk_score(self, severity: str, confidence: str, entropy: float = 0) -> float:
         """CVSS-inspired composite risk score 0–10."""
-        base   = PatternRegistry.SEV_WEIGHT.get(severity, 2.0)
-        conf_m = {"HIGH": 1.0, "MEDIUM": 0.7, "LOW": 0.4}.get(confidence, 0.5)
-        entr_m = min(entropy / 5.0, 1.0) if entropy > 0 else 1.0
-        return round(min(base * conf_m * entr_m + (entr_m * 0.5), 10.0), 2)
+        return risk_score(severity, confidence, entropy)
 
     # ──────────────────────────────────────────────────────────────────────
     # L1 — CRAWL ENGINE
@@ -1433,14 +1440,7 @@ class AdvancedContentScanner:
 
     @staticmethod
     def _js_sev(cat: str) -> str:
-        HIGH = {
-            "DOM XSS", "Open Redirect", "Dynamic Code Execution",
-            "Prototype Pollution", "WebSocket Plaintext",
-            "Weak / Broken Crypto", "Path Traversal",
-            "JSONP Callback Injection", "Server-Side Request Forgery (JS)",
-            "Debug / Secret Console Leak", "Taint Flow: Source → Sink",
-        }
-        return "High" if cat in HIGH else "Medium"
+        return js_vuln_severity(cat)
 
     # ──────────────────────────────────────────────────────────────────────
     # L1+L3 — SECRET SCANNING
@@ -2245,20 +2245,15 @@ class AdvancedContentScanner:
 
     @staticmethod
     def _entropy(s: str) -> float:
-        if not s: return 0.0
-        freq: Dict[str, int] = defaultdict(int)
-        for c in s: freq[c] += 1
-        n = len(s)
-        return -sum((v / n) * math.log2(v / n) for v in freq.values())
+        return shannon_entropy(s)
 
     @staticmethod
     def _mask(s: str) -> str:
-        if len(s) <= 8: return s[:2] + "****"
-        return s[:4] + "****" + s[-4:]
+        return mask_secret(s)
 
     @staticmethod
     def _shash(s: str) -> str:
-        return hashlib.md5(s.encode(errors="replace")).hexdigest()[:10]
+        return short_hash(s)
 
     def _fp_value(self, val: str) -> bool:
         for p in PatternRegistry.FP_VALUE_PATTERNS:
