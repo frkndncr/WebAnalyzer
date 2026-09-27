@@ -559,6 +559,28 @@ def _run_acs_full(domain: str, task_key: str):
     except Exception as e:
         ACS_SECTION_TASKS[task_key] = {"status": "error", "result": None, "error": str(e)}
 
+def _summarize_security_result(res):
+    """Return (score:int|None, grade:str|None, vuln_count:int) for a results dict.
+
+    The Security Analysis module stores its score either as a plain number or as
+    an object {overall_score, grade, ...}. Normalise it to a number so the
+    frontend can render it directly.
+    """
+    sec = res.get("Security Analysis", {}) if isinstance(res, dict) else {}
+    if not isinstance(sec, dict):
+        return None, None, 0
+    raw = sec.get("security_score")
+    grade = sec.get("security_grade")
+    score = None
+    if isinstance(raw, dict):
+        score = raw.get("overall_score")
+        grade = raw.get("grade", grade)
+    elif isinstance(raw, (int, float)):
+        score = int(raw)
+    vuln_count = sec.get("vulnerabilities_found", 0)
+    return score, grade, vuln_count
+
+
 @app.get("/api/recent-scans")
 async def get_recent_scans():
     """Retrieve recently scanned domains with their summary.
@@ -573,10 +595,7 @@ async def get_recent_scans():
     if db_rows:
         scans = []
         for domain, scan_date, res in db_rows:
-            sec_res = res.get("Security Analysis", {}) if isinstance(res, dict) else {}
-            score = sec_res.get("security_score", None) if isinstance(sec_res, dict) else None
-            grade = sec_res.get("security_grade", None) if isinstance(sec_res, dict) else None
-            vuln_count = sec_res.get("vulnerabilities_found", 0) if isinstance(sec_res, dict) else 0
+            score, grade, vuln_count = _summarize_security_result(res)
             scans.append({
                 "domain": domain,
                 "scan_date": scan_date,
@@ -602,11 +621,8 @@ async def get_recent_scans():
                         with open(result_file, "r", encoding="utf-8") as f:
                             raw_res = json.load(f)
                         res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
-                        sec_res = res.get("Security Analysis", {})
-                        score = sec_res.get("security_score", None) if isinstance(sec_res, dict) else None
-                        grade = sec_res.get("security_grade", None) if isinstance(sec_res, dict) else None
-                        vuln_count = sec_res.get("vulnerabilities_found", 0) if isinstance(sec_res, dict) else 0
-                        
+                        score, grade, vuln_count = _summarize_security_result(res)
+
                         scans.append({
                             "domain": domain,
                             "scan_date": scan_date,
