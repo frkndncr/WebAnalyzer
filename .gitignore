@@ -27,6 +27,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 results/
+# ...but not the dashboard's source folder of the same name
+!dashboard/src/components/results/
+!dashboard/src/components/results/**
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
