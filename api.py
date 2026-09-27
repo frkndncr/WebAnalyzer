@@ -24,6 +24,13 @@ except ImportError:
 # WebAnalyzer dependencies
 from utils.utils import save_results_to_json
 from utils.module_wrapper import execute_modules_safely, ModuleExecutor
+from utils.result_analysis import (
+    summarize_security_result,
+    new_vuln_stats,
+    accumulate_vuln_stats,
+    extract_alerts,
+    sort_and_dedupe_alerts,
+)
 
 # Modules
 from modules.domain_info import get_domain_info
@@ -559,28 +566,6 @@ def _run_acs_full(domain: str, task_key: str):
     except Exception as e:
         ACS_SECTION_TASKS[task_key] = {"status": "error", "result": None, "error": str(e)}
 
-def _summarize_security_result(res):
-    """Return (score:int|None, grade:str|None, vuln_count:int) for a results dict.
-
-    The Security Analysis module stores its score either as a plain number or as
-    an object {overall_score, grade, ...}. Normalise it to a number so the
-    frontend can render it directly.
-    """
-    sec = res.get("Security Analysis", {}) if isinstance(res, dict) else {}
-    if not isinstance(sec, dict):
-        return None, None, 0
-    raw = sec.get("security_score")
-    grade = sec.get("security_grade")
-    score = None
-    if isinstance(raw, dict):
-        score = raw.get("overall_score")
-        grade = raw.get("grade", grade)
-    elif isinstance(raw, (int, float)):
-        score = int(raw)
-    vuln_count = sec.get("vulnerabilities_found", 0)
-    return score, grade, vuln_count
-
-
 @app.get("/api/recent-scans")
 async def get_recent_scans():
     """Retrieve recently scanned domains with their summary.
@@ -595,7 +580,7 @@ async def get_recent_scans():
     if db_rows:
         scans = []
         for domain, scan_date, res in db_rows:
-            score, grade, vuln_count = _summarize_security_result(res)
+            score, grade, vuln_count = summarize_security_result(res)
             scans.append({
                 "domain": domain,
                 "scan_date": scan_date,
@@ -621,7 +606,7 @@ async def get_recent_scans():
                         with open(result_file, "r", encoding="utf-8") as f:
                             raw_res = json.load(f)
                         res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
-                        score, grade, vuln_count = _summarize_security_result(res)
+                        score, grade, vuln_count = summarize_security_result(res)
 
                         scans.append({
                             "domain": domain,
@@ -1102,37 +1087,13 @@ async def get_vulnerability_stats():
 
     Reads from the durable database first, falling back to local logs.
     """
-    stats = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0, 'total': 0}
-
-    def accumulate(res):
-        if not isinstance(res, dict):
-            return
-        sec = res.get('Security Analysis', {})
-        if isinstance(sec, dict):
-            for v in sec.get('vulnerabilities', []):
-                if isinstance(v, dict):
-                    sev = (v.get('severity', 'medium') or 'medium').lower()
-                    if sev in stats:
-                        stats[sev] += 1
-                    stats['total'] += 1
-
-        acs = res.get('Advanced Content Scan', {})
-        if isinstance(acs, dict):
-            for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
-                findings = acs.get(key, [])
-                if isinstance(findings, list):
-                    for f in findings:
-                        if isinstance(f, dict):
-                            sev = (f.get('severity', 'medium') or 'medium').lower()
-                            if sev in stats:
-                                stats[sev] += 1
-                            stats['total'] += 1
+    stats = new_vuln_stats()
 
     # ── Primary: database ──
     db_rows = load_all_results_from_db(limit_domains=200)
     if db_rows:
         for _domain, _scan_date, res in db_rows:
-            accumulate(res)
+            accumulate_vuln_stats(res, stats)
         return stats
 
     # ── Fallback: local logs (ephemeral) ──
@@ -1145,7 +1106,7 @@ async def get_vulnerability_stats():
                     with open(result_file, 'r', encoding='utf-8') as f:
                         raw_res = json.load(f)
                     res = raw_res.get('results', raw_res) if isinstance(raw_res, dict) else {}
-                    accumulate(res)
+                    accumulate_vuln_stats(res, stats)
                 except Exception:
                     pass
     return stats
@@ -1175,41 +1136,11 @@ async def get_recent_alerts():
     """
     alerts = []
 
-    def extract(domain, res):
-        if not isinstance(res, dict):
-            return
-        sec = res.get('Security Analysis', {})
-        if isinstance(sec, dict):
-            for v in sec.get('vulnerabilities', []):
-                if isinstance(v, dict):
-                    alerts.append({
-                        "domain": domain,
-                        "title": v.get("type", v.get("title", "Vulnerability")),
-                        "severity": (v.get("severity", "Medium") or "Medium").upper(),
-                        "description": (v.get("description", v.get("detail", "")) or "")[:120],
-                        "module": "Security Analysis"
-                    })
-
-        acs = res.get('Advanced Content Scan', {})
-        if isinstance(acs, dict):
-            for key in ['secrets', 'js_vulnerabilities', 'active_vulnerabilities', 'ssrf_vulnerabilities']:
-                findings = acs.get(key, [])
-                if isinstance(findings, list):
-                    for f in findings:
-                        if isinstance(f, dict):
-                            alerts.append({
-                                "domain": domain,
-                                "title": f.get("type", f.get("vuln_type", key.replace('_', ' ').title())),
-                                "severity": (f.get("severity", "Medium") or "Medium").upper(),
-                                "description": (f.get("description", f.get("value", "")) or "")[:120],
-                                "module": "Advanced Content Scan"
-                            })
-
     # ── Primary: database ──
     db_rows = load_all_results_from_db(limit_domains=200)
     if db_rows:
         for domain, _scan_date, res in db_rows:
-            extract(domain, res)
+            alerts.extend(extract_alerts(domain, res))
     else:
         # ── Fallback: local logs (ephemeral) ──
         logs_dir = "logs"
@@ -1221,20 +1152,11 @@ async def get_recent_alerts():
                         with open(result_file, "r", encoding="utf-8") as f:
                             raw_res = json.load(f)
                         res = raw_res.get("results", raw_res) if isinstance(raw_res, dict) else {}
-                        extract(domain, res)
+                        alerts.extend(extract_alerts(domain, res))
                     except Exception:
                         pass
 
-    severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
-    seen = set()
-    unique_alerts = []
-    for a in alerts:
-        key = (a["domain"], a["title"])
-        if key not in seen:
-            seen.add(key)
-            unique_alerts.append(a)
-    unique_alerts.sort(key=lambda x: severity_order.get(x["severity"], 5))
-    return unique_alerts[:15]
+    return sort_and_dedupe_alerts(alerts, limit=15)
 
 
 @app.get('/api/system-health')

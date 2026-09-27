@@ -61,3 +61,8 @@ py-modules = ["main", "config", "api", "bulk_scan", "monitor", "check_progress",
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.sql", "*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
