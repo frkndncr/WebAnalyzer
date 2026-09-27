@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getApiUrl } from '../config';
+import { apiPost } from '../api/client';
 
 const MODULE_DATA = [
   { name: 'Domain Information', icon: '🌐', description: 'WHOIS, registrar, expiration dates', time: '~5s' },
@@ -70,6 +70,7 @@ const ScanForm = ({ setCurrentDomain, setActiveTab }) => {
     MODULES.reduce((acc, mod) => ({ ...acc, [mod]: true }), {})
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [activePreset, setActivePreset] = useState(null);
   const [intensity, setIntensity] = useState(5);
   const [hoveredModule, setHoveredModule] = useState(null);
@@ -97,34 +98,37 @@ const ScanForm = ({ setCurrentDomain, setActiveTab }) => {
 
   const startScan = async (e) => {
     e.preventDefault();
+    setError(null);
 
     const domains = batchMode
       ? batchDomains.split('\n').map(d => d.trim()).filter(Boolean)
-      : [domain.trim()];
+      : [domain.trim()].filter(Boolean);
 
     if (domains.length === 0) return;
 
     setLoading(true);
     const modulesToRun = Object.keys(selectedModules).filter(m => selectedModules[m]);
+    const failed = [];
 
     try {
       for (const d of domains) {
-        const resp = await fetch(getApiUrl('/api/scan'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain: d, modules: modulesToRun })
-        });
-
-        if (!resp.ok) {
-          alert(`Failed to start scan for ${d}.`);
+        try {
+          await apiPost('/api/scan', { domain: d, modules: modulesToRun });
+        } catch {
+          failed.push(d);
         }
       }
 
-      const primaryDomain = domains[0];
-      setCurrentDomain(primaryDomain);
+      if (failed.length === domains.length) {
+        setError('Could not reach the API. Is the FastAPI backend running on port 8000?');
+        return;
+      }
+      if (failed.length > 0) {
+        setError(`Started, but ${failed.length} domain(s) failed to queue: ${failed.join(', ')}`);
+      }
+
+      setCurrentDomain(domains[0]);
       setActiveTab('results');
-    } catch (err) {
-      alert('Error connecting to API. Is FastAPI running on port 8000?');
     } finally {
       setLoading(false);
     }
@@ -144,6 +148,39 @@ const ScanForm = ({ setCurrentDomain, setActiveTab }) => {
       <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.9rem' }}>
         Configure your scan parameters and launch reconnaissance
       </p>
+
+      {error && (
+        <div
+          role="alert"
+          className="glass-panel"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '0.9rem 1.1rem',
+            marginBottom: '1.5rem',
+            border: '1px solid var(--accent-red)',
+            background: 'rgba(255, 71, 87, 0.08)',
+            color: 'var(--accent-red)',
+            fontSize: '0.85rem',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span style={{ flex: 1 }}>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            aria-label="Dismiss"
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── Scan Presets ── */}
       <div style={{ marginBottom: '2rem' }}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getApiUrl } from '../config';
+import { apiRequest } from '../api/client';
+import { usePolling } from '../hooks/useApi';
 
 /* ── SVG Threat Gauge Component ── */
 const ThreatGauge = ({ score, maxScore = 100 }) => {
@@ -50,16 +51,18 @@ const DonutChart = ({ data, size = 120 }) => {
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
-  let cumulative = 0;
+  // Cumulative start fraction for each segment, computed without mutating an
+  // outer variable during render (keeps the react-compiler happy).
+  const fractions = data.map((d) => d.value / total);
+  const offsets = fractions.map((_, i) => fractions.slice(0, i).reduce((a, b) => a + b, 0));
 
   return (
     <svg width={size} height={size} viewBox="0 0 120 120">
       <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="14" />
       {data.map((d, i) => {
-        const pct = d.value / total;
+        const pct = fractions[i];
         const dashLen = pct * circumference;
-        const dashOff = cumulative * circumference;
-        cumulative += pct;
+        const dashOff = offsets[i] * circumference;
         return (
           <circle key={i} cx="60" cy="60" r={radius} fill="none"
             stroke={d.color} strokeWidth="14" strokeLinecap="butt"
@@ -161,47 +164,49 @@ const DashboardOverview = ({ setActiveTab, setCurrentDomain }) => {
   const feedRef = useRef(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const endpoints = [
+      ['/api/stats', setStats],
+      ['/api/recent-scans', setRecentScans],
+      ['/api/vulnerability-stats', setVulnStats],
+      ['/api/system-health', setSystemHealth],
+      ['/api/active-scans', setActiveScansDetail],
+      ['/api/recent-alerts', setRecentAlerts],
+    ];
+
     const fetchData = async () => {
-      try {
-        const [statsR, recentR, vulnR, healthR, activeScansR, alertsR] = await Promise.allSettled([
-          fetch(getApiUrl('/api/stats')),
-          fetch(getApiUrl('/api/recent-scans')),
-          fetch(getApiUrl('/api/vulnerability-stats')),
-          fetch(getApiUrl('/api/system-health')),
-          fetch(getApiUrl('/api/active-scans')),
-          fetch(getApiUrl('/api/recent-alerts')),
-        ]);
-        if (statsR.status === 'fulfilled' && statsR.value.ok) setStats(await statsR.value.json());
-        if (recentR.status === 'fulfilled' && recentR.value.ok) setRecentScans(await recentR.value.json());
-        if (vulnR.status === 'fulfilled' && vulnR.value.ok) setVulnStats(await vulnR.value.json());
-        if (healthR.status === 'fulfilled' && healthR.value.ok) setSystemHealth(await healthR.value.json());
-        if (activeScansR.status === 'fulfilled' && activeScansR.value.ok) setActiveScansDetail(await activeScansR.value.json());
-        if (alertsR.status === 'fulfilled' && alertsR.value.ok) setRecentAlerts(await alertsR.value.json());
-      } catch (err) {
-        console.error('Dashboard fetch error', err);
-      } finally {
-        setLoading(false);
-      }
+      const results = await Promise.allSettled(
+        endpoints.map(([path]) => apiRequest(path, { signal }))
+      );
+      if (signal.aborted) return;
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') endpoints[i][1](res.value);
+      });
+      setLoading(false);
     };
 
-    fetchData();
+    fetchData().catch((err) => {
+      if (err?.name === 'AbortError' || signal.aborted) return;
+      console.error('Dashboard fetch error', err);
+      setLoading(false);
+    });
 
-    // Poll active scans and health metrics every 4 seconds to keep progress updated
-    const pollInterval = setInterval(async () => {
-      try {
-        const [healthRes, activeRes] = await Promise.all([
-          fetch(getApiUrl('/api/system-health')),
-          fetch(getApiUrl('/api/active-scans'))
-        ]);
-        if (healthRes.ok) setSystemHealth(await healthRes.json());
-        if (activeRes.ok) setActiveScansDetail(await activeRes.json());
-      } catch (e) {
-        console.warn('Dashboard polling failed', e);
-      }
-    }, 4000);
-
-    return () => clearInterval(pollInterval);
+    return () => controller.abort();
   }, []);
+
+  // Poll active scans and health metrics every 4 seconds to keep progress
+  // updated; the in-flight request is aborted automatically on unmount.
+  usePolling(async (signal) => {
+    const [healthRes, activeRes] = await Promise.allSettled([
+      apiRequest('/api/system-health', { signal }),
+      apiRequest('/api/active-scans', { signal }),
+    ]);
+    if (signal.aborted) return;
+    if (healthRes.status === 'fulfilled') setSystemHealth(healthRes.value);
+    if (activeRes.status === 'fulfilled') setActiveScansDetail(activeRes.value);
+  }, 4000);
 
   useEffect(() => {
     if (feedRef.current) feedRef.current.scrollTop = feedRef.current.scrollHeight;
@@ -485,7 +490,7 @@ const DashboardOverview = ({ setActiveTab, setCurrentDomain }) => {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
-                {topTargets.map((scan, idx) => (
+                {topTargets.map((scan) => (
                   <div key={scan.domain} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '0.7rem 1rem', background: 'rgba(5, 7, 10, 0.5)',
