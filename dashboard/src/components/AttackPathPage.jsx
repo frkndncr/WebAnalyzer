@@ -729,6 +729,9 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
 
       if (data.is_scanning) {
         setLoading(true);
+        // Self-reference is safe: the timeout fires after this useCallback
+        // has been assigned.
+        // eslint-disable-next-line react-hooks/immutability
         setTimeout(() => loadIntel(clean, true, false), 3000);
       } else {
         setLoading(false);
@@ -746,6 +749,8 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
   /* ── auto-fetch on domain prop change ── */
   useEffect(() => {
     if (domain) {
+      // Intentional: mirror the incoming domain prop into the editable input.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDomainInput(domain);
       loadIntel(domain, false, false);
     }

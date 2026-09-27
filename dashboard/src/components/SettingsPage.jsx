@@ -96,12 +96,6 @@ const SettingsPage = () => {
   /* ─── Refs ─── */
   const apiUrlRef = useRef(null);
 
-  /* ─── On Mount: test connection + load scans ─── */
-  useEffect(() => {
-    testConnection();
-    fetchRecentScans();
-  }, []);
-
   /* ─── Test Connection ─── */
   const testConnection = async () => {
     setConnectionStatus('testing');
@@ -135,6 +129,15 @@ const SettingsPage = () => {
       setLoadingScans(false);
     }
   };
+
+  /* ─── On Mount: test connection + load scans (declared after the handlers
+     it calls, so the callbacks exist when the effect runs) ─── */
+  useEffect(() => {
+    // Intentional mount-time kickoff; these handlers set state as they run.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    testConnection();
+    fetchRecentScans();
+  }, []);
 
   /* ─── Profile Selection ─── */
   const selectProfile = (profileId) => {

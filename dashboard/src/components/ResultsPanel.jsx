@@ -2187,6 +2187,7 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
   // Sync prop changes to activeDomain state
   useEffect(() => {
     if (domain && domain !== activeDomain) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveDomain(domain);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

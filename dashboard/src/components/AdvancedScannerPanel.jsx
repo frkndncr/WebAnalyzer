@@ -31,10 +31,12 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
   const [runAllProgress, setRunAllProgress] = useState(0);
   const pollRefs = useRef({});
 
-  // Cleanup polls on unmount
+  // Cleanup polls on unmount. Capture the ref object (it is mutated in place,
+  // never reassigned) so the cleanup reads the same map at unmount time.
   useEffect(() => {
+    const polls = pollRefs.current;
     return () => {
-      Object.values(pollRefs.current).forEach(id => clearInterval(id));
+      Object.values(polls).forEach(id => clearInterval(id));
     };
   }, []);
 

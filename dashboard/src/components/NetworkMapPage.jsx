@@ -837,9 +837,13 @@ const NetworkMapPage = ({ domain: initialDomain, setCurrentDomain }) => {
   /* ── Auto-fetch on mount/domain change ── */
   useEffect(() => {
     if (initialDomain) {
+      // Intentional: mirror the incoming prop into the editable input, then
+      // load. fetchData is a stable local closure, deliberately not a dep.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDomain(initialDomain);
       fetchData(initialDomain, false, false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDomain]);
 
   const handleScan = () => fetchData(domain, false, true);

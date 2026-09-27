@@ -105,7 +105,9 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
 
       if (data.is_scanning) {
         setLoading(true);
-        // Poll again in 3 seconds
+        // Poll again in 3 seconds. Self-reference is safe: the timeout fires
+        // long after this useCallback has been assigned.
+        // eslint-disable-next-line react-hooks/immutability
         setTimeout(() => loadIntel(target, true, false), 3000);
       } else {
         setLoading(false);
@@ -135,6 +137,9 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   /* ── Auto-fetch on mount/domain change ── */
   useEffect(() => {
     if (domain) {
+      // Intentional: mirror the incoming domain prop into the editable input
+      // and kick off a load whenever the parent changes the selected domain.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDomainInput(domain);
       loadIntel(domain, false, false);
     }
