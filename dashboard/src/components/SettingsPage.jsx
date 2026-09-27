@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getApiUrl } from '../config';
+import { apiGet } from '../api/client';
 
 /* ── Scan Profile Presets (configuration data, not mock) ── */
 const SCAN_PROFILES = [
@@ -107,11 +108,7 @@ const SettingsPage = () => {
     setConnectionError('');
     setHealthData(null);
     try {
-      const res = await fetch(getApiUrl('/api/system-health'), {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const data = await res.json();
+      const data = await apiGet('/api/system-health', { timeout: 10000 });
       setHealthData(data);
       setConnectionStatus('connected');
       setLastTested(new Date());
@@ -126,9 +123,7 @@ const SettingsPage = () => {
   const fetchRecentScans = async () => {
     setLoadingScans(true);
     try {
-      const res = await fetch(getApiUrl('/api/recent-scans'));
-      if (!res.ok) throw new Error('Failed to fetch scans');
-      const data = await res.json();
+      const data = await apiGet('/api/recent-scans');
       setRecentScans(Array.isArray(data) ? data : []);
       if (Array.isArray(data) && data.length > 0) {
         setSelectedDomain(data[0].domain || data[0].target || '');

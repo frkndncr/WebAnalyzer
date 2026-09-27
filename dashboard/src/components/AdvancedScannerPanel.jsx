@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DocumentationModal from './DocumentationModal';
 import InteractiveJson from './InteractiveJson';
-import { getApiUrl } from '../config';
+import { apiGet, apiPost } from '../api/client';
 
 const SECTIONS = [
   { id: 'overview', title: 'Overview', icon: '📋', layer: 'ALL', description: 'Module information, 5-layer architecture', docFile: '01-genel-bakis.md' },
@@ -41,22 +41,19 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
   const pollStatus = (sectionId) => {
     const poll = setInterval(async () => {
       try {
-        const resp = await fetch(getApiUrl(`/api/scan/section/status?domain=${encodeURIComponent(domain)}&section=${sectionId}`));
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.status === 'completed') {
-            setStatuses(prev => ({ ...prev, [sectionId]: 'completed' }));
-            setResults(prev => ({ ...prev, [sectionId]: data.result }));
-            clearInterval(poll);
-            delete pollRefs.current[sectionId];
-          } else if (data.status === 'error') {
-            setStatuses(prev => ({ ...prev, [sectionId]: 'error' }));
-            setResults(prev => ({ ...prev, [sectionId]: { error: data.error } }));
-            clearInterval(poll);
-            delete pollRefs.current[sectionId];
-          }
+        const data = await apiGet(`/api/scan/section/status?domain=${encodeURIComponent(domain)}&section=${sectionId}`);
+        if (data.status === 'completed') {
+          setStatuses(prev => ({ ...prev, [sectionId]: 'completed' }));
+          setResults(prev => ({ ...prev, [sectionId]: data.result }));
+          clearInterval(poll);
+          delete pollRefs.current[sectionId];
+        } else if (data.status === 'error') {
+          setStatuses(prev => ({ ...prev, [sectionId]: 'error' }));
+          setResults(prev => ({ ...prev, [sectionId]: { error: data.error } }));
+          clearInterval(poll);
+          delete pollRefs.current[sectionId];
         }
-      } catch { /* ignore */ }
+      } catch { /* transient error - keep polling */ }
     }, 2000);
     pollRefs.current[sectionId] = poll;
   };
@@ -66,17 +63,8 @@ const AdvancedScannerPanel = ({ domain: propDomain }) => {
     setStatuses(prev => ({ ...prev, [sectionId]: 'running' }));
     setResults(prev => { const n = { ...prev }; delete n[sectionId]; return n; });
     try {
-      const resp = await fetch(getApiUrl('/api/scan/section'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, section: sectionId }),
-      });
-      if (resp.ok) {
-        pollStatus(sectionId);
-      } else {
-        setStatuses(prev => ({ ...prev, [sectionId]: 'error' }));
-        setResults(prev => ({ ...prev, [sectionId]: { error: 'API did not respond' } }));
-      }
+      await apiPost('/api/scan/section', { domain, section: sectionId });
+      pollStatus(sectionId);
     } catch {
       setStatuses(prev => ({ ...prev, [sectionId]: 'error' }));
       setResults(prev => ({ ...prev, [sectionId]: { error: 'Failed to connect to API' } }));

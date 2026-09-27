@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getApiUrl } from '../config';
+import { apiGet } from '../api/client';
 
 /* ─── Threat Radar Dots (random positions in polar coords) ──── */
 const generateRadarDots = (count) => {
@@ -46,16 +46,13 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   useEffect(() => {
     const fetchRecent = async () => {
       try {
-        const res = await fetch(getApiUrl('/api/recent-scans'));
-        if (res.ok) {
-          const data = await res.json();
-          const domains = Array.isArray(data)
-            ? data.map((s) => s.domain || s.url || s.target).filter(Boolean)
-            : [];
-          // deduplicate
-          setRecentDomains([...new Set(domains)]);
-        }
-      } catch (_) {
+        const data = await apiGet('/api/recent-scans');
+        const domains = Array.isArray(data)
+          ? data.map((s) => s.domain || s.url || s.target).filter(Boolean)
+          : [];
+        // deduplicate
+        setRecentDomains([...new Set(domains)]);
+      } catch {
         /* silently ignore – recent scans is optional */
       }
     };
@@ -74,10 +71,8 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
       setSelectedNode(null);
     }
     try {
-      const url = getApiUrl('/api/threat-intel/' + encodeURIComponent(target) + (force ? '?force=true' : ''));
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-      const data = await res.json();
+      const path = '/api/threat-intel/' + encodeURIComponent(target) + (force ? '?force=true' : '');
+      const data = await apiGet(path);
       setIntelData(data);
 
       if (data.is_scanning) {

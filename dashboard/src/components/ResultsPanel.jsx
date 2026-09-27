@@ -2,6 +2,7 @@ import React, { useState, useEffect, Component } from 'react';
 import EducationModal from './EducationModal';
 import InteractiveJson from './InteractiveJson';
 import { getApiUrl } from '../config';
+import { apiGet } from '../api/client';
 
 /* ── Universal Score Extractor ──
  * Handles all backend score formats:
@@ -2192,17 +2193,14 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
   useEffect(() => {
     const fetchRecent = async () => {
       try {
-        const res = await fetch(getApiUrl('/api/recent-scans'));
-        if (res.ok) {
-          const json = await res.json();
-          setRecentScans(json);
-          // If activeDomain is default un-scanned example.com and we have past scans, auto-select the latest one
-          if (activeDomain === 'example.com' && json.length > 0) {
-            const latestDomain = json[0].domain;
-            setActiveDomain(latestDomain);
-            if (setCurrentDomain) {
-              setCurrentDomain(latestDomain);
-            }
+        const json = await apiGet('/api/recent-scans');
+        setRecentScans(json);
+        // If activeDomain is default un-scanned example.com and we have past scans, auto-select the latest one
+        if (activeDomain === 'example.com' && json.length > 0) {
+          const latestDomain = json[0].domain;
+          setActiveDomain(latestDomain);
+          if (setCurrentDomain) {
+            setCurrentDomain(latestDomain);
           }
         }
       } catch (err) {
@@ -2220,32 +2218,23 @@ const ResultsPanel = ({ domain, setCurrentDomain }) => {
         setLoading(true);
       }
       try {
-        const res = await fetch(getApiUrl(`/api/status/${activeDomain}`));
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-          setError(null);
-          
-          if (json.current_module === 'Finished') {
-            setLoading(false);
-            clearInterval(interval);
-          } else {
-            setLoading(false);
-          }
-        } else {
-          setLoading(false);
-          setData(null);
-          if (res.status === 404) {
-            setError(`No scan results found for ${activeDomain}. Run a scan to get started.`);
-          } else {
-            setError('Waiting for backend acknowledgment...');
-          }
+        const json = await apiGet(`/api/status/${activeDomain}`);
+        setData(json);
+        setError(null);
+        setLoading(false);
+        if (json.current_module === 'Finished') {
           clearInterval(interval);
         }
-      } catch {
+      } catch (err) {
         setLoading(false);
         setData(null);
-        setError('Cannot connect to API server.');
+        if (err?.status === 404) {
+          setError(`No scan results found for ${activeDomain}. Run a scan to get started.`);
+        } else if (err?.status) {
+          setError('Waiting for backend acknowledgment...');
+        } else {
+          setError('Cannot connect to API server.');
+        }
         clearInterval(interval);
       }
     };

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getApiUrl } from '../config';
+import React, { useState, useEffect, useCallback } from 'react';
+import { apiGet } from '../api/client';
 
 /* ═══════════════════════════════════════════════════════════════════
    HELPERS & CONSTANTS
@@ -702,13 +702,11 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(getApiUrl('/api/recent-scans'));
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await apiGet('/api/recent-scans');
         const list = Array.isArray(data) ? data : (data.scans || data.domains || []);
         const domains = list.map(s => (typeof s === 'string' ? s : s.domain || s.target || '')).filter(Boolean);
         setRecentDomains([...new Set(domains)].slice(0, 15));
-      } catch (_) {}
+      } catch { /* recent scans optional */ }
     })();
   }, []);
 
@@ -724,10 +722,8 @@ const AttackPathPage = ({ domain, setCurrentDomain }) => {
       setExpandedSteps({});
     }
     try {
-      const url = getApiUrl('/api/threat-intel/' + encodeURIComponent(clean) + (force ? '?force=true' : ''));
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      const data = await res.json();
+      const path = '/api/threat-intel/' + encodeURIComponent(clean) + (force ? '?force=true' : '');
+      const data = await apiGet(path);
       setIntel(data);
       if (setCurrentDomain) setCurrentDomain(clean);
 

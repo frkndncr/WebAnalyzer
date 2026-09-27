@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getApiUrl } from '../config';
+import { apiGet } from '../api/client';
 
 /* ───────────────────────────  HELPERS  ─────────────────────────── */
 
@@ -784,16 +784,13 @@ const NetworkMapPage = ({ domain: initialDomain, setCurrentDomain }) => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(getApiUrl('/api/recent-scans'));
-        if (res.ok) {
-          const json = await res.json();
-          // might be array of strings or array of objects with .domain
-          const list = Array.isArray(json) ? json : (json.scans || json.domains || json.results || []);
-          const domains = list.map(item => typeof item === 'string' ? item : (item.domain || item.target || '')).filter(Boolean);
-          // dedupe
-          setRecentScans([...new Set(domains)].slice(0, 12));
-        }
-      } catch (_) { /* silent */ }
+        const json = await apiGet('/api/recent-scans');
+        // might be array of strings or array of objects with .domain
+        const list = Array.isArray(json) ? json : (json.scans || json.domains || json.results || []);
+        const domains = list.map(item => typeof item === 'string' ? item : (item.domain || item.target || '')).filter(Boolean);
+        // dedupe
+        setRecentScans([...new Set(domains)].slice(0, 12));
+      } catch { /* silent */ }
     })();
   }, []);
 
@@ -808,10 +805,8 @@ const NetworkMapPage = ({ domain: initialDomain, setCurrentDomain }) => {
       setScanAnim(true);
     }
     try {
-      const url = getApiUrl('/api/network-map/' + encodeURIComponent(clean) + (force ? '?force=true' : ''));
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const json = await res.json();
+      const path = '/api/network-map/' + encodeURIComponent(clean) + (force ? '?force=true' : '');
+      const json = await apiGet(path);
       setData(json);
       
       if (json.is_scanning) {
