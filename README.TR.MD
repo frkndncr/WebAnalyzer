@@ -1,559 +1,196 @@
-# 🚀 WebAnalyzer v3.6.2 - Kurumsal Domain Güvenlik ve İstihbarat Platformu
-
 <div align="center">
 
-![WebAnalyzer Banner](https://img.shields.io/badge/WebAnalyzer-v3.6.2-blue?style=for-the-badge&logo=security&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange?style=for-the-badge&logo=mysql&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-red?style=for-the-badge&logo=opensource&logoColor=white)
-![Security](https://img.shields.io/badge/Security-Enterprise-purple?style=for-the-badge&logo=shield&logoColor=white)
+# WebAnalyzer
 
-### 🔥 **Profesyonel seviye domain analizi ve güvenlik değerlendirme platformu** 🔥
-### ⚡ **Kurumsal toplu işleme yetenekleri ile** ⚡
+### Açık kaynak keşif (reconnaissance) paneli
 
-[![GitHub stars](https://img.shields.io/github/stars/frkndncr/WebAnalyzer?style=social)](https://github.com/frkndncr/WebAnalyzer/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/frkndncr/WebAnalyzer?style=social)](https://github.com/frkndncr/WebAnalyzer/network/members)
+**Bir alan adına 16 keşif ve güvenlik modülünü tek arayüzden çalıştırın — sonucu paylaşılabilir bir rapora dönüştürün.**
+
+WebAnalyzer pasif OSINT keşfi ile aktif zafiyet değerlendirmesi arasında köprü kurar, bunu gerçek bir panele sarar ve sonunda size yönetici düzeyinde bir rapor verir. Sızma testi uzmanları, bug bounty avcıları ve güvenlik araştırmacıları için tasarlandı.
+
+[![Version](https://img.shields.io/badge/version-3.6.5-blue)](https://github.com/frkndncr/WebAnalyzer/releases)
+[![Python](https://img.shields.io/badge/python-3.8+-green?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-red)](LICENSE)
+[![PyPI](https://img.shields.io/badge/pip-webanalyzer--security-yellow?logo=pypi&logoColor=white)](https://pypi.org/project/webanalyzer-security/)
+[![CI](https://github.com/frkndncr/WebAnalyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/frkndncr/WebAnalyzer/actions/workflows/ci.yml)
+[![Stars](https://img.shields.io/github/stars/frkndncr/WebAnalyzer?style=social)](https://github.com/frkndncr/WebAnalyzer/stargazers)
+
+**[🖥️ Canlı Panel](https://webanalyzer.c4softwarestudio.com/) · [⚡ API & Dokümanlar](https://webanalyzer-api.onrender.com/docs) · [📝 Detaylı Makale](https://medium.com/@frkndncr/webanalyzer-next-gen-domain-reconnaissance-vulnerability-scanner-94fe899a64d1)**
+
+<img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer paneli" width="820" />
+
+*(English README: [README.md](README.md))*
 
 </div>
 
 ---
 
-## 🌐 Canlı Gösterim & Panel Kurulumu
+## Neden WebAnalyzer?
 
-WebAnalyzer platformu artık tamamen canlı yayındadır ve gerçek zamanlı alan adı denetimleri için kullanılabilir:
+Keşif araçlarının çoğu, kendinizin birbirine bağladığı ayrı CLI'lardan oluşur. WebAnalyzer tam tersini yapar:
 
-* 🖥️ **İnteraktif Cyberpunk Dashboard (Arayüz)**: [webanalyzer.c4softwarestudio.com](https://webanalyzer.c4softwarestudio.com/)
-* ⚡ **Analiz Motoru & REST API (Backend)**: [webanalyzer-api.onrender.com](https://webanalyzer-api.onrender.com)
-* 📝 **Mimari & Mühendislik Detayları (Medium)**: [Medium'da Oku](https://medium.com/@frkndncr/webanalyzer-next-gen-domain-reconnaissance-vulnerability-scanner-94fe899a64d1)
+- **🎛️ Tek arayüz, çok araç.** WHOIS, DNS, subdomain, WAF parmak izi, SSL/TLS, CloudFlare origin IP açığa çıkarma, port tarama, içerik & secret tarama, API testi — tarama başına seçilebilir, CLI *veya* web panelinden.
+- **📊 Sadece log değil, panel.** React tabanlı komuta merkezi; skorları, bulguları, ağ haritalarını, tehdit istihbaratını ve saldırı yollarını gerçek zamanlı görselleştirir — sonuçlar MySQL'e kalıcı yazılır, oturumlar arası hiçbir şey kaybolmaz.
+- **📄 Teslim edilebilir raporlar.** Her tarama JSON, CSV veya iyileştirme önerileri içeren şık yönetici HTML/PDF güvenlik raporu olarak dışa aktarılabilir.
+- **🛡️ Gerçek hedefler için dayanıklı.** User-agent rotasyonu, adaptif rate-limit geri çekilmesi, proxy kancaları ve WAF-farkında hız ayarı, korumalı altyapılarda taramanın devam etmesini sağlar.
 
----
-
-## 🌟 Genel Bakış
-
-<div align="center">
-  <img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer Dashboard Mockup" width="850px" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); margin-bottom: 25px;" />
-</div>
-
-WebAnalyzer v3.6.2, siber güvenlik uzmanları, penetrasyon testçileri ve güvenlik araştırmacıları için tasarlanmış **en gelişmiş** Python tabanlı domain analiz çerçevesidir. Platform, keşif, güvenlik açığı değerlendirmesi ve istihbarat toplama işlemlerini **kurumsal seviyede toplu işleme yetenekleri** ile birleştirir.
-
-### ✨ Devrimsel Özellikler
-
-🔹 **🏢 Kurumsal Toplu İşleme**: Büyük ölçekli operasyonlar için MySQL destekli iş kuyruğu sistemi (1K-50K+ domain)  
-🔹 **🧠 Yapay Zeka Destekli Analiz**: Keşiften agresif güvenlik testine kadar 12 özel modül  
-🔹 **⚡ Yıldırım Performansı**: Akıllı yeniden deneme mekanizmaları, kaynak izleme ve kontrol noktası kurtarma  
-🔹 **📊 Profesyonel Raporlama**: Gerçek zamanlı metrikler ve başarı takibi ile kapsamlı analitik  
-🔹 **🛡️ Anti-Tespit Cephaneliği**: IP rotasyonu, kullanıcı ajanı döngüsü ve gelişmiş gizlilik yetenekleri  
-🔹 **🚀 Ölçeklenebilir Mimari**: Dinamik kaynak yönetimi ile 1-50 paralel işçi desteği  
-
-### 🎯 v3.6.2'de Devrimsel Yenilikler
-
-<table>
-<tr>
-<td width="50%">
-
-**🏗️ Kurumsal Altyapı:**
-- 🗄️ Optimize edilmiş şemalar ile MySQL veritabanı
-- 📋 İlerleme takibi ile gelişmiş iş kuyruğu
-- ✅ Domain ön doğrulama sistemi
-- 📈 Gerçek zamanlı performans izleme
-- 🔄 Modül özel konfigürasyon ile akıllı yeniden deneme
-
-</td>
-<td width="50%">
-
-**⚙️ Gelişmiş İşleme:**
-- 👥 İşçi havuzu mimarisi (1-50 eşzamanlı)
-- 📦 Dinamik batch boyutlandırma
-- 💾 Kontrol noktası kurtarma sistemi
-- ⏱️ Modül özel zaman aşımları
-- 🔍 Akıllı güvenlik açığı tespiti
-
-</td>
-</tr>
-</table>
+> WebAnalyzer, `nuclei` veya `amass`'ı geçmeye çalışmaz — kanıtlanmış keşif tekniklerinin üzerine **bütünleşik bir arayüz ve raporlama katmanı** koyar.
 
 ---
 
-## 🏛️ Sistem Mimarisi
+## Hızlı başlangıç
 
-```mermaid
-graph TB
-    A[🎛️ Yönetim Katmanı] --> B[🚀 İşleme Motoru]
-    A --> C[💾 Veritabanı Katmanı]
-    A --> D[🔬 Analiz Modülleri]
-    
-    B --> E[👥 İşçi Havuzu Kontrolcüsü]
-    B --> F[🔄 Akıllı Yeniden Deneme Sistemi]
-    B --> G[📊 Kaynak İzleyicisi]
-    B --> H[💾 İlerleme Takibi]
-    
-    C --> I[🗄️ MySQL Bağlantı Havuzu]
-    C --> J[📋 Optimize Edilmiş Şemalar]
-    C --> K[📈 Gerçek Zamanlı Analitik]
-    C --> L[💿 Veri Kalıcılığı]
-    
-    D --> M[🔍 İstihbarat Toplama]
-    D --> N[🕵️ Keşif]
-    D --> O[🛡️ Güvenlik Değerlendirmesi]
-    D --> P[⚡ Gelişmiş Test]
-```
+### 🐳 Docker Compose (önerilen — tek komut)
 
----
-
-## 🛠️ Kurulum ve Ayarlama
-
-### 📋 Ön Koşullar
-
-- 🐍 **Python 3.8+** pip paket yöneticisi ile
-- 🗄️ **MySQL 8.0+** kurumsal toplu işleme için
-- 🚀 **Go dili** (Subfinder entegrasyonu için)
-- 💾 **4GB+ RAM** toplu işleme için önerilen
-
-### 📦 PyPI (Pip) ile Kolay Kurulum
-
-WebAnalyzer'ı PyPI üzerinden global olarak kurup doğrudan CLI tarayıcısını çalıştırabilirsiniz:
+MySQL veritabanı, FastAPI backend ve React panelini birlikte ayağa kaldırır; tüm sistem bağımlılıkları (Python, Go, Node, Nmap, Subfinder) hazır gelir.
 
 ```bash
-# Paketi kurun
-pip install webanalyzer-security
-
-# Tarayıcıyı çalıştırın
-webanalyzer
-```
-
----
-
-### 🐳 Docker Compose ile Kurulum (Hızlı ve Sorunsuz - Önerilen)
-
-Tüm platformu (MySQL veritabanı, FastAPI backend ve React dashboard) çalıştırmanın en hızlı yolu Docker Compose kullanmaktır. Bu yöntem tüm bağımlılıkları (Python, Go, Node, Nmap, Subfinder) otomatik olarak yapılandırır:
-
-```bash
-# 1. Depoyu klonlayın
 git clone https://github.com/frkndncr/WebAnalyzer.git
 cd WebAnalyzer
-
-# 2. Platformu çalıştırın
 docker compose up -d --build
 ```
 
-- **React Dashboard**: http://localhost:8080
-- **FastAPI API Dokümantasyonu**: http://localhost:8000/docs
+- **Panel:** http://localhost:8080
+- **API dokümanları:** http://localhost:8000/docs
 
----
-
-### ⚡ Manuel Kurulum (Geliştirici Modu)
+### 📦 pip (yalnızca CLI)
 
 ```bash
-# 📥 Repository'yi klonla
+pip install webanalyzer-security
+webanalyzer
+```
+
+### ⚡ Manuel (geliştirici modu)
+
+```bash
 git clone https://github.com/frkndncr/WebAnalyzer.git
 cd WebAnalyzer
-
-# 📦 Python bağımlılıklarını kur
 pip install -r requirements.txt
 
-# 🗄️ Veritabanı kurulumu
-# database/db_manager.py dosyasında veritabanı bağlantı bilgilerinizi güncelleyin
-# Bağlantı parametrelerini güncelle:
-config = {
-    'host': 'mysql_host_adresiniz',
-    'database': 'veritabani_adiniz',
-    'user': 'kullanici_adiniz',
-    'password': 'sifreniz',
-    # ... diğer ayarlar
-}
+# Backend
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
-# 📋 Veritabanı şemasını içe aktar
-mysql -u kullanici_adiniz -p veritabani_adiniz < database/schema.sql
-
-# ✅ Kurulumu doğrula
-python main.py --help
+# Frontend (ikinci bir terminalde)
+cd dashboard && npm install && npm run dev   # http://localhost:5173
 ```
 
-### 🖥️ Siber Güvenlik Dashboard'unu Manuel Başlatma
+Tekil taramalar için veritabanı opsiyoneldir (sonuçlar `logs/<domain>/results.json`'a da yazılır). Kalıcı depolama için `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` ayarlayın — şema ilk bağlantıda otomatik oluşturulur.
 
-Tüm görsel kontrol panelini Docker olmadan yerel olarak çalıştırmak için:
-
-1. **FastAPI Backend'i (API) Başlatın:**
-   ```bash
-   uvicorn api:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-2. **React Frontend'i (Arayüz) Başlatın:**
-   ```bash
-   cd dashboard
-   npm install
-   npm run dev
-   ```
-   Tarayıcınızda [http://localhost:5173](http://localhost:5173) adresini açın.
-
-### ⚙️ Konfigürasyon
-
-```bash
-# ⚡ Performans ayarlarını yapılandır
-export WEBANALYZER_MAX_WORKERS="10"
-export WEBANALYZER_BATCH_SIZE="100"
-
-# 🌐 Proxy konfigürasyonu (isteğe bağlı)
-export WEBANALYZER_PROXY="http://proxy:8080"
-```
+> **Herkese açık bir sunucu mu barındırıyorsunuz?** `DEMO_MODE=true` ayarlayın; tarama isteklerini istemci başına sınırlar ve iç/özel/ayrılmış hedefleri reddeder (SSRF koruması). Varsayılan kapalıdır, böylece self-host kullanıcıları kendi altyapılarını tarayabilir. Bkz. [`.env.example`](.env.example).
 
 ---
 
-## 🎮 Kullanım Kılavuzu
-
-### 🎯 Etkileşimli Analiz (Tek Domain)
-
-Modül seçimi ile bireysel domain analizi için mükemmel:
-
-```bash
-🚀 python main.py
-# Etkileşimli komutları takip edin
-# Domain ve istenen analiz modüllerini seçin
-```
-
-### 🏢 Kurumsal Toplu İşleme
-
-Büyük ölçekli domain analizi için (100+ domain önerilen):
-
-#### 1️⃣ Domain Hazırlama ve Doğrulama
-
-Başarı oranlarını artırmak için domain'leri önceden doğrulayın:
-
-```bash
-# 🔍 Temel doğrulama
-python domains-check.py --input domains.json --output dogrulanmis_domains.json
-
-# ⚡ Özel ayarlarla gelişmiş doğrulama
-python domains-check.py --input ham_domains.json --output temiz_domains.json --workers 15 --timeout 12
-```
-
-#### 2️⃣ İş Oluşturma ve Yönetimi
-
-```bash
-# 📋 Toplu işleme için domain'leri yükle
-python bulk_scan.py --load dogrulanmis_domains.json --job-name "🔥 Kurumsal Güvenlik Denetimi"
-
-# 📊 İş ID'sini almak için tüm işleri listele
-python bulk_scan.py --list-jobs
-
-# ⚡ Optimal ayarlarla işi işle
-python bulk_scan.py --job-id 1 --workers 10
-
-# 🚀 Yüksek performanslı işleme (güçlü sunucular)
-python bulk_scan.py --job-id 1 --workers 20 --risky
-
-# 💻 Kaynak kısıtlı işleme
-python bulk_scan.py --job-id 1 --workers 3
-```
-
-#### 3️⃣ İzleme ve Kurtarma
-
-```bash
-# 📈 İş ilerlemesini izle
-python bulk_scan.py --stats 1
-
-# 🔄 Kesintiye uğrayan işi devam ettir
-python bulk_scan.py --resume 1 --workers 10
-
-# 📊 Detaylı performans metriklerini al
-python monitor.py --job-id 1 --detailed
-```
-
----
-
-## 🔬 Analiz Modülleri
-
-### 🔍 İstihbarat Toplama
-
-| Modül | İşlev | Çıktı | Risk Seviyesi | Durum |
-|--------|-------|-------|---------------|-------|
-| **🌐 Domain Bilgileri** | WHOIS verileri, kayıt detayları | Registrar, tarihler, durum | 🟢 Düşük | ✅ Aktif |
-| **🔍 DNS Analizi** | Kapsamlı DNS kayıt numaralandırması | A, MX, CNAME, TXT kayıtları | 🟢 Düşük | ✅ Aktif |
-| **📈 SEO Analizi** | Arama optimizasyonu değerlendirmesi | Performans, meta etiketler, yapı | 🟢 Düşük | ✅ Geliştirildi |
-| **⚙️ Web Teknolojileri** | Teknoloji yığını parmak izi | Sunucu, çerçeveler, CMS tespiti | 🟢 Düşük | ✅ Geliştirildi |
-
-### 🕵️ Keşif
-
-| Modül | İşlev | Çıktı | Risk Seviyesi | Durum |
-|--------|-------|-------|---------------|-------|
-| **🔍 Subdomain Keşfi** | Gelişmiş subdomain numaralandırması | Aktif subdomain'ler, DNS kayıtları | 🟡 Orta | ✅ Aktif |
-| **👥 İletişim İstihbaratı** | İletişim bilgisi çıkarma | E-postalar, telefonlar, sosyal profiller | 🟡 Orta | ✅ Aktif |
-| **📁 Gelişmiş İçerik Tarayıcısı** | Derin içerik analizi | Hassas dosyalar, dizinler | 🟡 Orta | ✅ Aktif |
-
-### 🛡️ Güvenlik Değerlendirmesi
-
-| Modül | İşlev | Çıktı | Risk Seviyesi | Durum |
-|--------|-------|-------|---------------|-------|
-| **🔒 Güvenlik Analizi** | Başlıklar, SSL/TLS, güvenlik açıkları | Güvenlik skoru, öneriler | 🟡 Orta | ✅ Geliştirildi |
-| **⚠️ Subdomain Ele Geçirme** | Ele geçirme güvenlik açığı tespiti | Sömürülebilir subdomain'ler | 🔴 Yüksek | ✅ Aktif |
-| **🌩️ CloudFlare Bypass** | WAF bypass teknikleri | Gerçek IP keşfi | 🔴 Yüksek | ✅ Aktif |
-| **🔍 Ağ Tarayıcısı** | Port tarama, servis numaralandırması | Açık portlar, çalışan servisler | 🔴 Yüksek | ✅ Aktif |
-| **🔥 API Güvenlik Tarayıcısı** | API güvenlik açığı değerlendirmesi | Güvenlik kusurları, sömürülebilir uç noktalar | 🟣 Kritik | ✅ Aktif |
-
----
-
-## 📊 Performans ve Ölçeklenebilirlik
-
-### 🏆 Benchmark Performansı
-
-- ⚡ **İşleme Hızı**: 50-200 domain/dakika (konfigürasyona bağlı)
-- 🎯 **Başarı Oranı**: Akıllı yeniden deneme mekanizmaları ile %85-95  
-- 💾 **Kaynak Kullanımı**: 2-8GB RAM, orta düzey CPU kullanımı
-- 🗄️ **Veritabanı Performansı**: Bağlantı havuzu ile 1.000+ sorgu/saniye
-- 📦 **Eşzamanlı Kapasite**: İşleme kuyruğunda 1.000'e kadar domain
-
-### ⚙️ Optimizasyon Kılavuzları
-
-```python
-# 🎛️ Sistem tabanlı işçi konfigürasyonu
-ÖNERILEN_IŞÇILER = {
-    '💻 Geliştirme (4GB RAM)': 3,
-    '🏢 Üretim (8GB RAM)': 10,
-    '⚡ Yüksek Performans (16GB+ RAM)': 20,
-    '🏭 Kurumsal Sunucu': 30
-}
-
-# ⏱️ Modül zaman aşımı ayarları
-MODÜL_ZAMAN_AŞIMLARI = {
-    'security_analysis': 30,    # 🔒 Karmaşık analiz
-    'web_technologies': 35,     # ⚙️ Teknoloji tespiti
-    'seo_analysis': 45,         # 📈 Kapsamlı SEO
-    'domain_info': 10,          # 🌐 WHOIS sorgusu
-    'domain_dns': 10            # 🔍 DNS çözümleme
-}
-```
-
-### 🚀 Büyük Ölçekli İşleme Örneği
-
-25.000+ domain işlemek için:
-
-```bash
-# 1️⃣ Domain'leri ön doğrula (hataları azaltır)
-python domains-check.py --input 25k_domains.json --output dogrulanmis_25k.json --workers 20
-
-# 2️⃣ İşleme için yükle
-python bulk_scan.py --load dogrulanmis_25k.json --job-name "🔥 25K Domain Güvenlik Denetimi"
-
-# 3️⃣ Yüksek performans ayarları ile işle
-python bulk_scan.py --job-id 2 --workers 15 --risky
-
-# 4️⃣ İlerlemeyi izle (25K domain için tahmini 3-5 saat)
-python bulk_scan.py --stats 2 --refresh 30
-```
-
----
-
-## 📁 Proje Yapısı
-
-```
-🏗️ WebAnalyzer/
-├── 🎛️ main.py                          # Etkileşimli analiz arayüzü
-├── 🚀 bulk_scan.py                     # Kurumsal toplu işleme motoru  
-├── ✅ domains-check.py                 # Domain doğrulama yardımcı programı
-├── 📊 monitor.py                       # Gerçek zamanlı izleme sistemi
-├── 📈 check_progress.py               # İlerleme takip yardımcı programı
-├── ⚙️ config.py                       # Konfigürasyon yönetimi
-├── 🔌 webanalyzer_socket.py           # Socket iletişimi
-├── 📋 webanalyzer_config.json         # Konfigürasyon dosyası
-├── 📦 requirements.txt                 # Python bağımlılıkları
-├── 🛠️ setup.sh                        # Kurulum otomasyonu
-├── 📄 LICENSE                          # MIT Lisansı
-├── 📚 README.md                       # Dokümantasyon (İngilizce)
-├── 🇹🇷 README.TR.MD                    # Dokümantasyon (Türkçe)
-│
-├── 🗄️ database/                       # Veritabanı katmanı
-│   ├── 📋 schema.sql                  # MySQL tablo tanımları
-│   └── 🔗 db_manager.py              # Bağlantı havuzu ve sorgu optimizasyonu
-│
-├── ⚡ bulk/                          # Toplu işleme bileşenleri
-│   ├── 📥 loader.py                  # Domain yükleme ve iş oluşturma
-│   └── 🚀 processor.py               # Optimize edilmiş işleme motoru
-│
-├── 🔬 modules/                       # Analiz modülleri
-│   ├── 🌐 domain_info.py             # WHOIS bilgi alma
-│   ├── 🔍 domain_dns.py              # DNS kayıt analizi  
-│   ├── 📈 seo_analysis.py            # SEO performans değerlendirmesi
-│   ├── 🔒 security_analysis.py       # Güvenlik başlıkları ve SSL analizi
-│   ├── ⚙️ web_technologies.py        # Teknoloji yığını tespiti
-│   ├── ⚠️ subdomain_takeover.py      # Güvenlik açığı tespiti
-│   ├── 📁 advanced_content_scanner.py # İçerik analizi
-│   ├── 🌩️ cloudflare_bypass.py       # WAF bypass teknikleri
-│   ├── 👥 contact_spy.py             # İletişim bilgisi çıkarma
-│   ├── 🔍 nmap_zero_day.py           # Ağ güvenlik açığı tarama
-│   ├── 🔥 api_security_scanner.py    # API güvenlik değerlendirmesi
-│   ├── 🕵️ subfinder_tool.py          # Subdomain numaralandırma
-│   └── 🔌 universal_adapter.py       # Modül yürütme çerçevesi
-│
-├── 🛠️ utils/                         # Çekirdek yardımcı programlar
-│   ├── 📦 __init__.py                # Paket başlatma
-│   ├── 🔄 session_manager.py         # Gelişmiş oturum yönetimi
-│   ├── 🔧 module_wrapper.py          # Yürütme çerçevesi
-│   └── 🛠️ utils.py                   # Yardımcı fonksiyonlar
-│
-├── 💣 payloads/                      # Güvenlik test yükleri
-│   ├── 🔗 api_endpoints.txt          # API uç nokta kelime listesi
-│   ├── 🔓 auth_bypass_headers.txt    # Kimlik doğrulama bypass başlıkları
-│   ├── 💻 command_injection.txt      # Komut enjeksiyon yükleri
-│   ├── 📁 lfi.txt                    # Yerel dosya ekleme yükleri
-│   ├── 🍃 nosql_injection.txt        # NoSQL enjeksiyon yükleri
-│   ├── 💉 sql_injection.txt          # SQL enjeksiyon yükleri
-│   ├── 🔗 ssrf.txt                   # SSRF yükleri
-│   ├── 🔧 ssti.txt                   # Sunucu tarafı şablon enjeksiyonu
-│   ├── ⚡ xss.txt                     # Cross-site scripting yükleri
-│   └── 📄 xxe.txt                    # XML harici varlık yükleri
-│
-└── 🧪 tests/                         # Test paketi
-    └── ✅ test_main.py               # Birim testler
-```
-
----
-
-## 🏢 Kurumsal Özellikler
-
-### 🗄️ Veritabanı Şeması
-
-```sql
--- 📋 İş yönetimi
-CREATE TABLE scan_jobs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    job_name VARCHAR(255),
-    total_domains INT DEFAULT 0,
-    completed_domains INT DEFAULT 0,
-    status ENUM('pending', 'running', 'completed', 'failed') DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    started_at TIMESTAMP NULL,
-    completed_at TIMESTAMP NULL
-);
-
--- 🌐 Domain işleme kuyruğu
-CREATE TABLE domains (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    job_id INT,
-    domain VARCHAR(255) NOT NULL,
-    status ENUM('pending', 'scanning', 'completed', 'failed') DEFAULT 'pending',
-    priority INT DEFAULT 5,
-    retry_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    scanned_at TIMESTAMP NULL
-);
-
--- 📊 Analiz sonuçları depolama
-CREATE TABLE scan_results (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    domain_id INT,
-    module_name VARCHAR(100),
-    status VARCHAR(50),
-    risk_level ENUM('low', 'medium', 'high', 'critical'),
-    score INT,
-    execution_time FLOAT,
-    result_data JSON,
-    error_message TEXT,
-    scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ⚠️ Güvenlik açığı takibi
-CREATE TABLE vulnerabilities (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    domain_id INT,
-    vulnerability_type VARCHAR(100),
-    severity ENUM('info', 'low', 'medium', 'high', 'critical'),
-    module_name VARCHAR(100),
-    details JSON,
-    discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
----
-
-## ⚖️ Yasal ve Etik Hususlar
-
-### 🚨 **KRİTİK YASAL UYARI** 🚨
-
-WebAnalyzer, güvenlik açığı tarama, sömürü girişimleri ve kimlik doğrulama bypass teknikleri dahil olmak üzere **agresif güvenlik testi** yetenekli modüller içerir.
+## Ne yapar?
 
 <div align="center">
-
-⚠️ **YALNIZCA YETKİLİ KULLANIM** ⚠️
-
+<img src="docs/assets/dashboard_ui_mockup.png" alt="WebAnalyzer analiz görünümü" width="820" />
 </div>
 
-🔹 **Yalnızca sahip olduğunuz sistemleri test edin** veya açık yazılı izniniz olan sistemleri  
-🔹 **Hız sınırlarına ve hizmet şartlarına** saygı gösterin  
-🔹 **Keşfedilen güvenlik açıkları için sorumlu açıklama** uygulamalarını takip edin  
-🔹 **Güvenlik testi ile ilgili yerel yasalara ve düzenlemelere** uyun  
+### Analiz modülleri
 
-<div align="center">
+| Modül | Bulduğu şey | Risk |
+|-------|-------------|:----:|
+| **Domain Bilgisi** | WHOIS, registrar, kayıt & bitiş tarihleri | 🟢 |
+| **DNS Analizi** | A / AAAA / MX / TXT / CNAME kayıtları | 🟢 |
+| **SEO Analizi** | Meta etiketleri, Open Graph, indeksleme sinyalleri | 🟢 |
+| **Web Teknolojileri** | Sunucu, framework, CMS parmak izi | 🟢 |
+| **GEO Analizi** | IP coğrafi konumu & barındırma sağlayıcısı | 🟢 |
+| **Güvenlik Analizi** | Header'lar, SSL/TLS, WAF tespiti, skorlama | 🟡 |
+| **Subdomain Keşfi** | Subdomain sıralama (Subfinder) | 🟡 |
+| **İletişim İstihbaratı** | E-posta, telefon, sosyal profiller | 🟡 |
+| **Gelişmiş İçerik Tarama** | Derin crawl, secret'lar, JS taint analizi, SSRF | 🟡 |
+| **Web Arşiv Casusu** | Wayback Machine geçmiş secret taraması | 🟡 |
+| **SSL SAN İlişkilendirme** | crt.sh & sertifika tabanlı varlık haritalama | 🟡 |
+| **Subdomain Takeover** | Dangling CNAME / takeover tespiti | 🔴 |
+| **CloudFlare Bypass** | WAF arkasındaki origin IP'yi açığa çıkarma | 🔴 |
+| **Nmap Zero-Day Tarama** | Port tarama & servis parmak izi | 🔴 |
+| **Phishing Tespiti** | Typosquat / benzer alan adı çözümleyici | 🔴 |
+| **API Güvenlik Tarayıcı** | API endpoint keşfi & zafiyet testi | 🟣 |
 
-❌ **YETKİSİZ GÜVENLİK TESTİ YASADIŞI OLABİLİR** ❌
+Ayrıca bulguları mantıksal bir istismar yol haritasına dönüştüren bir **Saldırı Yolu Planlayıcı** vardır. Ayrıntılar için [`docs/Modules.md`](docs/Modules.md).
 
-</div>
+### Bulk (toplu) işleme
 
-**SORUMLULUK REDDİ**: Kullanıcılar yasal kullanımı sağlamaktan tamamen sorumludur. Araç geliştiricileri kötüye kullanım veya zararlardan sorumlu değildir.
+Büyük işler için (yüzlerce–50K+ alan adı), WebAnalyzer worker havuzları, yeniden denemeler ve checkpoint kurtarma içeren MySQL destekli bir kuyruk sunar:
 
----
-
-## 🤝 Destek ve Profesyonel Hizmetler
-
-### 🌍 Topluluk Desteği
-- 🐛 **GitHub Issues**: Hata raporları ve özellik istekleri
-- 📚 **Dokümantasyon**: Kapsamlı kılavuzlar ve API dokümantasyonu  
-- 💬 **Topluluk Forumu**: Kullanıcı tartışmaları ve en iyi uygulamalar
-
-### 🏢 Profesyonel Hizmetler
-- 🏗️ **Kurumsal Danışmanlık**: Büyük ölçekli dağıtım yardımı
-- 🔧 **Özel Modül Geliştirme**: Özel analiz gereksinimleri
-- 🎓 **Eğitim Programları**: Takım sertifikasyonu ve ileri düzey kullanım
-- 🛠️ **Yönetilen Hizmetler**: Tamamen yönetilen güvenlik değerlendirme çözümleri
-
-### 📞 İletişim Bilgileri
-
-<div align="center">
-
-| İletişim | Bağlantı |
-|----------|----------|
-| 👨‍💻 **Geliştirici** | [Furkan Dinçer](https://github.com/frkndncr) |
-| 💼 **LinkedIn** | [Profesyonel Profil](https://www.linkedin.com/in/furkan-dincer/) |
-| 📸 **Instagram** | [@f3rrkan](https://www.instagram.com/f3rrkan/) |
-| 📧 **E-posta** | hi@c4softwarestudio.com |
-
-</div>
+```bash
+python domains-check.py --input domains.json --output validated.json   # ön doğrulama
+python bulk_scan.py --load validated.json --job-name "Güvenlik Denetimi" # iş oluştur
+python bulk_scan.py --job-id 1 --workers 10                             # çalıştır
+python bulk_scan.py --stats 1                                           # izle
+```
 
 ---
 
-## 📄 Lisans
+## Mimari
 
-Bu proje **MIT Lisansı** altında lisanslanmıştır - tam şartlar için LICENSE dosyasına bakın.
+```mermaid
+graph LR
+    subgraph Arayüzler
+      CLI[CLI - main.py]
+      UI[React Panel]
+    end
+    API[FastAPI backend - api.py]
+    ENG[Modül motoru + bulk işleyici]
+    DB[(MySQL)]
+    MODS[16 analiz modülü]
 
-**🏢 Kurumsal Lisans Mevcut**: Gelişmiş özellikler, öncelikli destek ve ticari lisanslama seçenekleri için iletişime geçin.
+    CLI --> ENG
+    UI --> API --> ENG --> MODS
+    ENG --> DB
+    API --> DB
+```
+
+- **Backend:** Python 3.8+, FastAPI, modül yürütme çerçevesi ve bağlantı havuzlu opsiyonel MySQL katmanı. Bulk mod, yeniden deneme ve checkpoint kurtarma içeren bir iş kuyruğuyla 1K–50K+ alan adı işler.
+- **Frontend:** React 19 + Vite, merkezi API istemcisi, canlı polling ve elle yazılmış SVG görselleştirmeler.
+- **Depolama:** MySQL kalıcı doğruluk kaynağıdır; yerel JSON bir yedek önbellektir.
+
+Ayrıntılar: [`docs/Architecture.md`](docs/Architecture.md).
 
 ---
 
+## ⚖️ Yasal & etik kullanım
+
+WebAnalyzer **aktif güvenlik testi** yapabilen modüller içerir (zafiyet tarama, origin açığa çıkarma, kimlik doğrulama atlatma kontrolleri).
+
+> **Yalnızca sahibi olduğunuz veya test etmek için açıkça yetkilendirildiğiniz sistemleri tarayın.**
+
+Rate limitlere ve hizmet şartlarına uyun, sorumlu ifşa (responsible disclosure) yapın ve bulunduğunuz yargı bölgesinin yasalarına uyun. Yetkisiz güvenlik testi yasa dışı olabilir. Geliştiriciler kötüye kullanımdan sorumlu değildir. Herkese açık demo yalnızca değerlendirme amaçlıdır — sahibi olmadığınız sistemleri test etmek için kullanmayın.
+
+---
+
+## Katkı
+
+Katkılar memnuniyetle karşılanır — issue'lar, özellik istekleri ve pull request'ler. Bkz. [`CONTRIBUTING.md`](CONTRIBUTING.md) ve [issue şablonları](.github/ISSUE_TEMPLATE). İyi başlangıç noktaları: yeni bir analiz modülü, panel iyileştirmeleri veya test kapsamı.
+
+```bash
+# Backend test paketi
+pip install pytest && pytest
+
+# Frontend test + lint
+cd dashboard && npm install && npm run test && npm run lint
+```
+
+---
+
+## Dokümanlar
+
+- [Mimari](docs/Architecture.md)
+- [Özellikler](docs/Features.md)
+- [Modüller](docs/Modules.md)
+- [Gelişmiş İçerik Tarayıcı derinlemesine](docs/detailed-documentation/advanced_content_scanner)
+- [Changelog](CHANGELOG.md) · [English README](README.md)
+
+---
+
+## Lisans & geliştirici
+
+[MIT Lisansı](LICENSE) ile yayınlanmıştır.
+
+**[Furkan Dinçer](https://github.com/frkndncr)** tarafından geliştirildi — [LinkedIn](https://www.linkedin.com/in/furkan-dincer/) · [Instagram](https://www.instagram.com/f3rrkan/) · hi@c4softwarestudio.com
+
 <div align="center">
 
-# 🚀 **Kurumsal ölçekte güvenlik değerlendirmeleri için hazır mısınız?** 🚀
-
-<br/>
-
-[![En Son Sürümü İndir](https://img.shields.io/badge/İndir-En%20Son%20Sürüm-success?style=for-the-badge&logo=download&logoColor=white)](https://github.com/frkndncr/WebAnalyzer/releases/latest)
-[![Dokümantasyonu Görüntüle](https://img.shields.io/badge/Görüntüle-Dokümantasyon-blue?style=for-the-badge&logo=book&logoColor=white)](https://github.com/frkndncr/WebAnalyzer/wiki)
-[![Kurumsal Demo](https://img.shields.io/badge/Talep%20Et-Kurumsal%20Demo-purple?style=for-the-badge&logo=presentation&logoColor=white)](mailto:hi@c4softwarestudio.com)
-
-<br/>
-
-### 🎯 Siber güvenlik topluluğu için [**Furkan Dinçer**](https://github.com/frkndncr) tarafından titizlikle geliştirildi 🎯
-
-<br/>
-
-## ⭐ **Profesyonel güvenlik araçları gelişimini desteklemek için bu repository'yi yıldızlayın** ⭐
-
-<br/>
-
-![GitHub stars](https://img.shields.io/github/stars/frkndncr/WebAnalyzer?style=social&label=Yıldızlar)
-![GitHub forks](https://img.shields.io/github/forks/frkndncr/WebAnalyzer?style=social&label=Forklar)
-![GitHub watchers](https://img.shields.io/github/watchers/frkndncr/WebAnalyzer?style=social&label=İzleyenler)
-
-<br/>
-
-### 🔥 **WebAnalyzer v3.0 - Nihai Domain Güvenlik Platformu** 🔥
+**WebAnalyzer işinize yarıyorsa bir ⭐ bırakmayı düşünün — gerçekten yardımcı oluyor.**
 
 </div>
