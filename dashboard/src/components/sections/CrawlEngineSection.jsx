@@ -10,7 +10,7 @@ const LINK_SOURCES = [
   { tag: '<form action=...>', desc: 'Form hedefleri' },
 ];
 
-const CrawlEngineSection = ({ status, results }) => {
+const CrawlEngineSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       {/* Crawl Flow */}

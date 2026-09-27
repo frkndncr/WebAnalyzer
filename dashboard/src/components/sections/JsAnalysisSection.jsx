@@ -11,7 +11,7 @@ const TAINT_CONDITIONS = [
   'Güvenli config ataması olmamalı (Drupal.settings vb.)',
 ];
 
-const JsAnalysisSection = ({ status, results }) => {
+const JsAnalysisSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       {/* JS Analysis Flow */}

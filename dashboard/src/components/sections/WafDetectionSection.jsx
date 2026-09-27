@@ -12,7 +12,7 @@ const WAF_SIGS = [
   { name: 'Barracuda', sigs: 'barra_counter_session' },
 ];
 
-const WafDetectionSection = ({ status, results }) => {
+const WafDetectionSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       <div className="acs-flow-box">

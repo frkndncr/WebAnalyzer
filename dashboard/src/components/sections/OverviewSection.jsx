@@ -29,7 +29,7 @@ const CLASSES = [
   { name: 'ExposedEndpoint', type: 'Data Class', purpose: 'Açık endpoint bulgusu' },
 ];
 
-const OverviewSection = ({ status, results }) => {
+const OverviewSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       {/* Module Info */}

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const HeadlessBrowserSection = ({ status, results }) => {
+const HeadlessBrowserSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       <div style={{ padding: '0.8rem', marginBottom: '1.5rem', background: 'rgba(188, 140, 255, 0.08)', borderRadius: '6px', border: '1px solid rgba(188, 140, 255, 0.15)' }}>

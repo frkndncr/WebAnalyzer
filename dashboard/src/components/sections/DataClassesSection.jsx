@@ -94,7 +94,7 @@ const DATA_CLASSES = [
   },
 ];
 
-const DataClassesSection = ({ status, results }) => {
+const DataClassesSection = ({ results }) => {
   const [expanded, setExpanded] = useState(null);
 
   return (

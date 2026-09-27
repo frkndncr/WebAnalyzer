@@ -61,7 +61,7 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
 
   /* ── UI state ── */
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [, setSelectedNode] = useState(null);
   const [cveSearch, setCveSearch] = useState('');
   const [iocSort, setIocSort] = useState({ key: 'confidence', asc: false });
   const [attackSurface, setAttackSurface] = useState(5);

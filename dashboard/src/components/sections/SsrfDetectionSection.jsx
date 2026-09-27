@@ -2,7 +2,7 @@ import React from 'react';
 
 const SSRF_PARAMS = ['url', 'uri', 'src', 'href', 'target', 'destination', 'redirect', 'redirect_to', 'redirect_url', 'return', 'return_to', 'next', 'continue', 'goto', 'load', 'file', 'path', 'image', 'img', 'proxy', 'forward', 'callback', 'webhook', 'feed', 'content', 'data', 'template', 'preview'];
 
-const SsrfDetectionSection = ({ status, results }) => {
+const SsrfDetectionSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       {/* 3 Layers */}

@@ -4,7 +4,7 @@ const SCAN_SOURCES = ['Inline <script> tagları', 'Harici JS dosyaları', 'Sourc
 const FP_CONTEXT = ['example', 'sample', 'placeholder', 'dummy', 'test', 'demo', 'your_', 'INSERT_', 'TODO', 'changeme'];
 const FP_VALUE = ['200+ karakter alfanümerik (minified)', 'Unicode escape dizisi', 'MD5 hash (32 hex)', 'Sadece harfler', 'Sadece rakamlar', 'data:image/ ile başlayan'];
 
-const SecretScannerSection = ({ status, results }) => {
+const SecretScannerSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       {/* Scan Flow */}

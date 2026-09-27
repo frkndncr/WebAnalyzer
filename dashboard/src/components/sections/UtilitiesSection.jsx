@@ -20,7 +20,7 @@ const GRADES = [
   { range: '≥ 1.0', grade: 'A', color: '#3fb950' }, { range: '0', grade: 'A+', color: '#3fb950' },
 ];
 
-const UtilitiesSection = ({ status, results }) => {
+const UtilitiesSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       <h4 style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Yardımcı Fonksiyonlar</h4>

@@ -69,7 +69,7 @@ const FUZZ_TYPES = [
 
 const SEV_COLORS = { Critical: '#f85149', High: '#d29922', Medium: '#58a6ff', Low: '#8b949e' };
 
-const PatternRegistrySection = ({ status, results }) => {
+const PatternRegistrySection = ({ results }) => {
   const [activeTab, setActiveTab] = useState('secrets');
 
   const tabs = [

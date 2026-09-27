@@ -9,7 +9,7 @@ const BYPASS_HEADERS = [
 ];
 const SQLI_ERRORS = ['sql syntax', 'mysql_fetch', 'ora-01756', 'microsoft ole db', 'unclosed quotation', 'pg_query', 'sqlite_', 'syntax error'];
 
-const ActiveTestingSection = ({ status, results }) => {
+const ActiveTestingSection = ({ results }) => {
   const [tab, setTab] = useState('fuzz');
   const tabs = [
     { id: 'fuzz', label: '💣 Form Fuzzing' },

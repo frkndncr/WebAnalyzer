@@ -17,7 +17,7 @@ const EXEC_ORDER = [
 
 const LAYER_COLORS = { L1: '#58a6ff', L2: '#d29922', L3: '#3fb950', L4: '#bc8cff', L5: '#f85149', '—': '#8b949e' };
 
-const MainFlowSection = ({ status, results }) => {
+const MainFlowSection = ({ results }) => {
   return (
     <div className="acs-section-content">
       <h4 style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>run() Çalışma Sırası</h4>
