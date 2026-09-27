@@ -36,6 +36,13 @@ try:
 except ImportError:
     DNS_AVAILABLE = False
 
+# Pure analysis helpers (extracted for unit testing). Works whether this module
+# is imported as part of the package or run directly.
+try:
+    from modules.api_analysis import is_json_response, is_xml_response, is_payload_safe_context
+except ImportError:
+    from api_analysis import is_json_response, is_xml_response, is_payload_safe_context
+
 class PayloadManager:
     """Advanced payload management system"""
     
@@ -203,25 +210,11 @@ class BugBountyScanner:
     
     def is_json_response(self, text: str) -> bool:
         """Check if response is JSON"""
-        if not text or len(text) < 2:
-            return False
-        
-        text = text.strip()
-        if text[0] in ['{', '['] and text[-1] in ['}', ']']:
-            try:
-                json.loads(text)
-                return True
-            except:
-                pass
-        return False
-    
+        return is_json_response(text)
+
     def is_xml_response(self, text: str) -> bool:
         """Check if response is XML"""
-        if not text or len(text) < 10:
-            return False
-        
-        text = text.strip()
-        return text.startswith('<?xml') or (text.startswith('<') and text.endswith('>'))
+        return is_xml_response(text)
 
     async def is_real_api_endpoint(self, url: str, response) -> Tuple[bool, str]:
         """
@@ -1185,34 +1178,8 @@ class BugBountyScanner:
         return findings
   
     def is_payload_safe_context(self, content: str, payload: str) -> bool:
-        """
-        Check if XSS payload is in a safe context (encoded or in comments)
-        """
-        import re
-        
-        # Find the position of the payload
-        payload_pos = content.find(payload)
-        if payload_pos == -1:
-            return True  # Not found, safe
-        
-        # Check if it's inside HTML comments
-        comment_start = content.rfind('<!--', 0, payload_pos)
-        comment_end = content.find('-->', payload_pos)
-        if comment_start != -1 and comment_end != -1:
-            return True  # Inside comment, safe
-        
-        # Check if it's properly encoded
-        encoded_versions = [
-            payload.replace('<', '&lt;').replace('>', '&gt;'),
-            payload.replace('<', '%3C').replace('>', '%3E'),
-            payload.replace('"', '&quot;').replace("'", '&#x27;')
-        ]
-        
-        for encoded in encoded_versions:
-            if encoded in content:
-                return True  # Properly encoded, safe
-        
-        return False  # Potentially unsafe
+        """Check if XSS payload is in a safe context (encoded or in comments)"""
+        return is_payload_safe_context(content, payload)
 
     async def test_ssti_improved(self, endpoint: str) -> List[Dict]:
         """
