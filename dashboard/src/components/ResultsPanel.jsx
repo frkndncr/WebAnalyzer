@@ -1663,7 +1663,7 @@ const RenderWebArchiveSpy = ({ data }) => {
         <h4 style={{ margin: '0 0 6px 0', fontFamily: 'var(--font-cyber)', color: 'var(--accent-green)', letterSpacing: '0.5px' }}>
           WAYBACK MACHINE SECRETS SHIELDED
         </h4>
-        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '550px', margin: '0 auto' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '550px', margin: '0 auto' }}>
           No historical API keys, tokens, or credentials detected in files archived by the Wayback Machine ({message || 'Clean history'}).
         </p>
       </div>
@@ -1901,11 +1901,14 @@ const RenderPhishingProtection = ({ data }) => {
 };
 
 const RenderSslSanAssociation = ({ data }) => {
+  // Hooks must run in the same order on every render, so this must come before
+  // any early return below.
+  const [searchTerm, setSearchTerm] = useState('');
+
   if (!data) return <div style={{ color: 'var(--text-secondary)' }}>No SSL SAN Association data available.</div>;
 
   const associated = data.associated_domains || [];
   const totalSan = data.total_san_domains ?? associated.length;
-  const [searchTerm, setSearchTerm] = useState('');
 
   if (totalSan === 0 || associated.length === 0) {
     return (

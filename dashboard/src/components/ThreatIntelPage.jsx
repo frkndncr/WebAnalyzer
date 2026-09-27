@@ -20,6 +20,34 @@ const generateRadarDots = (count) => {
   return dots;
 };
 
+/* ─── Risk Slider (module-scope so it is not recreated every render) ── */
+const RiskSlider = ({ label, value, setValue, emoji, riskScore, riskColor }) => (
+  <div style={{ marginBottom: '1.2rem' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{emoji} {label}</span>
+      <span style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.85rem', color: riskScore >= 7 ? '#ff0055' : 'var(--accent-blue)', fontWeight: 700 }}>{value}/10</span>
+    </div>
+    <input
+      type="range"
+      min="0"
+      max="10"
+      step="0.5"
+      value={value}
+      onChange={(e) => setValue(parseFloat(e.target.value))}
+      style={{
+        width: '100%',
+        height: '6px',
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        background: `linear-gradient(90deg, ${riskColor} ${value * 10}%, rgba(255,255,255,0.06) ${value * 10}%)`,
+        borderRadius: '4px',
+        outline: 'none',
+        cursor: 'pointer',
+      }}
+    />
+  </div>
+);
+
 /* ─── Component ──────────────────────────────────────────────── */
 const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
   /* ── Domain input & recent scans ── */
@@ -230,33 +258,6 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
     return '#768390';
   };
 
-  /* ── Slider Component ── */
-  const RiskSlider = ({ label, value, setValue, emoji }) => (
-    <div style={{ marginBottom: '1.2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{emoji} {label}</span>
-        <span style={{ fontFamily: 'var(--font-cyber)', fontSize: '0.85rem', color: riskScore >= 7 ? '#ff0055' : 'var(--accent-blue)', fontWeight: 700 }}>{value}/10</span>
-      </div>
-      <input
-        type="range"
-        min="0"
-        max="10"
-        step="0.5"
-        value={value}
-        onChange={(e) => setValue(parseFloat(e.target.value))}
-        style={{
-          width: '100%',
-          height: '6px',
-          appearance: 'none',
-          WebkitAppearance: 'none',
-          background: `linear-gradient(90deg, ${riskColor} ${value * 10}%, rgba(255,255,255,0.06) ${value * 10}%)`,
-          borderRadius: '4px',
-          outline: 'none',
-          cursor: 'pointer',
-        }}
-      />
-    </div>
-  );
 
   /* ── Handle form submit ── */
   const handleLoadIntel = (e) => {
@@ -597,9 +598,9 @@ const ThreatIntelPage = ({ domain, setCurrentDomain }) => {
                     <canvas ref={riskCanvasRef} style={{ width: '180px', height: '180px' }} />
                   </div>
                   <div>
-                    <RiskSlider label="ATTACK_SURFACE" value={attackSurface} setValue={setAttackSurface} emoji="🎯" />
-                    <RiskSlider label="VULN_DENSITY" value={vulnDensity} setValue={setVulnDensity} emoji="🐛" />
-                    <RiskSlider label="EXPOSURE_LEVEL" value={exposure} setValue={setExposure} emoji="🌐" />
+                    <RiskSlider label="ATTACK_SURFACE" value={attackSurface} setValue={setAttackSurface} emoji="🎯" riskScore={riskScore} riskColor={riskColor} />
+                    <RiskSlider label="VULN_DENSITY" value={vulnDensity} setValue={setVulnDensity} emoji="🐛" riskScore={riskScore} riskColor={riskColor} />
+                    <RiskSlider label="EXPOSURE_LEVEL" value={exposure} setValue={setExposure} emoji="🌐" riskScore={riskScore} riskColor={riskColor} />
                     <div style={{
                       marginTop: '1rem', padding: '0.8rem', borderRadius: '6px',
                       background: `${riskColor}10`, border: `1px solid ${riskColor}30`,

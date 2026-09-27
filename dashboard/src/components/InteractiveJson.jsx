@@ -5,13 +5,14 @@ const InteractiveJson = ({ data, initExpanded = false }) => {
 
   if (typeof data !== 'object' || data === null) {
     let styleClass = 'json-string';
+    let display = data;
     if (typeof data === 'number') styleClass = 'json-number';
     if (typeof data === 'boolean') styleClass = 'json-boolean';
     if (data === null) {
-      data = 'null';
+      display = 'null';
       styleClass = 'json-null';
     }
-    return <span className={styleClass}>{String(data)}</span>;
+    return <span className={styleClass}>{String(display)}</span>;
   }
 
   const isArray = Array.isArray(data);
