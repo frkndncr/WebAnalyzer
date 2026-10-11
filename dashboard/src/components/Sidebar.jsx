@@ -1,10 +1,24 @@
 import React from 'react';
 import { Icon } from './ui';
+import { SOCIALS } from '../lib/site';
 
-const NAV = [
-  { id: 'overview', label: 'Overview', icon: 'overview' },
-  { id: 'scan', label: 'New Scan', icon: 'scan' },
-  { id: 'results', label: 'Results', icon: 'results' },
+const GROUPS = [
+  {
+    label: 'Workspace',
+    items: [
+      { id: 'overview', label: 'Overview', icon: 'overview' },
+      { id: 'scan', label: 'New Scan', icon: 'scan' },
+      { id: 'results', label: 'Results', icon: 'results' },
+    ],
+  },
+  {
+    label: 'Analysis',
+    items: [
+      { id: 'threat', label: 'Threat Intel', icon: 'target' },
+      { id: 'network', label: 'Network Map', icon: 'network' },
+      { id: 'attack', label: 'Attack Path', icon: 'route' },
+    ],
+  },
 ];
 
 export default function Sidebar({ active, onNav, health }) {
@@ -19,24 +33,36 @@ export default function Sidebar({ active, onNav, health }) {
         </div>
       </div>
 
-      <div className="nav-group-label">Workspace</div>
-      {NAV.map((n) => (
-        <button
-          key={n.id}
-          className={`nav-item ${active === n.id ? 'active' : ''}`}
-          onClick={() => onNav(n.id)}
-        >
-          <Icon name={n.icon} className="nav-ico" />
-          {n.label}
-        </button>
+      {GROUPS.map((g) => (
+        <React.Fragment key={g.label}>
+          <div className="nav-group-label">{g.label}</div>
+          {g.items.map((n) => (
+            <button key={n.id} className={`nav-item ${active === n.id ? 'active' : ''}`} onClick={() => onNav(n.id)}>
+              <Icon name={n.icon} className="nav-ico" />
+              {n.label}
+            </button>
+          ))}
+        </React.Fragment>
       ))}
 
+      <div className="nav-group-label">About</div>
+      <button className={`nav-item ${active === 'legal' ? 'active' : ''}`} onClick={() => onNav('legal')}>
+        <Icon name="scale" className="nav-ico" />
+        Legal &amp; Privacy
+      </button>
+
       <div className="sidebar-foot">
+        <div className="socials" style={{ marginBottom: 12 }}>
+          {SOCIALS.map((s) => (
+            <a key={s.id} className="icon-btn" href={s.url} target="_blank" rel="noreferrer" aria-label={s.label} title={s.label}>
+              <Icon name={s.icon} size={16} />
+            </a>
+          ))}
+        </div>
         <div>
           <span className={`dot ${online ? 'ok' : 'off'}`} />
-          API {online ? 'online' : 'offline'}
+          API {online ? 'online' : 'offline'}{health?.version ? ` · v${health.version}` : ''}
         </div>
-        {health?.version && <div style={{ marginTop: 4 }}>v{health.version}</div>}
       </div>
     </aside>
   );

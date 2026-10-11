@@ -2,12 +2,57 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebAnalyzer | Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0b0f17" />
+
+    <!-- Primary meta -->
+    <title>WebAnalyzer — Domain Reconnaissance & Security Dashboard</title>
+    <meta name="description" content="WebAnalyzer is an open-source domain reconnaissance and security dashboard: run 16 recon & security modules — WHOIS, DNS, subdomains, WAF, SSL/TLS, CloudFlare origin unmasking, secret scanning and more — then export a shareable report." />
+    <meta name="keywords" content="WebAnalyzer, domain reconnaissance, security scanner, OSINT, subdomain enumeration, WAF detection, SSL analysis, vulnerability scanner, bug bounty, penetration testing, güvenlik taraması, alan adı analizi" />
+    <meta name="author" content="Furkan Dinçer" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://webanalyzer.c4softwarestudio.com/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WebAnalyzer" />
+    <meta property="og:title" content="WebAnalyzer — Domain Reconnaissance & Security Dashboard" />
+    <meta property="og:description" content="Run 16 recon & security modules against a domain from one clean dashboard, then export a shareable security report. Open source." />
+    <meta property="og:url" content="https://webanalyzer.c4softwarestudio.com/" />
+    <meta property="og:image" content="https://raw.githubusercontent.com/frkndncr/WebAnalyzer/main/docs/assets/webanalyzer_dashboard.png" />
+    <meta property="og:image:alt" content="WebAnalyzer security console dashboard" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="WebAnalyzer — Domain Reconnaissance & Security Dashboard" />
+    <meta name="twitter:description" content="Open-source domain reconnaissance and security dashboard with 16 analysis modules and exportable reports." />
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/frkndncr/WebAnalyzer/main/docs/assets/webanalyzer_dashboard.png" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "WebAnalyzer",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Web, Linux, Windows, macOS",
+      "description": "Open-source domain reconnaissance and security dashboard with 16 analysis modules, bulk processing and exportable executive reports.",
+      "url": "https://webanalyzer.c4softwarestudio.com/",
+      "license": "https://opensource.org/licenses/MIT",
+      "author": { "@type": "Person", "name": "Furkan Dinçer", "url": "https://github.com/frkndncr" },
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "sameAs": [
+        "https://github.com/frkndncr/WebAnalyzer",
+        "https://www.linkedin.com/in/furkan-dincer/",
+        "https://www.instagram.com/f3rrkan/"
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>WebAnalyzer requires JavaScript. It is an open-source domain reconnaissance and security dashboard — source at https://github.com/frkndncr/WebAnalyzer</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
