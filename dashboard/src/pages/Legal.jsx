@@ -1,57 +1,59 @@
 import React, { useState } from 'react';
 import { AUTHOR, COMPANY, CONTACT_EMAIL, SITE_URL } from '../lib/site';
 
-const UPDATED = '11 Ekim 2026';
+const UPDATED = 'October 11, 2026';
 const TABS = [
-  { id: 'privacy', label: 'Gizlilik Politikası' },
-  { id: 'kvkk', label: 'KVKK Aydınlatma Metni' },
-  { id: 'terms', label: 'Kullanım Şartları' },
-  { id: 'cookies', label: 'Çerez Politikası' },
+  { id: 'privacy', label: 'Privacy Policy' },
+  { id: 'kvkk', label: 'KVKK & GDPR Notice' },
+  { id: 'terms', label: 'Terms of Use' },
+  { id: 'cookies', label: 'Cookie Policy' },
 ];
+
+const Disclaimer = ({ children }) => <div className="note">{children}</div>;
 
 function Privacy() {
   return (
     <div className="legal">
-      <h2>Gizlilik Politikası</h2>
-      <div className="updated">Son güncelleme: {UPDATED}</div>
+      <h2>Privacy Policy</h2>
+      <div className="updated">Last updated: {UPDATED}</div>
       <p>
-        {COMPANY} (“biz”) olarak, WebAnalyzer platformunu ({SITE_URL}) kullanımınız sırasında
-        gizliliğinize önem veriyoruz. Bu politika, hangi verileri işlediğimizi, nasıl
-        kullandığımızı ve haklarınızı açıklar.
+        {COMPANY} (“we”) operates the WebAnalyzer platform at {SITE_URL}. This policy explains what
+        data we process when you use it, why, and what rights you have.
       </p>
 
-      <h3>1. İşlenen Veriler</h3>
+      <h3>1. Data we process</h3>
       <ul>
-        <li><b>Tarama girdileri:</b> Analiz için girdiğiniz alan adları ve seçtiğiniz modüller.</li>
-        <li><b>Teknik veriler:</b> IP adresi, tarayıcı türü ve erişim zamanı (güvenlik ve hız sınırlama amacıyla).</li>
-        <li><b>Çerezler:</b> Yalnızca oturum tercihleri için zorunlu çerezler; pazarlama çerezi kullanmıyoruz.</li>
+        <li><b>Scan inputs:</b> the domain names you submit and the modules you select.</li>
+        <li><b>Scan results:</b> the technical output produced for those domains, stored so you can revisit it.</li>
+        <li><b>Technical data:</b> IP address, browser type and access time, used for security and rate limiting.</li>
+        <li><b>Local storage:</b> a single flag remembering your cookie notice choice.</li>
       </ul>
-      <p>Platform üzerinden ad, telefon, kimlik veya ödeme bilgisi talep etmiyoruz.</p>
+      <p>We do not ask for names, phone numbers, government IDs or payment details, and we do not run advertising or analytics trackers.</p>
 
-      <h3>2. Kullanım Amaçları</h3>
+      <h3>2. Why we process it</h3>
       <ul>
-        <li>Talep ettiğiniz güvenlik analizini gerçekleştirmek,</li>
-        <li>Hizmetin güvenliğini sağlamak ve kötüye kullanımı önlemek,</li>
-        <li>Platformu iyileştirmek ve hataları gidermek.</li>
+        <li>To run the analysis you request and show you the results.</li>
+        <li>To keep the service secure and prevent abuse (rate limiting, blocking internal targets).</li>
+        <li>To maintain and improve the platform.</li>
       </ul>
 
-      <h3>3. Saklama ve Paylaşım</h3>
+      <h3>3. Storage and sharing</h3>
       <p>
-        Tarama sonuçları hizmetin çalışması için gereken süre boyunca saklanır. Verilerinizi
-        üçüncü taraflarla pazarlama amacıyla <b>paylaşmayız</b>; yalnızca yasal yükümlülük
-        halinde yetkili mercilerle paylaşılabilir.
+        Scan results are kept for as long as needed to operate the service. We do not sell your data or
+        share it with third parties for marketing. Data may be disclosed to the competent authorities only
+        where the law requires it.
       </p>
 
-      <h3>4. Haklarınız</h3>
+      <h3>4. Your rights</h3>
       <p>
-        İşlenen verileriniz hakkında bilgi talep etme, düzeltme veya silme haklarınızı kullanmak
-        için <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> adresine yazabilirsiniz.
+        You may ask what data we hold about you, request correction or deletion, and object to processing.
+        Write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and we will respond within 30 days.
       </p>
 
-      <div className="note">
-        Bu metin bilgilendirme amaçlı bir şablondur ve bağlayıcı hukuki görüş niteliği taşımaz.
-        Yayına almadan önce bir hukuk danışmanına inceletmeniz önerilir.
-      </div>
+      <Disclaimer>
+        This text is a general-purpose template and is not legal advice. Have a qualified lawyer review it
+        before relying on it for a commercial or enterprise deployment.
+      </Disclaimer>
     </div>
   );
 }
@@ -59,39 +61,43 @@ function Privacy() {
 function Kvkk() {
   return (
     <div className="legal">
-      <h2>KVKK Aydınlatma Metni</h2>
-      <div className="updated">6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında · {UPDATED}</div>
+      <h2>KVKK &amp; GDPR Notice</h2>
+      <div className="updated">
+        Under Turkish Personal Data Protection Law No. 6698 (KVKK) and Regulation (EU) 2016/679 (GDPR) · {UPDATED}
+      </div>
       <p>
-        Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu’nun (“KVKK”) 10.
-        maddesi uyarınca veri sorumlusu sıfatıyla {AUTHOR} / {COMPANY} tarafından hazırlanmıştır.
+        This notice is provided in line with Article 10 of KVKK and Articles 13–14 of the GDPR by the data
+        controller named below.
       </p>
 
-      <h3>1. Veri Sorumlusu</h3>
-      <p>{AUTHOR} / {COMPANY} — İletişim: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
+      <h3>1. Data controller</h3>
+      <p>{AUTHOR} / {COMPANY} — contact: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
 
-      <h3>2. İşlenen Kişisel Veriler ve Amaç</h3>
+      <h3>2. Personal data and purposes</h3>
       <ul>
-        <li><b>İşlem güvenliği verileri</b> (IP adresi, erişim kayıtları): hizmet güvenliği ve hukuki yükümlülüklerin yerine getirilmesi amacıyla.</li>
-        <li><b>Kullanım verileri</b> (girilen alan adları, seçilen modüller): talep ettiğiniz analizin sunulması amacıyla.</li>
+        <li><b>Transaction-security data</b> (IP address, access logs): to secure the service and meet legal obligations.</li>
+        <li><b>Usage data</b> (submitted domains, selected modules): to deliver the analysis you request.</li>
       </ul>
 
-      <h3>3. Hukuki Sebep (KVKK m.5)</h3>
+      <h3>3. Legal basis (KVKK Art. 5 / GDPR Art. 6)</h3>
       <p>
-        Verileriniz; bir hizmetin ifası için gerekli olması, veri sorumlusunun meşru menfaati ve
-        hukuki yükümlülüklerin yerine getirilmesi hukuki sebeplerine dayanılarak işlenmektedir.
+        Processing is necessary to provide the requested service, is based on our legitimate interest in
+        keeping the platform secure, and is required to meet legal obligations.
       </p>
 
-      <h3>4. İlgili Kişinin Hakları (KVKK m.11)</h3>
-      <p>
-        Kişisel verilerinizin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya
-        silinmesini isteme ve işlemenin kısıtlanmasını talep etme haklarına sahipsiniz. Başvurularınızı
-        yukarıdaki iletişim adresine iletebilirsiniz.
-      </p>
+      <h3>4. Your rights (KVKK Art. 11 / GDPR Arts. 15–21)</h3>
+      <ul>
+        <li>Learn whether your personal data is processed and request information about it.</li>
+        <li>Request correction or erasure of your data.</li>
+        <li>Request restriction of processing, or object to it.</li>
+        <li>Lodge a complaint with the Turkish Personal Data Protection Authority (KVKK) or your local EU supervisory authority.</li>
+      </ul>
+      <p>Send requests to the contact address above.</p>
 
-      <div className="note">
-        Bu metin örnek bir KVKK aydınlatma şablonudur. Kurumsal yayına almadan önce mutlaka bir
-        hukuk danışmanı tarafından gözden geçirilmelidir.
-      </div>
+      <Disclaimer>
+        This is an informational template, not legal advice. It should be reviewed by a qualified lawyer
+        before the platform is used in a commercial setting.
+      </Disclaimer>
     </div>
   );
 }
@@ -99,39 +105,35 @@ function Kvkk() {
 function Terms() {
   return (
     <div className="legal">
-      <h2>Kullanım Şartları</h2>
-      <div className="updated">Son güncelleme: {UPDATED}</div>
+      <h2>Terms of Use</h2>
+      <div className="updated">Last updated: {UPDATED}</div>
 
-      <h3>1. Yetkili Kullanım</h3>
+      <h3>1. Authorized use only</h3>
       <p>
-        WebAnalyzer, yalnızca <b>sahibi olduğunuz veya test etmek için açık yazılı izne sahip
-        olduğunuz</b> sistemlerde kullanılabilir. İzinsiz güvenlik testi birçok ülkede suç teşkil eder.
+        WebAnalyzer may only be used on systems that you <b>own or have explicit written permission to
+        test</b>. Unauthorized security testing is illegal in many jurisdictions.
       </p>
 
-      <h3>2. Sorumluluğun Sınırlandırılması</h3>
+      <h3>2. No warranty and limitation of liability</h3>
       <p>
-        Platform “olduğu gibi” sunulur. Aracın kullanımından veya kötüye kullanımından doğabilecek
-        zararlardan {COMPANY} sorumlu tutulamaz. Keşfedilen zafiyetlerde sorumlu ifşa (responsible
-        disclosure) ilkelerine uymanız beklenir.
+        The platform is provided “as is”. {COMPANY} is not liable for any damage resulting from its use or
+        misuse. If you discover a vulnerability, follow responsible-disclosure practices.
       </p>
 
-      <h3>3. Kabul Edilebilir Kullanım</h3>
+      <h3>3. Acceptable use</h3>
       <ul>
-        <li>Hız sınırlarına ve hizmet şartlarına saygı gösterin.</li>
-        <li>Üçüncü taraflara zarar verecek şekilde kullanmayın.</li>
-        <li>Yürürlükteki yasalara uyun.</li>
+        <li>Respect rate limits and the terms of the systems you test.</li>
+        <li>Do not use the service to harm third parties.</li>
+        <li>Comply with the laws that apply to you.</li>
       </ul>
 
-      <h3>4. Açık Kaynak</h3>
+      <h3>4. Open source</h3>
       <p>
-        WebAnalyzer MIT lisansı altında açık kaynaktır. Kaynak kodu
-        {' '}<a href="https://github.com/frkndncr/WebAnalyzer" target="_blank" rel="noreferrer">GitHub</a>
-        {' '}üzerinden erişilebilir.
+        WebAnalyzer is open source under the MIT license. The source code is available on{' '}
+        <a href="https://github.com/frkndncr/WebAnalyzer" target="_blank" rel="noreferrer">GitHub</a>.
       </p>
 
-      <div className="note">
-        Bu şartlar örnek niteliğindedir ve hukuki görüş yerine geçmez.
-      </div>
+      <Disclaimer>These terms are a template and are not a substitute for legal advice.</Disclaimer>
     </div>
   );
 }
@@ -139,25 +141,21 @@ function Terms() {
 function Cookies() {
   return (
     <div className="legal">
-      <h2>Çerez Politikası</h2>
-      <div className="updated">Son güncelleme: {UPDATED}</div>
+      <h2>Cookie Policy</h2>
+      <div className="updated">Last updated: {UPDATED}</div>
       <p>
-        WebAnalyzer yalnızca platformun çalışması için gerekli olan <b>zorunlu çerezleri</b> ve
-        tarayıcı yerel depolamasını (ör. tema/sekme tercihi, çerez onayınız) kullanır.
+        WebAnalyzer only uses <b>strictly necessary</b> browser storage so the interface works. There are no
+        advertising, marketing or third-party analytics cookies.
       </p>
-      <h3>Kullanılan Depolama Türleri</h3>
+
+      <h3>What we store</h3>
       <ul>
-        <li><b>Zorunlu:</b> Oturum ve arayüz tercihlerini hatırlamak için (localStorage).</li>
-        <li><b>Analitik/Pazarlama:</b> Kullanılmıyor. Üçüncü taraf takip çerezi yoktur.</li>
+        <li><b>Cookie notice choice</b> — a single localStorage flag so the banner is not shown again.</li>
+        <li><b>Analytics / marketing</b> — none.</li>
       </ul>
-      <p>
-        Tarayıcı ayarlarınızdan yerel depolamayı dilediğiniz zaman temizleyebilirsiniz; bu durumda
-        yalnızca tercihleriniz sıfırlanır.
-      </p>
-      <div className="note">
-        Pazarlama veya üçüncü taraf analitik çerezleri eklenirse bu politika ve çerez onay akışı
-        güncellenmelidir.
-      </div>
+      <p>You can clear this storage in your browser settings at any time; only the notice choice is reset.</p>
+
+      <Disclaimer>If analytics or marketing cookies are ever added, this policy and the consent flow must be updated first.</Disclaimer>
     </div>
   );
 }

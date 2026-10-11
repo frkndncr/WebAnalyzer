@@ -89,3 +89,19 @@ export function cleanDomain(raw) {
     .replace(/\/.*$/, '')
     .toLowerCase();
 }
+
+/* Scans stored before the backend was translated still contain a few Turkish
+ * status values; show them in English. */
+const LEGACY_TEXT = {
+  'Bulunamadı': 'Not found',
+  'Erişilemedi': 'Unreachable',
+  'Açık port bulunamadı': 'No open ports found',
+  'IP adresi olmadan port taraması yapılamaz': 'Port scan is not possible without an IP address',
+  'WHOIS sunucusuna bağlanılamadı': 'Could not connect to the WHOIS server',
+};
+
+export function localize(value) {
+  if (typeof value !== 'string') return value;
+  if (LEGACY_TEXT[value]) return LEGACY_TEXT[value];
+  return value.startsWith('WHOIS hatası:') ? value.replace('WHOIS hatası:', 'WHOIS error:') : value;
+}

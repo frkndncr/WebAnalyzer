@@ -22,10 +22,35 @@ const TITLES = {
   legal: ['Legal & Privacy', 'Policies, KVKK notice and terms'],
 };
 
+/** Parse "#/results/example.com" into { page, domain }. Unknown pages fall back to overview. */
+function readHash() {
+  const m = window.location.hash.match(/^#\/([a-z]+)(?:\/(.+))?$/);
+  const page = m && TITLES[m[1]] ? m[1] : 'overview';
+  let domain = '';
+  try { domain = m && m[2] ? decodeURIComponent(m[2]) : ''; } catch { domain = ''; }
+  return { page, domain };
+}
+
 export default function App() {
-  const [page, setPage] = useState('overview');
-  const [domain, setDomain] = useState('');
+  const [{ page, domain }, setRoute] = useState(readHash);
   const [health, setHealth] = useState(null);
+
+  const setPage = (p) => setRoute((r) => ({ ...r, page: p }));
+  const setDomain = (d) => setRoute((r) => ({ ...r, domain: d }));
+
+  // Browser back/forward and pasted links update the route.
+  useEffect(() => {
+    const onHash = () => setRoute(readHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // Keep the URL in sync so the current view can be refreshed or shared.
+  useEffect(() => {
+    const wantsDomain = ['results', 'threat', 'network', 'attack'].includes(page) && domain;
+    const hash = `#/${page}${wantsDomain ? `/${encodeURIComponent(domain)}` : ''}`;
+    if (window.location.hash !== hash) window.history.replaceState(null, '', hash);
+  }, [page, domain]);
 
   usePolling(async (signal) => {
     try {
@@ -38,7 +63,7 @@ export default function App() {
 
   useEffect(() => { document.title = `WebAnalyzer · ${TITLES[page][0]}`; }, [page]);
 
-  const openDomain = (d) => { setDomain(d); setPage('results'); };
+  const openDomain = (d) => setRoute({ page: 'results', domain: d });
   const [title, sub] = TITLES[page];
   const contextDomain = ['results', 'threat', 'network', 'attack'].includes(page) && domain;
 
@@ -55,7 +80,7 @@ export default function App() {
         <div className="content">
           {page === 'overview' && <Overview onOpenDomain={openDomain} />}
           {page === 'scan' && <NewScan onLaunched={openDomain} />}
-          {page === 'results' && <Results key={domain} domain={domain} />}
+          {page === 'results' && <Results key={domain} domain={domain} setDomain={setDomain} />}
           {page === 'threat' && <ThreatIntel key={domain} domain={domain} setDomain={setDomain} />}
           {page === 'network' && <NetworkMap key={domain} domain={domain} setDomain={setDomain} />}
           {page === 'attack' && <AttackPath key={domain} domain={domain} setDomain={setDomain} />}

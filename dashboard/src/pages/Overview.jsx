@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../api/client';
 import { usePolling } from '../hooks/useApi';
 import { Stat, Badge, Empty, Icon } from '../components/ui';
@@ -9,6 +9,8 @@ const SEV_ROWS = [
   ['low', 'Low'], ['info', 'Info'],
 ];
 
+const asList = (v) => (Array.isArray(v) ? v : []);
+
 export default function Overview({ onOpenDomain }) {
   const [stats, setStats] = useState(null);
   const [vuln, setVuln] = useState(null);
@@ -16,11 +18,15 @@ export default function Overview({ onOpenDomain }) {
   const [alerts, setAlerts] = useState([]);
   const [active, setActive] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [version, setVersion] = useState(0);
+  const lastActive = useRef(0);
 
+  // Load everything once, and again whenever a running scan finishes.
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
-    const load = async () => {
+    (async () => {
       const [s, v, r, a, ac] = await Promise.allSettled([
         apiRequest('/api/stats', { signal }),
         apiRequest('/api/vulnerability-stats', { signal }),
@@ -31,43 +37,44 @@ export default function Overview({ onOpenDomain }) {
       if (signal.aborted) return;
       if (s.status === 'fulfilled') setStats(s.value);
       if (v.status === 'fulfilled') setVuln(v.value);
-      if (r.status === 'fulfilled') setRecent(Array.isArray(r.value) ? r.value : []);
-      if (a.status === 'fulfilled') setAlerts(Array.isArray(a.value) ? a.value : []);
-      if (ac.status === 'fulfilled') setActive(Array.isArray(ac.value) ? ac.value : []);
+      if (r.status === 'fulfilled') setRecent(asList(r.value));
+      if (a.status === 'fulfilled') setAlerts(asList(a.value));
+      if (ac.status === 'fulfilled') setActive(asList(ac.value));
+      setFailed([s, v, r, a, ac].every((x) => x.status === 'rejected'));
       setLoading(false);
-    };
-    load().catch(() => setLoading(false));
+    })();
     return () => controller.abort();
-  }, []);
+  }, [version]);
 
+  // Only the cheap endpoint is polled; full data is refreshed when a scan completes.
   usePolling(async (signal) => {
-    const [ac, s] = await Promise.allSettled([
-      apiRequest('/api/active-scans', { signal }),
-      apiRequest('/api/stats', { signal }),
-    ]);
+    const list = asList(await apiRequest('/api/active-scans', { signal }));
     if (signal.aborted) return;
-    if (ac.status === 'fulfilled') setActive(Array.isArray(ac.value) ? ac.value : []);
-    if (s.status === 'fulfilled') setStats(s.value);
-  }, 6000);
+    setActive(list);
+    if (lastActive.current > 0 && list.length === 0) setVersion((n) => n + 1);
+    lastActive.current = list.length;
+  }, 5000);
 
   if (loading) return <Empty title="Loading overview…" />;
+  if (failed) return <Empty title="Cannot reach the API"><div>Check that the backend is running and try again.</div></Empty>;
 
-  const vulnTotal = vuln?.total ?? 0;
+  const avg = stats?.average_score;
+  const findingsTotal = vuln?.total ?? stats?.total_vulnerabilities ?? 0;
 
   return (
     <div className="fade">
       <div className="grid cols-4">
         <Stat label="Domains scanned" value={stats?.total_domains ?? 0} />
-        <Stat label="Vulnerabilities" value={vulnTotal} accent={vulnTotal > 0 ? 'high' : 'ok'} />
-        <Stat label="Active scans" value={active.length} accent={active.length ? 'low' : undefined} />
-        <Stat label="Scan jobs" value={stats?.total_jobs ?? 0} />
+        <Stat label="Total findings" value={findingsTotal} accent={findingsTotal > 0 ? 'high' : 'ok'} />
+        <Stat label="Average score" value={avg ?? '—'} suffix={avg != null ? '/ 100' : undefined} accent={avg != null ? scoreSeverity(avg) : undefined} />
+        <Stat label="Scans running" value={active.length} accent={active.length ? 'low' : undefined} />
       </div>
 
       {active.length > 0 && (
         <div className="card mt">
           <div className="card-title">In progress</div>
           {active.map((a) => (
-            <div className="row" key={a.domain}>
+            <div className="row linklike" key={a.domain} onClick={() => onOpenDomain(a.domain)}>
               <div className="flex"><Icon name="scan" size={15} /><span className="dom">{a.domain}</span></div>
               <span className="meta">{a.current_module} · {a.completed}/{a.total}</span>
             </div>
@@ -78,17 +85,17 @@ export default function Overview({ onOpenDomain }) {
       <div className="grid cols-2 mt" style={{ alignItems: 'start' }}>
         <div className="card">
           <div className="card-title">Recent scans</div>
-          {recent.length === 0 ? <div className="muted">No scans yet.</div> : recent.slice(0, 8).map((r) => {
+          {recent.length === 0 ? <div className="muted">No scans yet — start one from New Scan.</div> : recent.slice(0, 8).map((r) => {
             const { score, grade } = extractScore(r.score);
             return (
-              <div className="row linklike" key={r.domain + r.scan_date} onClick={() => onOpenDomain(r.domain)}>
-                <div>
+              <div className="row linklike" key={r.domain} onClick={() => onOpenDomain(r.domain)}>
+                <div style={{ minWidth: 0 }}>
                   <div className="dom">{r.domain}</div>
                   <div className="meta">{timeAgo(r.scan_date)}</div>
                 </div>
                 <div className="flex">
-                  {r.vulnerabilities > 0 && <Badge sev="high">{r.vulnerabilities} vuln</Badge>}
-                  {score != null && <Badge sev={scoreSeverity(score)}>{grade || score}</Badge>}
+                  {r.vulnerabilities > 0 && <Badge sev="high">{r.vulnerabilities} finding{r.vulnerabilities === 1 ? '' : 's'}</Badge>}
+                  {score != null && <Badge sev={scoreSeverity(score)}>{grade ? `${grade} · ${score}` : score}</Badge>}
                 </div>
               </div>
             );
@@ -97,7 +104,7 @@ export default function Overview({ onOpenDomain }) {
 
         <div className="grid" style={{ gap: 16 }}>
           <div className="card">
-            <div className="card-title">Severity breakdown</div>
+            <div className="card-title">Findings by severity</div>
             {SEV_ROWS.map(([k, label]) => (
               <div className="row" key={k}>
                 <span className="flex"><Badge sev={k}>{label}</Badge></span>

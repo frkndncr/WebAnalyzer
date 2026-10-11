@@ -367,3 +367,69 @@ table.kv tr:last-child td { border-bottom: none; }
   display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
 }
 .cookie p { margin: 0; font-size: 12.5px; color: var(--text-dim); flex: 1; min-width: 220px; }
+
+/* ---- Results: header, tabs, summary, findings, modules -------------------- */
+.res-head { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.res-head .info { flex: 1; min-width: 240px; }
+.res-head h2 { font-size: 22px; word-break: break-all; }
+.res-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sevchips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.sevchip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--border-soft); background: var(--bg-elev); color: var(--text-dim);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.14s;
+}
+.sevchip:hover { border-color: var(--border); color: var(--text); }
+.sevchip b { font-family: var(--mono); color: var(--text); }
+.sevchip.active { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--text); }
+.sevchip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.sevchip.zero { opacity: 0.5; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-soft); margin: 22px 0 18px; overflow-x: auto; }
+.tab {
+  padding: 10px 16px; border: none; background: none; color: var(--text-dim); font: inherit; font-weight: 600;
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab .count { font-family: var(--mono); font-size: 11px; background: var(--surface-2); padding: 1px 7px; border-radius: 999px; color: var(--text-dim); }
+
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+@media (max-width: 700px) { .facts { grid-template-columns: 1fr; } }
+.fact { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-size: 13px; }
+.fact .l { color: var(--text-faint); }
+.fact .v { font-family: var(--mono); text-align: right; word-break: break-word; }
+.fact .v.tone-critical { color: var(--critical); }
+.fact .v.tone-high { color: var(--high); }
+.fact .v.tone-medium { color: var(--medium); }
+
+.issue { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+.issue:last-child { border-bottom: none; }
+.issue .t { font-weight: 600; font-size: 13px; }
+.issue .m { font-size: 11.5px; color: var(--text-faint); }
+.reco { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-size: 13px; color: var(--text-dim); }
+.reco:last-child { border-bottom: none; }
+
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.toolbar .input { max-width: 300px; padding: 9px 12px; }
+.toolbar .grow { margin-left: auto; display: flex; gap: 8px; }
+
+.finding { border: 1px solid var(--border-soft); border-left-width: 3px; border-radius: var(--radius-sm); background: var(--surface); margin-bottom: 10px; overflow: hidden; }
+.finding > summary { list-style: none; cursor: pointer; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.finding > summary::-webkit-details-marker { display: none; }
+.finding > summary:hover { background: var(--surface-2); }
+.finding .ttl { font-weight: 600; font-size: 13.5px; flex: 1; min-width: 0; }
+.finding .mod { font-size: 11.5px; color: var(--text-faint); font-weight: 500; margin-left: 8px; }
+.finding .times { font-family: var(--mono); font-size: 12px; color: var(--text-dim); background: var(--surface-2); padding: 1px 8px; border-radius: 999px; }
+.finding .fbody { padding: 4px 16px 16px; border-top: 1px solid var(--border-soft); font-size: 13px; }
+.finding .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin: 14px 0 4px; font-weight: 650; }
+.finding .loc { font-family: var(--mono); font-size: 12px; color: var(--accent); word-break: break-all; }
+pre.code {
+  margin: 6px 0 0; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+  font-family: var(--mono); font-size: 12px; color: var(--text-dim); overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 160px;
+}
+.instance { padding: 10px 0; border-top: 1px dashed var(--border-soft); }
+.instance:first-of-type { border-top: none; }
+
+.modrow-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; }

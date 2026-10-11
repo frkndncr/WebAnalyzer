@@ -1,30 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { apiRequest } from '../api/client';
-import { getApiUrl } from '../config';
-import { extractScore, scoreSeverity, cleanDomain } from '../lib/analysis';
-import { ScoreRing, Empty, Spinner, Icon, Badge } from '../components/ui';
-import ResultRenderer from '../components/ResultRenderer';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiRequest, apiPost, ApiError } from '../api/client';
+import { extractScore, scoreSeverity, MODULES, PRESETS } from '../lib/analysis';
+import { extractFindings, countBySeverity, moduleStatus } from '../lib/findings';
+import { Empty, Spinner } from '../components/ui';
+import DomainBar from '../components/DomainBar';
+import ResultsHeader from '../components/results/ResultsHeader';
+import SummaryTab from '../components/results/SummaryTab';
+import FindingsTab from '../components/results/FindingsTab';
+import ModulesTab from '../components/results/ModulesTab';
 
-export default function Results({ domain }) {
-  const [target, setTarget] = useState(domain || '');
-  const [input, setInput] = useState(domain || '');
+const KNOWN_MODULES = new Set(MODULES.map((m) => m.name));
+
+export default function Results({ domain, setDomain }) {
+  const [tab, setTab] = useState('summary');
+  const [severity, setSeverity] = useState('all');
+  const [reload, setReload] = useState(0);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(domain));
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  // Note: App renders this component with key={domain}, so it remounts (and
-  // re-initialises target/input from the prop) whenever the selected domain
-  // changes — no prop→state sync effect needed.
+  // App renders this page with key={domain}, so tab/filter state resets when the
+  // domain changes and `domain` never needs to be mirrored into local state.
   useEffect(() => {
-    if (!target) return undefined;
+    if (!domain) return undefined;
     let stop = false;
     let timer;
     const controller = new AbortController();
 
-    const tick = async (showLoad) => {
-      if (showLoad) { setLoading(true); setError(null); setData(null); }
+    const tick = async (first) => {
+      if (first) { setLoading(true); setError(null); setData(null); }
       try {
-        const d = await apiRequest(`/api/status/${encodeURIComponent(target)}`, { signal: controller.signal });
+        const d = await apiRequest(`/api/status/${encodeURIComponent(domain)}`, { signal: controller.signal });
         if (stop) return;
         setData(d);
         setError(null);
@@ -34,9 +42,7 @@ export default function Results({ domain }) {
         if (controller.signal.aborted) return;
         setLoading(false);
         setData(null);
-        if (err?.status === 404) setError('No results for this domain yet — launch a scan from New Scan.');
-        else if (err?.status) setError('The backend did not return results.');
-        else setError('Cannot reach the API.');
+        setError(err?.status === 404 ? 'not-found' : err?.status ? 'server' : 'offline');
         clearInterval(timer);
       }
     };
@@ -44,74 +50,118 @@ export default function Results({ domain }) {
     tick(true);
     timer = setInterval(() => tick(false), 2500);
     return () => { stop = true; clearInterval(timer); controller.abort(); };
-  }, [target]);
-
-  const submit = (e) => {
-    e.preventDefault();
-    const d = cleanDomain(input);
-    if (d) setTarget(d);
-  };
+  }, [domain, reload]);
 
   const results = data?.results || null;
-  const scanning = data && data.current_module && data.current_module !== 'Finished';
+  const findings = useMemo(() => extractFindings(results), [results]);
+  const counts = useMemo(() => countBySeverity(findings), [findings]);
+
+  const say = (msg, isError = false) => {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(null), 2600);
+  };
+
+  const copy = async (text, label = 'Copied to clipboard') => {
+    try { await navigator.clipboard.writeText(text); say(label); } catch { say('Could not copy', true); }
+  };
+
+  const copyLink = () => copy(`${window.location.origin}${window.location.pathname}#/results/${encodeURIComponent(domain)}`, 'Link copied');
+
+  const startScan = async (modules) => {
+    setBusy(true);
+    try {
+      await apiPost('/api/scan', { domain, modules });
+      setReload((n) => n + 1);
+      setTab('summary');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) say('That target is not allowed on this instance.', true);
+      else if (err instanceof ApiError && err.status === 429) say('Rate limit reached — try again in a few minutes.', true);
+      else say('Could not start the scan. Is the API reachable?', true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rescan = () => {
+    const previous = Object.keys(results || {}).filter((n) => KNOWN_MODULES.has(n));
+    startScan(previous.length ? previous : PRESETS.standard);
+  };
+
   const { score, grade } = extractScore(results?.['Security Analysis']?.security_score);
-  const sev = scoreSeverity(score);
+  const moduleTotal = results ? Object.keys(results).length : 0;
+  const moduleOk = results ? Object.values(results).filter((d) => moduleStatus(d) !== 'error').length : 0;
+  const scanning = Boolean(data && data.current_module && data.current_module !== 'Finished');
+
+  const goFindings = (sev) => { setSeverity(sev); setTab('findings'); };
+
+  const body = () => {
+    if (!domain) {
+      return <Empty title="Pick a domain"><div>Search above, choose one from Overview, or start a new scan.</div></Empty>;
+    }
+    if (loading) return <Empty title={<span><Spinner /> Loading {domain}…</span>} />;
+    if (error === 'not-found') {
+      return (
+        <Empty title={`No results for ${domain} yet`}>
+          <div style={{ marginBottom: 14 }}>It has not been scanned. Run a standard scan to get started.</div>
+          <button className="btn primary" type="button" disabled={busy} onClick={() => startScan(PRESETS.standard)}>
+            {busy ? 'Starting…' : `Scan ${domain}`}
+          </button>
+        </Empty>
+      );
+    }
+    if (error) {
+      return (
+        <Empty title="Something went wrong">
+          <div>{error === 'offline' ? 'Cannot reach the API.' : 'The backend did not return results.'}</div>
+        </Empty>
+      );
+    }
+    if (!data) return null;
+
+    return (
+      <>
+        <ResultsHeader
+          domain={domain}
+          score={score}
+          grade={grade}
+          sev={scoreSeverity(score)}
+          status={data}
+          moduleTotal={scanning ? data.total : moduleTotal}
+          moduleOk={moduleOk}
+          counts={counts}
+          totalFindings={findings.length}
+          onSeverity={goFindings}
+          onRescan={rescan}
+          onCopyLink={copyLink}
+          busy={busy}
+        />
+
+        <div className="tabs" role="tablist">
+          {[
+            ['summary', 'Summary'],
+            ['findings', 'Findings', findings.length],
+            ['modules', 'Modules', moduleTotal],
+          ].map(([id, label, count]) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+              {label}{count !== undefined && <span className="count">{count}</span>}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'summary' && <SummaryTab results={results} findings={findings} onViewFindings={() => goFindings('all')} />}
+        {tab === 'findings' && (
+          <FindingsTab domain={domain} findings={findings} severity={severity} setSeverity={setSeverity} onCopy={(t) => copy(t, 'Findings copied')} />
+        )}
+        {tab === 'modules' && <ModulesTab results={results || {}} onCopy={(t) => copy(t, 'JSON copied')} />}
+      </>
+    );
+  };
 
   return (
     <div className="fade">
-      <form className="flex" onSubmit={submit} style={{ marginBottom: 20 }}>
-        <input
-          className="input"
-          placeholder="Look up a domain…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          style={{ maxWidth: 420 }}
-        />
-        <button className="btn" type="submit"><Icon name="search" size={16} /> Load</button>
-        {target && results && (
-          <div className="flex" style={{ marginLeft: 'auto', gap: 8 }}>
-            <a className="btn sm" href={getApiUrl(`/api/report/${encodeURIComponent(target)}`)} target="_blank" rel="noreferrer">
-              <Icon name="external" size={15} /> Report
-            </a>
-            <a className="btn sm" href={getApiUrl(`/api/export/${encodeURIComponent(target)}/json`)} target="_blank" rel="noreferrer">JSON</a>
-            <a className="btn sm" href={getApiUrl(`/api/export/${encodeURIComponent(target)}/csv`)} target="_blank" rel="noreferrer">CSV</a>
-          </div>
-        )}
-      </form>
-
-      {!target && <Empty title="No domain selected"><div>Load a domain above, or start one from New Scan.</div></Empty>}
-
-      {target && loading && <Empty title={<span><Spinner /> Loading {target}…</span>} />}
-
-      {target && error && <Empty title={target}><div className="muted">{error}</div></Empty>}
-
-      {target && data && !error && (
-        <>
-          <div className="card" style={{ marginBottom: 18 }}>
-            <div className="ring-wrap">
-              <ScoreRing value={score} grade={grade} sev={sev} />
-              <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: 20 }}>{target}</h2>
-                <div className="muted" style={{ marginTop: 2 }}>
-                  {results ? `${Object.keys(results).length} modules` : 'no modules'}
-                  {score != null && <> · security score <Badge sev={sev}>{score}/100{grade ? ` (${grade})` : ''}</Badge></>}
-                </div>
-                {scanning && (
-                  <div className="mt" style={{ maxWidth: 460 }}>
-                    <div className="flex between" style={{ fontSize: 12, marginBottom: 6 }}>
-                      <span className="flex"><Spinner /> {data.current_module}</span>
-                      <span className="muted">{data.completed}/{data.total}</span>
-                    </div>
-                    <div className="bar"><i style={{ width: `${data.total ? (data.completed / data.total) * 100 : 0}%` }} /></div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <ResultRenderer results={results} />
-        </>
-      )}
+      <DomainBar initial={domain} onSubmit={setDomain} placeholder="Look up a domain…" />
+      {body()}
+      {toast && <div className={`toast ${toast.isError ? 'err' : ''}`}>{toast.msg}</div>}
     </div>
   );
 }

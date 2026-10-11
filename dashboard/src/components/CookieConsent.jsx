@@ -15,13 +15,12 @@ export default function CookieConsent({ onNav }) {
 
   if (!show) return null;
   return (
-    <div className="cookie" role="dialog" aria-label="Çerez bildirimi">
+    <div className="cookie" role="dialog" aria-label="Cookie notice">
       <p>
-        Bu site yalnızca çalışması için gerekli zorunlu çerezleri/yerel depolamayı kullanır; takip
-        çerezi yoktur.{' '}
-        <button className="btn ghost sm" style={{ padding: 0 }} onClick={() => onNav('legal')}>Çerez Politikası</button>
+        This site only uses the browser storage it needs to work. No tracking or advertising cookies.{' '}
+        <button className="btn ghost sm" style={{ padding: 0 }} onClick={() => onNav('legal')}>Cookie policy</button>
       </p>
-      <button className="btn primary sm" onClick={accept}>Tamam</button>
+      <button className="btn primary sm" onClick={accept}>Got it</button>
     </div>
   );
 }

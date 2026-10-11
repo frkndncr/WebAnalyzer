@@ -1,0 +1,215 @@
+import { describe, it, expect } from 'vitest';
+import {
+  extractFindings, countBySeverity, filterFindings, groupFindings,
+  parseRecommendations, scoreBreakdown, extractFacts, daysUntil, countTechnologies,
+} from './findings';
+
+const sample = {
+  'Security Analysis': {
+    security_score: { overall_score: 54, grade: 'F', score_breakdown: { security_headers: 0, ssl_tls: 100, waf_protection: 60, vulnerabilities: 100 } },
+    security_headers: { headers: {
+      'Strict-Transport-Security': { present: false, importance: 'Critical' },
+      'X-Frame-Options': { present: false, importance: 'High' },
+      'X-Content-Type-Options': { present: true, importance: 'Medium' },
+    } },
+    vulnerability_scan: { vulnerabilities: [{ type: 'Open Redirect', severity: 'High', description: 'Redirects anywhere' }] },
+    server_information: { information_disclosure: ['Web server version disclosed'], server_headers: { Server: 'LiteSpeed' } },
+    http_methods: { dangerous_methods: ['TRACE'] },
+    cors_policy: { issues: ['Wildcard origin'] },
+    ssl_analysis: { ssl_available: true, protocol_version: 'TLSv1.3', overall_grade: 'A+' },
+    waf_detection: { detected: false },
+  },
+  'Advanced Content Scan': {
+    js_vulnerabilities: [
+      { type: 'DOM XSS', severity: 'High', source_url: 'https://x.com/a.js', line: 2, matched_code: 'innerHTML', recommendation: 'Sanitise' },
+      { type: 'DOM XSS', severity: 'High', source_url: 'https://x.com/b.js', line: 9 },
+    ],
+    secrets: [],
+    exposed_endpoints: [{ endpoint_type: 'Robots File', url: 'https://x.com/robots.txt', status_code: 200, severity: 'Info' }],
+  },
+  'Phishing Domain Protection': {
+    total_active_phishing_domains: 1,
+    phishing_domains: [{ domain: 'x-c0m.com', ips: ['1.2.3.4'], status: 'Active', severity: 'High' }],
+  },
+  'Domain Information': {
+    'IP Address': '1.1.1.1', 'Registrar Company': 'Acme Registrar', 'Expiry Date': '2027-01-01T00:00:00Z',
+    'SSL Information': { 'Protocol Version': 'TLSv1.3', 'Days Until Expiry': 10 },
+  },
+  'Web Technologies': { 'Web Server': 'Cloudflare', 'Backend Technologies': ['PHP'], 'Frontend Technologies': ['Vue.js', 'jQuery'], 'CSS Frameworks': 'Not Detected' },
+  'Subdomain Discovery': ['a.x.com', 'b.x.com'],
+  'Nmap Zero Day Scan': { port_scan: { open_ports: [80, 443] } },
+  'Contact Spy': { summary: { total_emails: 1, total_phones: 2 } },
+};
+
+describe('extractFindings', () => {
+  const findings = extractFindings(sample);
+  const titles = findings.map((f) => f.title);
+
+  it('collects findings from every module', () => {
+    expect(titles).toContain('Open Redirect');
+    expect(titles).toContain('DOM XSS');
+    expect(titles).toContain('Missing security header: Strict-Transport-Security');
+    expect(titles).toContain('Dangerous HTTP method enabled: TRACE');
+    expect(titles).toContain('CORS misconfiguration');
+    expect(titles).toContain('Look-alike domain: x-c0m.com');
+    expect(titles).toContain('Robots File exposed');
+  });
+
+  it('does not report headers that are present', () => {
+    expect(titles.join('|')).not.toContain('X-Content-Type-Options');
+  });
+
+  it('maps header importance to severity', () => {
+    expect(findings.find((f) => f.title.includes('Strict-Transport')).severity).toBe('critical');
+    expect(findings.find((f) => f.title.includes('X-Frame')).severity).toBe('high');
+  });
+
+  it('keeps location, evidence and recommendation', () => {
+    const xss = findings.find((f) => f.title === 'DOM XSS');
+    expect(xss.location).toBe('https://x.com/a.js:2');
+    expect(xss.evidence).toBe('innerHTML');
+    expect(xss.recommendation).toBe('Sanitise');
+  });
+
+  it('assigns unique ids', () => {
+    expect(new Set(findings.map((f) => f.id)).size).toBe(findings.length);
+  });
+
+  it('is safe on empty or malformed input', () => {
+    expect(extractFindings(null)).toEqual([]);
+    expect(extractFindings({})).toEqual([]);
+    expect(extractFindings({ 'Security Analysis': 'oops', 'Advanced Content Scan': [] })).toEqual([]);
+  });
+
+  it('reports exposed origin IPs only when CloudFlare is in front', () => {
+    const exposed = extractFindings({ 'CloudFlare Bypass': { cloudflare_protected: true, real_ips: [{ ip: '9.9.9.9', source: 'history' }] } });
+    expect(exposed[0].title).toContain('Origin IP exposed');
+    const direct = extractFindings({ 'CloudFlare Bypass': { cloudflare_protected: false, real_ips: [{ ip: '9.9.9.9', source: 'direct_dns' }] } });
+    expect(direct).toEqual([]);
+  });
+});
+
+describe('counting, filtering and grouping', () => {
+  const findings = extractFindings(sample);
+
+  it('counts by severity', () => {
+    const c = countBySeverity(findings);
+    expect(c.critical).toBe(1);
+    expect(c.high).toBeGreaterThanOrEqual(4);
+    expect(Object.values(c).reduce((a, b) => a + b, 0)).toBe(findings.length);
+  });
+
+  it('filters by severity and by search text', () => {
+    expect(filterFindings(findings, { severity: 'critical' })).toHaveLength(1);
+    expect(filterFindings(findings, { query: 'dom xss' })).toHaveLength(2);
+    expect(filterFindings(findings, { severity: 'low', query: 'dom xss' })).toHaveLength(0);
+    expect(filterFindings(findings, {})).toHaveLength(findings.length);
+  });
+
+  it('groups identical issues and orders by severity', () => {
+    const groups = groupFindings(findings);
+    const xss = groups.find((g) => g.title === 'DOM XSS');
+    expect(xss.items).toHaveLength(2);
+    expect(groups[0].severity).toBe('critical');
+  });
+});
+
+describe('parseRecommendations', () => {
+  it('splits the severity prefix and sorts most severe first', () => {
+    const out = parseRecommendations(['MEDIUM: add a WAF', 'CRITICAL: fix headers', 'plain advice']);
+    expect(out[0]).toEqual({ severity: 'critical', text: 'fix headers' });
+    expect(out[1]).toEqual({ severity: 'medium', text: 'add a WAF' });
+    expect(out[2]).toEqual({ severity: 'info', text: 'plain advice' });
+  });
+  it('handles non-arrays', () => {
+    expect(parseRecommendations(undefined)).toEqual([]);
+  });
+});
+
+describe('scoreBreakdown', () => {
+  it('labels the four sub-scores', () => {
+    const b = scoreBreakdown(sample);
+    expect(b).toHaveLength(4);
+    expect(b[0]).toEqual({ key: 'security_headers', label: 'Security headers', value: 0 });
+  });
+  it('returns [] when absent', () => {
+    expect(scoreBreakdown({})).toEqual([]);
+  });
+});
+
+describe('extractFacts', () => {
+  const now = Date.parse('2026-10-11T00:00:00Z');
+  const facts = extractFacts(sample, now);
+  const get = (label) => facts.find((f) => f.label === label);
+
+  it('extracts the headline facts', () => {
+    expect(get('IP address').value).toBe('1.1.1.1');
+    expect(get('Registrar').value).toBe('Acme Registrar');
+    expect(get('Web server').value).toBe('Cloudflare');
+    expect(get('Subdomains').value).toBe('2');
+    expect(get('Open ports').value).toBe('80, 443');
+    expect(get('Contacts found').value).toBe('3');
+    expect(get('Technologies').value).toBe('3 detected');
+  });
+
+  it('flags a short certificate lifetime and a missing WAF', () => {
+    expect(get('Certificate expires').tone).toBe('critical');
+    expect(get('WAF').value).toBe('None detected');
+    expect(get('Look-alike domains').tone).toBe('high');
+  });
+
+  it('computes days until domain expiry', () => {
+    expect(get('Domain expires').value).toContain('2027-01-01');
+    expect(get('Domain expires').value).toContain('days');
+  });
+
+  it('is empty for nothing', () => {
+    expect(extractFacts(null)).toEqual([]);
+  });
+});
+
+describe('daysUntil / countTechnologies', () => {
+  it('daysUntil handles valid and invalid dates', () => {
+    const now = Date.parse('2026-01-01T00:00:00Z');
+    expect(daysUntil('2026-01-11T00:00:00Z', now)).toBe(10);
+    expect(daysUntil('garbage', now)).toBeNull();
+  });
+  it('countTechnologies ignores "Not Detected" and dedupes', () => {
+    expect(countTechnologies({ 'Backend Technologies': ['PHP', 'PHP'], 'CSS Frameworks': 'Not Detected', 'Frontend Technologies': ['Vue.js'] })).toBe(2);
+    expect(countTechnologies(null)).toBe(0);
+  });
+});
+
+import { moduleStatus, findingsToText } from './findings';
+import { localize } from './analysis';
+
+describe('moduleStatus', () => {
+  it('classifies module output', () => {
+    expect(moduleStatus({ error: 'boom' })).toBe('error');
+    expect(moduleStatus(null)).toBe('empty');
+    expect(moduleStatus([])).toBe('empty');
+    expect(moduleStatus({})).toBe('empty');
+    expect(moduleStatus({ a: 1 })).toBe('ok');
+    expect(moduleStatus(['x'])).toBe('ok');
+  });
+});
+
+describe('findingsToText', () => {
+  it('renders grouped findings as plain text', () => {
+    const groups = groupFindings(extractFindings(sample));
+    const out = findingsToText('x.com', groups);
+    expect(out.startsWith('Findings for x.com')).toBe(true);
+    expect(out).toContain('[CRITICAL] Missing security header: Strict-Transport-Security');
+    expect(out).toContain('DOM XSS (Advanced Content Scan) x2');
+    expect(out).toContain('- https://x.com/a.js:2');
+  });
+});
+
+describe('localize', () => {
+  it('translates legacy Turkish values and leaves everything else alone', () => {
+    expect(localize('Bulunamadı')).toBe('Not found');
+    expect(localize('WHOIS hatası: timeout')).toBe('WHOIS error: timeout');
+    expect(localize('hello')).toBe('hello');
+    expect(localize(5)).toBe(5);
+  });
+});
