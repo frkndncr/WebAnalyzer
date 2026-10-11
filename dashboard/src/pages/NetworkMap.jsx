@@ -2,7 +2,8 @@ import React from 'react';
 import { useResource } from '../hooks/useApi';
 import DomainBar from '../components/DomainBar';
 import { Empty, Spinner, Badge } from '../components/ui';
-import { severityClass } from '../lib/analysis';
+import ScanGate from '../components/ScanGate';
+import { severityClass, isReady } from '../lib/analysis';
 
 function MapSvg({ domain, subs }) {
   const W = 800, H = 420, cx = 400, cy = 210, R = 150;
@@ -45,13 +46,13 @@ function techList(tech) {
 
 export default function NetworkMap({ domain, setDomain }) {
   const path = domain ? `/api/network-map/${encodeURIComponent(domain)}` : '';
-  const { data, loading, error } = useResource(path);
+  const { data, loading, error, reload } = useResource(path);
 
   const body = () => {
     if (!domain) return <Empty title="No domain selected"><div>Load a domain to map its attack surface.</div></Empty>;
     if (loading) return <Empty title={<span><Spinner /> Mapping {domain}…</span>} />;
     if (error) return <Empty title={domain}><div className="muted">{error?.status === 404 ? 'No map data yet — run a scan first.' : 'Could not load the network map.'}</div></Empty>;
-    if (!data) return null;
+    if (!isReady(data)) return <ScanGate domain={domain} data={data} reload={reload} />;
 
     const subs = Array.isArray(data.subdomains) ? data.subdomains : [];
     const techs = techList(data.technologies);

@@ -105,3 +105,6 @@ export function localize(value) {
   if (LEGACY_TEXT[value]) return LEGACY_TEXT[value];
   return value.startsWith('WHOIS hatası:') ? value.replace('WHOIS hatası:', 'WHOIS error:') : value;
 }
+
+/** True when a threat-intel / network-map payload has finished data to render. */
+export const isReady = (payload) => Boolean(payload && payload.has_data && !payload.is_scanning);

@@ -2,16 +2,19 @@ import React from 'react';
 import { useResource } from '../hooks/useApi';
 import DomainBar from '../components/DomainBar';
 import { Empty, Spinner, Badge, Icon } from '../components/ui';
-import { severityClass } from '../lib/analysis';
+import ScanGate from '../components/ScanGate';
+import { severityClass, isReady } from '../lib/analysis';
 
 export default function AttackPath({ domain, setDomain }) {
   const path = domain ? `/api/threat-intel/${encodeURIComponent(domain)}` : '';
-  const { data, loading, error } = useResource(path);
+  const { data, loading, error, reload } = useResource(path);
 
   const body = () => {
     if (!domain) return <Empty title="No domain selected"><div>Load a domain to generate its exploit roadmap.</div></Empty>;
     if (loading) return <Empty title={<span><Spinner /> Planning paths for {domain}…</span>} />;
     if (error) return <Empty title={domain}><div className="muted">{error?.status === 404 ? 'No path data yet — run a scan first.' : 'Could not load attack paths.'}</div></Empty>;
+
+    if (!isReady(data)) return <ScanGate domain={domain} data={data} reload={reload} />;
 
     const ap = data?.attack_path || {};
     const chains = Array.isArray(ap.exploit_chains) ? ap.exploit_chains : [];

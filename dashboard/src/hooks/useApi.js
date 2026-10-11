@@ -56,9 +56,11 @@ export function usePolling(fn, intervalMs, deps = []) {
 /**
  * Fetch `path` and keep polling every 3s while the response says a scan is
  * still running (`is_scanning === true`). Returns { data, loading, error }.
- * Pass a falsy path to stay idle.
+ * Pass a falsy path to stay idle. `reload()` fetches again (e.g. after a scan
+ * has been started) and resumes polling.
  */
 export function useResource(path) {
+  const [nonce, setNonce] = useState(0);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(Boolean(path));
   const [error, setError] = useState(null);
@@ -90,7 +92,7 @@ export function useResource(path) {
     tick(true);
     timer = setInterval(() => tick(false), 3000);
     return () => { stop = true; clearInterval(timer); controller.abort(); };
-  }, [path]);
+  }, [path, nonce]);
 
-  return { data, loading, error };
+  return { data, loading, error, reload: () => setNonce((n) => n + 1) };
 }

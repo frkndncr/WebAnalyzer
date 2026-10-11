@@ -723,7 +723,8 @@ async def get_global_stats():
 
 
 @app.get('/api/threat-intel/{domain}')
-async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force: bool = False):
+async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, http_request: Request,
+        force: bool = False, scan: bool = False):
     """Extract comprehensive threat intelligence from all scan modules"""
     result_path = os.path.join('logs', domain, 'results.json')
     intel = {
@@ -751,12 +752,6 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force
     should_trigger = not res
 
     if should_trigger:
-        if os.path.exists(result_path):
-            try:
-                os.remove(result_path)
-            except Exception:
-                pass
-        
         if domain in ACTIVE_SCANS:
             if ACTIVE_SCANS[domain].get('current_module') == 'Finished':
                 ACTIVE_SCANS.pop(domain, None)
@@ -768,6 +763,18 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force
                     'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
                 }
                 return intel
+
+        # Reading must never start a scan: that was a side effect of GET that
+        # also bypassed the demo guards. Scans start via POST /api/scan, or
+        # here only when the caller explicitly asks (?scan=true / ?force=true).
+        if not (scan or force):
+            return intel
+        enforce_demo_guards(http_request, domain)
+        if os.path.exists(result_path):
+            try:
+                os.remove(result_path)
+            except Exception:
+                pass
 
         if domain not in ACTIVE_SCANS:
             modules_list = [
@@ -1002,7 +1009,8 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force
 
 
 @app.get('/api/network-map/{domain}')
-async def get_network_map(domain: str, background_tasks: BackgroundTasks, force: bool = False):
+async def get_network_map(domain: str, background_tasks: BackgroundTasks, http_request: Request,
+        force: bool = False, scan: bool = False):
     """Retrieve comprehensive network topology data for a domain"""
     result_path = os.path.join('logs', domain, 'results.json')
     network = {
@@ -1028,12 +1036,6 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, force:
     should_trigger = not res
 
     if should_trigger:
-        if os.path.exists(result_path):
-            try:
-                os.remove(result_path)
-            except Exception:
-                pass
-        
         if domain in ACTIVE_SCANS:
             if ACTIVE_SCANS[domain].get('current_module') == 'Finished':
                 ACTIVE_SCANS.pop(domain, None)
@@ -1045,6 +1047,18 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, force:
                     'current_module': ACTIVE_SCANS[domain].get('current_module', 'Initializing...')
                 }
                 return network
+
+        # Reading must never start a scan: that was a side effect of GET that
+        # also bypassed the demo guards. Scans start via POST /api/scan, or
+        # here only when the caller explicitly asks (?scan=true / ?force=true).
+        if not (scan or force):
+            return network
+        enforce_demo_guards(http_request, domain)
+        if os.path.exists(result_path):
+            try:
+                os.remove(result_path)
+            except Exception:
+                pass
 
         if domain not in ACTIVE_SCANS:
             modules_list = [

@@ -2,7 +2,8 @@ import React from 'react';
 import { useResource } from '../hooks/useApi';
 import DomainBar from '../components/DomainBar';
 import { ScoreRing, Empty, Spinner, Badge } from '../components/ui';
-import { scoreSeverity, severityClass } from '../lib/analysis';
+import ScanGate from '../components/ScanGate';
+import { scoreSeverity, severityClass, isReady } from '../lib/analysis';
 
 const levelSev = (v) => (v >= 7 ? 'critical' : v >= 4 ? 'high' : v >= 2 ? 'medium' : 'low');
 
@@ -19,13 +20,13 @@ function Meter({ label, value, max = 10 }) {
 
 export default function ThreatIntel({ domain, setDomain }) {
   const path = domain ? `/api/threat-intel/${encodeURIComponent(domain)}` : '';
-  const { data, loading, error } = useResource(path);
+  const { data, loading, error, reload } = useResource(path);
 
   const body = () => {
     if (!domain) return <Empty title="No domain selected"><div>Load a domain above to see its threat profile.</div></Empty>;
     if (loading) return <Empty title={<span><Spinner /> Analyzing {domain}…</span>} />;
     if (error) return <Empty title={domain}><div className="muted">{error?.status === 404 ? 'No threat data yet — run a scan first.' : 'Could not load threat intel.'}</div></Empty>;
-    if (!data) return null;
+    if (!isReady(data)) return <ScanGate domain={domain} data={data} reload={reload} />;
 
     const sev = scoreSeverity(data.risk_score);
     const mitre = Array.isArray(data.mitre_techniques) ? data.mitre_techniques : [];

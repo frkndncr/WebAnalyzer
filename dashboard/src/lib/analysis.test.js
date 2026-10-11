@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, MODULES, PRESETS } from './analysis';
+import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, MODULES, PRESETS } from './analysis';
 
 describe('extractScore', () => {
   it('handles a plain integer', () => {
@@ -66,5 +66,14 @@ describe('catalogue', () => {
     for (const preset of Object.values(PRESETS)) {
       for (const n of preset) expect(names.has(n)).toBe(true);
     }
+  });
+});
+
+describe('isReady', () => {
+  it('needs data and no scan in flight', () => {
+    expect(isReady({ has_data: true, is_scanning: false })).toBe(true);
+    expect(isReady({ has_data: true, is_scanning: true })).toBe(false);
+    expect(isReady({ has_data: false, is_scanning: false })).toBe(false);
+    expect(isReady(null)).toBe(false);
   });
 });
