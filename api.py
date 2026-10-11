@@ -30,6 +30,9 @@ from utils.result_analysis import (
     accumulate_vuln_stats,
     extract_alerts,
     sort_and_dedupe_alerts,
+    domain_variants,
+    latest_per_domain,
+    average_score,
 )
 from utils.safety import classify_target, RateLimiter, demo_mode_enabled
 
@@ -365,6 +368,7 @@ def save_scan_results_to_db(domain: str, results: dict):
                     logging.error(f"Error saving technologies for DB: {te}")
                     
         logging.info(f"Successfully backed up scan results for {domain} to MySQL database!")
+        invalidate_db_cache()
     except Exception as e:
         logging.error(f"Database backup failed for domain {domain}: {e}")
 
@@ -382,9 +386,11 @@ def load_results_from_file_or_db(domain: str) -> Optional[dict]:
             
     try:
         from database.db_manager import db_manager
+        variants = domain_variants(domain) or [domain]
+        placeholders = ", ".join(["%s"] * len(variants))
         doms = db_manager.execute_query(
-            "SELECT id FROM domains WHERE domain = %s ORDER BY id DESC LIMIT 1",
-            (domain,),
+            f"SELECT id FROM domains WHERE domain IN ({placeholders}) ORDER BY id DESC LIMIT 1",
+            tuple(variants),
             commit=False
         )
         if doms:
@@ -408,13 +414,30 @@ def load_results_from_file_or_db(domain: str) -> Optional[dict]:
     return None
 
 
+# Short-lived cache: the overview endpoints are polled and each call would
+# otherwise re-read every domain's results from MySQL.
+_DB_CACHE = {"ts": 0.0, "limit": 0, "rows": []}
+_DB_CACHE_TTL = 30  # seconds
+
+
+def invalidate_db_cache():
+    """Drop cached DB rows (called after a scan is saved)."""
+    _DB_CACHE["ts"] = 0.0
+
+
 def load_all_results_from_db(limit_domains: int = 200):
     """Load every scanned domain's reconstructed results from the DB, newest first.
 
-    Returns a list of (domain, scan_date_iso, results_dict), de-duplicated by
-    domain (keeping the most recent scan). The DB is the durable source of
-    truth; the local logs folder is ephemeral on hosted deployments.
+    Returns a list of (domain, scan_date_iso, results_dict), one per canonical
+    host (``https://x.com/`` and ``x.com`` are the same domain; the most recent
+    scan wins). Internal/private targets are hidden when DEMO_MODE is on. The DB
+    is the durable source of truth; the local logs folder is ephemeral.
     """
+    now = time.time()
+    if (now - _DB_CACHE["ts"] < _DB_CACHE_TTL
+            and _DB_CACHE["limit"] >= limit_domains):
+        return list(_DB_CACHE["rows"][:limit_domains])
+
     out = []
     try:
         from database.db_manager import db_manager
@@ -427,12 +450,11 @@ def load_all_results_from_db(limit_domains: int = 200):
         )
         if not doms:
             return out
-        seen = set()
-        for d in doms:
-            name = d['domain']
-            if name in seen:
+        hide_internal = demo_mode_enabled()
+        for d in latest_per_domain(doms):
+            name = d['name']
+            if hide_internal and not classify_target(name, resolve=False)[0]:
                 continue
-            seen.add(name)
             rows = db_manager.execute_query(
                 "SELECT module_name, result_data FROM scan_results WHERE domain_id = %s",
                 (d['id'],),
@@ -450,6 +472,7 @@ def load_all_results_from_db(limit_domains: int = 200):
             out.append((name, scan_date_iso, results))
             if len(out) >= limit_domains:
                 break
+        _DB_CACHE.update(ts=now, limit=limit_domains, rows=list(out))
     except Exception as e:
         logging.error(f"Failed to load all results from DB: {e}")
     return out
@@ -660,18 +683,27 @@ async def get_recent_scans():
 
 @app.get("/api/stats")
 async def get_global_stats():
-    """Retrieve global system statistics from DB (or logs fallback)"""
+    """Global statistics computed from the stored scans (DB first, logs fallback)."""
     try:
         from database.db_manager import db_manager
-        # Attempt to run query. If DB is offline, this will raise error.
-        stats = db_manager.execute_query("SELECT COUNT(*) as total_jobs, SUM(total_domains) as total_domains FROM scan_jobs", commit=False)
-        vulns = db_manager.execute_query("SELECT COUNT(*) as count FROM vulnerabilities", commit=False)
-        
+        # Raises (or returns nothing) when the database is offline.
+        jobs = db_manager.execute_query("SELECT COUNT(*) AS c FROM scan_jobs", commit=False)
+        if not jobs:
+            raise RuntimeError("database unavailable")
+
+        rows = load_all_results_from_db(limit_domains=500)
+        vuln = new_vuln_stats()
+        scores = []
+        for _domain, _date, res in rows:
+            accumulate_vuln_stats(res, vuln)
+            scores.append(summarize_security_result(res)[0])
+
         return {
             "source": "database",
-            "total_jobs": stats[0]["total_jobs"] if stats else 0,
-            "total_domains": stats[0]["total_domains"] if stats else 0,
-            "total_vulnerabilities": vulns[0]["count"] if vulns else 0,
+            "total_jobs": jobs[0]["c"],
+            "total_domains": len(rows),
+            "total_vulnerabilities": vuln["total"],
+            "average_score": average_score(scores),
             "status": "connected"
         }
     except Exception:
@@ -684,9 +716,11 @@ async def get_global_stats():
             "total_jobs": 0,
             "total_domains": total_scans,
             "total_vulnerabilities": 0,
+            "average_score": None,
             "status": "standalone",
             "note": "DB connection offline, showing local logs cache"
         }
+
 
 @app.get('/api/threat-intel/{domain}')
 async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, force: bool = False):

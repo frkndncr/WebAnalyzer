@@ -12,7 +12,7 @@ import urllib.error
 
 def get_domain_info(domain):
     """
-    Domain hakkında kapsamlı bilgi toplar - 3. parti API kullanmadan
+    Collects comprehensive domain information without third-party APIs
     """
     domain_info = {}
     
@@ -22,7 +22,7 @@ def get_domain_info(domain):
     
     # IP Adresi al (IPv4 ve IPv6)
     ip_info = get_ip_address(domain)
-    domain_info["IP Address"] = ip_info.get("ipv4", "Bulunamadı")
+    domain_info["IP Address"] = ip_info.get("ipv4", "Not found")
     domain_info["IPv6 Address"] = ip_info.get("ipv6", [])
     domain_info["All IPv4"] = ip_info.get("all_ipv4", [])
     
@@ -39,7 +39,7 @@ def get_domain_info(domain):
     
     # DNS bilgileri
     dns_info = get_dns_records(domain)
-    domain_info["Name Servers"] = dns_info.get("nameservers", "Bulunamadı")
+    domain_info["Name Servers"] = dns_info.get("nameservers", "Not found")
     domain_info["MX Records"] = dns_info.get("mx_records", [])
     domain_info["TXT Records"] = dns_info.get("txt_records", [])
     domain_info["SPF Record"] = dns_info.get("spf", "Yok")
@@ -50,7 +50,7 @@ def get_domain_info(domain):
     
     # HTTP/HTTPS bilgileri
     http_info = check_http_status(domain)
-    domain_info["HTTP Status"] = http_info.get("status", "Erişilemedi")
+    domain_info["HTTP Status"] = http_info.get("status", "Unreachable")
     domain_info["Web Server"] = http_info.get("server", "Unknown")
     domain_info["Response Time (ms)"] = http_info.get("response_time", "N/A")
     
@@ -101,7 +101,7 @@ def get_reverse_dns(ip_address):
     try:
         return socket.gethostbyaddr(ip_address)[0]
     except:
-        return "Bulunamadı"
+        return "Not found"
 
 
 def get_whois_server(domain):
@@ -221,7 +221,7 @@ def get_whois_data(domain):
             output = scrape_whois_web(domain)
 
         if not output:
-            whois_info["Error"] = "WHOIS sunucusuna bağlanılamadı"
+            whois_info["Error"] = "Could not connect to the WHOIS server"
             return whois_info
         
         # Temizlik
@@ -315,7 +315,7 @@ def get_whois_data(domain):
             whois_info["WHOIS Name Servers"] = [ns.strip().lower() for ns in nameservers[:4]]
             
     except Exception as e:
-        whois_info["Error"] = f"WHOIS hatası: {str(e)}"
+        whois_info["Error"] = f"WHOIS error: {str(e)}"
     
     return whois_info
 
@@ -437,15 +437,15 @@ def get_dns_records(domain):
     if dns_info["nameservers"]:
         dns_info["nameservers"] = ", ".join(dns_info["nameservers"][:3])
     else:
-        dns_info["nameservers"] = "Bulunamadı"
+        dns_info["nameservers"] = "Not found"
         
     return dns_info
 
 
 def check_common_ports(ip_address):
     """Yaygın portları paralel kontrol et - çok daha hızlı"""
-    if not ip_address or ip_address == "Bulunamadı":
-        return "IP adresi olmadan port taraması yapılamaz"
+    if not ip_address or ip_address == "Not found":
+        return "Port scan is not possible without an IP address"
     
     common_ports = {
         21: "FTP", 22: "SSH", 25: "SMTP", 80: "HTTP",
@@ -479,12 +479,12 @@ def check_common_ports(ip_address):
     if open_ports:
         return ", ".join(sorted(open_ports))
     else:
-        return "Açık port bulunamadı"
+        return "No open ports found"
 
 
 def check_http_status(domain):
     """HTTP durum kodunu ve web sunucu bilgilerini kontrol et"""
-    http_info = {"status": "Erişilemedi", "server": "Unknown", "response_time": None}
+    http_info = {"status": "Unreachable", "server": "Unknown", "response_time": None}
     
     protocols = ['https://', 'http://']
     
@@ -600,24 +600,24 @@ def calculate_security_score(domain_info, security_info):
 def get_nameservers(domain):
     """Eski API uyumluluğu için"""
     dns_info = get_dns_records(domain)
-    return dns_info.get("nameservers", "Bulunamadı")
+    return dns_info.get("nameservers", "Not found")
 
 
 if __name__ == "__main__":
     import sys
     
     if len(sys.argv) < 2:
-        print("Kullanım: python domain_analyzer.py <domain>")
-        print("Örnek: python domain_analyzer.py google.com")
+        print("Usage: python domain_analyzer.py <domain>")
+        print("Example: python domain_analyzer.py google.com")
         sys.exit(1)
     
-    print("Domain analizi başlatılıyor...\n")
+    print("Starting domain analysis...\n")
     
     result = get_domain_info(sys.argv[1])
     
     # Sonuçları güzel formatta göster
     print("=" * 70)
-    print(f"DOMAIN ANALİZ RAPORU: {result['Domain']}")
+    print(f"DOMAIN ANALYSIS REPORT: {result['Domain']}")
     print("=" * 70)
     
     for key, value in result.items():

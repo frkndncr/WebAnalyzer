@@ -8,6 +8,8 @@ endpoints.
 """
 from typing import Optional, Tuple
 
+from utils.safety import normalize_target
+
 # Severity buckets tracked by the vulnerability aggregator.
 SEVERITY_KEYS = ("critical", "high", "medium", "low", "info")
 
@@ -38,7 +40,9 @@ def summarize_security_result(res) -> Tuple[Optional[int], Optional[str], int]:
     elif isinstance(raw, (int, float)) and not isinstance(raw, bool):
         score = int(raw)
 
-    vuln_count = sec.get("vulnerabilities_found", 0)
+    # Count real findings across modules; fall back to the legacy counter that
+    # some older results carried.
+    vuln_count = count_findings(res) or sec.get("vulnerabilities_found", 0)
     return score, grade, vuln_count
 
 
@@ -53,9 +57,14 @@ def iter_findings(res):
 
     sec = res.get("Security Analysis", {})
     if isinstance(sec, dict):
-        for v in sec.get("vulnerabilities", []) or []:
-            if isinstance(v, dict):
-                yield v, "Security Analysis", None
+        # Current scanner output keeps findings under vulnerability_scan; older
+        # results stored them directly on the module.
+        scan = sec.get("vulnerability_scan")
+        scan_vulns = scan.get("vulnerabilities") if isinstance(scan, dict) else None
+        for source in (scan_vulns, sec.get("vulnerabilities")):
+            for v in source or []:
+                if isinstance(v, dict):
+                    yield v, "Security Analysis", None
 
     acs = res.get("Advanced Content Scan", {})
     if isinstance(acs, dict):
@@ -112,3 +121,56 @@ def sort_and_dedupe_alerts(alerts: list, limit: int = 15) -> list:
             unique.append(a)
     unique.sort(key=lambda x: SEVERITY_ORDER.get(x.get("severity"), 5))
     return unique[:limit]
+
+
+def count_findings(res) -> int:
+    """Total number of findings (all severities) in a domain's results."""
+    return sum(1 for _ in iter_findings(res))
+
+
+def normalize_domain(name) -> str:
+    """Canonical host for a stored/typed target (``https://X.com/`` -> ``x.com``)."""
+    return normalize_target(name)
+
+
+def domain_variants(name) -> list:
+    """Spellings a target may have been stored under, most likely first.
+
+    Older scans were saved verbatim (``https://example.com/``), so lookups by
+    the bare host must also match those rows.
+    """
+    host = normalize_domain(name)
+    if not host:
+        return []
+    variants = [host, f"https://{host}", f"https://{host}/", f"http://{host}", f"http://{host}/"]
+    raw = str(name).strip() if name else ""
+    if raw and raw not in variants:
+        variants.append(raw)
+    return variants
+
+
+def latest_per_domain(records) -> list:
+    """Collapse scan rows to one per canonical host, keeping the first (newest).
+
+    ``records`` must be sorted newest-first. Each returned row is a copy with
+    ``name`` set to the canonical host; rows with no usable host are dropped.
+    """
+    seen = set()
+    out = []
+    for rec in records:
+        host = normalize_domain(rec.get("domain"))
+        if not host or host in seen:
+            continue
+        seen.add(host)
+        row = dict(rec)
+        row["name"] = host
+        out.append(row)
+    return out
+
+
+def average_score(scores):
+    """Mean of the numeric scores, rounded to an int; ``None`` when empty."""
+    nums = [s for s in scores if isinstance(s, (int, float)) and not isinstance(s, bool)]
+    if not nums:
+        return None
+    return round(sum(nums) / len(nums))

@@ -156,3 +156,87 @@ def test_sort_and_dedupe_respects_limit():
 def test_iter_findings_on_empty_is_empty():
     assert list(iter_findings({})) == []
     assert list(iter_findings(None)) == []
+
+
+# ─────────────── real scanner output, domain normalisation, aggregation ───────────────
+
+from utils.result_analysis import (  # noqa: E402
+    count_findings,
+    normalize_domain,
+    domain_variants,
+    latest_per_domain,
+    average_score,
+)
+
+
+def test_findings_under_vulnerability_scan_are_counted():
+    """The scanner stores findings in Security Analysis.vulnerability_scan."""
+    res = {"Security Analysis": {"vulnerability_scan": {"vulnerabilities": [
+        {"type": "Open Redirect", "severity": "High"},
+        {"type": "Weak Cipher", "severity": "Medium"},
+    ]}}}
+    stats = accumulate_vuln_stats(res, new_vuln_stats())
+    assert stats["high"] == 1 and stats["medium"] == 1 and stats["total"] == 2
+    assert count_findings(res) == 2
+
+
+def test_summarize_counts_real_findings_across_modules():
+    res = {
+        "Security Analysis": {
+            "security_score": {"overall_score": 54, "grade": "F"},
+            "vulnerability_scan": {"vulnerabilities": [{"severity": "high"}]},
+        },
+        "Advanced Content Scan": {"js_vulnerabilities": [{"severity": "high"}, {"severity": "medium"}]},
+    }
+    score, grade, vulns = summarize_security_result(res)
+    assert (score, grade, vulns) == (54, "F", 3)
+
+
+def test_alerts_include_vulnerability_scan_findings():
+    res = {"Security Analysis": {"vulnerability_scan": {"vulnerabilities": [
+        {"type": "CORS Misconfiguration", "severity": "high", "description": "Wildcard origin"},
+    ]}}}
+    alerts = extract_alerts("example.com", res)
+    assert alerts[0]["title"] == "CORS Misconfiguration"
+    assert alerts[0]["severity"] == "HIGH"
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("https://Example.com/", "example.com"),
+    ("example.com", "example.com"),
+    ("http://sub.example.com:8080/x", "sub.example.com"),
+    ("", ""),
+])
+def test_normalize_domain(raw, expected):
+    assert normalize_domain(raw) == expected
+
+
+def test_domain_variants_cover_legacy_spellings():
+    v = domain_variants("example.com")
+    assert v[0] == "example.com"
+    assert "https://example.com/" in v and "http://example.com" in v
+
+
+def test_domain_variants_empty():
+    assert domain_variants("") == []
+
+
+def test_latest_per_domain_merges_spellings_and_keeps_newest():
+    rows = [
+        {"id": 3, "domain": "https://a.com/", "scan_date": "2026-03"},
+        {"id": 2, "domain": "b.com", "scan_date": "2026-02"},
+        {"id": 1, "domain": "a.com", "scan_date": "2026-01"},
+    ]
+    out = latest_per_domain(rows)
+    assert [r["name"] for r in out] == ["a.com", "b.com"]
+    assert out[0]["id"] == 3  # the newest scan of a.com wins
+
+
+def test_latest_per_domain_drops_unusable_rows():
+    assert latest_per_domain([{"domain": ""}, {"domain": None}]) == []
+
+
+def test_average_score():
+    assert average_score([50, 70, None, "x"]) == 60
+    assert average_score([]) is None
+    assert average_score([True]) is None
