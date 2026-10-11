@@ -4,6 +4,7 @@ import DomainBar from '../components/DomainBar';
 import { Empty, Spinner, Badge } from '../components/ui';
 import ScanGate from '../components/ScanGate';
 import { severityClass, isReady } from '../lib/analysis';
+import { listTechnologies } from '../lib/findings';
 
 function MapSvg({ domain, subs }) {
   const W = 800, H = 420, cx = 400, cy = 210, R = 150;
@@ -34,16 +35,6 @@ function MapSvg({ domain, subs }) {
   );
 }
 
-function techList(tech) {
-  if (!tech || typeof tech !== 'object') return [];
-  const out = [];
-  for (const [, v] of Object.entries(tech)) {
-    const vals = Array.isArray(v) ? v : [v];
-    vals.filter((x) => x && x !== 'Not Detected' && x !== 'Unknown').forEach((x) => out.push(`${x}`));
-  }
-  return [...new Set(out)];
-}
-
 export default function NetworkMap({ domain, setDomain }) {
   const path = domain ? `/api/network-map/${encodeURIComponent(domain)}` : '';
   const { data, loading, error, reload } = useResource(path);
@@ -55,7 +46,7 @@ export default function NetworkMap({ domain, setDomain }) {
     if (!isReady(data)) return <ScanGate domain={domain} data={data} reload={reload} />;
 
     const subs = Array.isArray(data.subdomains) ? data.subdomains : [];
-    const techs = techList(data.technologies);
+    const techs = listTechnologies(data.technologies);
     const ports = Array.isArray(data.ports) ? data.ports : [];
     const phishing = Array.isArray(data.phishing_domains) ? data.phishing_domains : [];
 

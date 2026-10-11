@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   extractFindings, countBySeverity, filterFindings, groupFindings,
-  parseRecommendations, scoreBreakdown, extractFacts, daysUntil, countTechnologies,
+  parseRecommendations, scoreBreakdown, extractFacts, daysUntil, countTechnologies, listTechnologies,
 } from './findings';
 
 const sample = {
@@ -149,7 +149,7 @@ describe('extractFacts', () => {
     expect(get('Subdomains').value).toBe('2');
     expect(get('Open ports').value).toBe('80, 443');
     expect(get('Contacts found').value).toBe('3');
-    expect(get('Technologies').value).toBe('3 detected');
+    expect(get('Technologies').value).toBe('4 detected'); // Cloudflare, PHP, Vue.js, jQuery
   });
 
   it('flags a short certificate lifetime and a missing WAF', () => {
@@ -211,5 +211,28 @@ describe('localize', () => {
     expect(localize('WHOIS hatası: timeout')).toBe('WHOIS error: timeout');
     expect(localize('hello')).toBe('hello');
     expect(localize(5)).toBe(5);
+  });
+});
+
+describe('listTechnologies', () => {
+  const payload = {
+    'Web Server': 'Hcdn', 'Backend Technologies': ['Not Detected'], 'Frontend Technologies': ['Vue.js'],
+    'JavaScript Libraries': ['jQuery'], 'CSS Frameworks': ['Bootstrap', 'Tailwind CSS'],
+    'Security Headers': { 'Content-Security-Policy': { present: true } },
+    'Security Score': { overall_score: 77 },
+    'Technology Security Analysis': { overall_risk: 'Medium' },
+  };
+  it('lists real technologies and ignores nested objects and "Not Detected"', () => {
+    expect(listTechnologies(payload)).toEqual(['Hcdn', 'Vue.js', 'jQuery', 'Bootstrap', 'Tailwind CSS']);
+  });
+  it('never produces "[object Object]"', () => {
+    expect(listTechnologies({ 'Backend Technologies': [{ a: 1 }, 'PHP'] })).toEqual(['PHP']);
+  });
+  it('count and list always agree', () => {
+    expect(countTechnologies(payload)).toBe(listTechnologies(payload).length);
+  });
+  it('handles junk input', () => {
+    expect(listTechnologies(null)).toEqual([]);
+    expect(listTechnologies('x')).toEqual([]);
   });
 });

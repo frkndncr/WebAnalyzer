@@ -239,20 +239,25 @@ const NOT_DETECTED = new Set(['', 'not detected', 'unknown', 'not found', 'none'
 const present = (v) => v != null && !NOT_DETECTED.has(String(v).trim().toLowerCase());
 
 const TECH_KEYS = [
-  'Backend Technologies', 'Frontend Technologies', 'JavaScript Libraries', 'CSS Frameworks',
+  'Web Server', 'Backend Technologies', 'Frontend Technologies', 'JavaScript Libraries', 'CSS Frameworks',
   'Content Management System', 'E-commerce Platform', 'CDN & Cloud Services', 'Analytics & Tracking',
 ];
 
-export function countTechnologies(tech) {
-  if (!isObj(tech)) return 0;
+/** Distinct detected technologies. Only the technology categories are read:
+ *  the same payload also carries nested objects (security headers, scores, ...)
+ *  that are not technologies, and non-string values are ignored. */
+export function listTechnologies(tech) {
+  if (!isObj(tech)) return [];
   const seen = new Set();
   for (const key of TECH_KEYS) {
     for (const v of (Array.isArray(tech[key]) ? tech[key] : [tech[key]])) {
-      if (present(v)) seen.add(String(v));
+      if ((typeof v === 'string' || typeof v === 'number') && present(v)) seen.add(String(v));
     }
   }
-  return seen.size;
+  return [...seen];
 }
+
+export const countTechnologies = (tech) => listTechnologies(tech).length;
 
 /** Headline facts for the Summary tab: [{ label, value, tone? }]. */
 export function extractFacts(results, now = Date.now()) {
