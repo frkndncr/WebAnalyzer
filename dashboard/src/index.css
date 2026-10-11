@@ -125,13 +125,13 @@ h1, h2, h3, h4 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
 .topbar {
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 16px 28px;
+  gap: 16px; padding: 16px clamp(20px, 3vw, 56px);
   background: rgba(11, 15, 23, 0.8); backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-soft);
 }
 .topbar h1 { font-size: 18px; }
 .topbar .sub { font-size: 12.5px; color: var(--text-faint); margin-top: 2px; }
-.content { padding: 24px 28px 48px; max-width: 1180px; }
+.content { padding: 24px clamp(20px, 3vw, 56px) 48px; width: 100%; }
 
 /* ---- Cards & primitives ---------------------------------------------------- */
 .card {
@@ -351,7 +351,7 @@ table.kv tr:last-child td { border-bottom: none; }
 }
 .icon-btn:hover { color: var(--text); border-color: var(--accent-ring); background: var(--surface-2); }
 
-.legal { max-width: 780px; line-height: 1.7; }
+.legal { max-width: 860px; line-height: 1.7; }
 .legal h2 { font-size: 22px; margin-bottom: 6px; }
 .legal h3 { font-size: 15px; margin: 26px 0 8px; }
 .legal p, .legal li { color: var(--text-dim); font-size: 13.5px; }
@@ -433,3 +433,12 @@ pre.code {
 .instance:first-of-type { border-top: none; }
 
 .modrow-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+/* ---- Status banner --------------------------------------------------------- */
+.banner {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; margin-bottom: 18px;
+  border: 1px solid rgba(255, 138, 76, 0.35); background: rgba(255, 138, 76, 0.08);
+  border-radius: var(--radius-sm); color: var(--text-dim); font-size: 13px; line-height: 1.5;
+}
+.banner b { color: var(--high); }
+.banner svg { color: var(--high); flex: none; margin-top: 2px; }

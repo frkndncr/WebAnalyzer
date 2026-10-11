@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, MODULES, PRESETS } from './analysis';
+import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, dbProblem, MODULES, PRESETS } from './analysis';
 
 describe('extractScore', () => {
   it('handles a plain integer', () => {
@@ -75,5 +75,20 @@ describe('isReady', () => {
     expect(isReady({ has_data: true, is_scanning: true })).toBe(false);
     expect(isReady({ has_data: false, is_scanning: false })).toBe(false);
     expect(isReady(null)).toBe(false);
+  });
+});
+
+describe('dbProblem', () => {
+  it('is null while the database is fine or the status is unknown', () => {
+    expect(dbProblem(null)).toBeNull();
+    expect(dbProblem({ api_status: 'online' })).toBeNull();
+    expect(dbProblem({ database: { connected: true, error: null } })).toBeNull();
+  });
+  it('explains a known failure and carries the retry hint', () => {
+    expect(dbProblem({ database: { connected: false, error: 'too_many_connections', retry_in: 12 } }))
+      .toEqual({ reason: 'the database has reached its connection limit', retryIn: 12 });
+  });
+  it('falls back to a generic reason for unknown errors', () => {
+    expect(dbProblem({ database: { connected: false, error: 'weird' } }).reason).toBe('the database is unavailable');
   });
 });

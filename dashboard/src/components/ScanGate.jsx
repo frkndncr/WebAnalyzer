@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiPost, ApiError } from '../api/client';
-import { PRESETS } from '../lib/analysis';
+import { PRESETS, dbProblem } from '../lib/analysis';
+import { useHealth } from '../context/health';
 import { Empty, Spinner } from './ui';
 
 /**
@@ -11,6 +12,7 @@ import { Empty, Spinner } from './ui';
 export default function ScanGate({ domain, data, reload }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const dbDown = Boolean(dbProblem(useHealth()));
 
   const start = async () => {
     setBusy(true);
@@ -48,8 +50,12 @@ export default function ScanGate({ domain, data, reload }) {
   }
 
   return (
-    <Empty title={`No data for ${domain} yet`}>
-      <div style={{ marginBottom: 14 }}>This domain has not been scanned. Run a full scan to populate this view.</div>
+    <Empty title={dbDown ? 'Saved results are unavailable' : `No data for ${domain} yet`}>
+      <div style={{ marginBottom: 14 }}>
+        {dbDown
+          ? 'The database is offline, so earlier scans of this domain cannot be loaded. You can still run a new scan.'
+          : 'This domain has not been scanned. Run a full scan to populate this view.'}
+      </div>
       <button className="btn primary" type="button" disabled={busy} onClick={start}>
         {busy ? 'Starting…' : `Scan ${domain}`}
       </button>

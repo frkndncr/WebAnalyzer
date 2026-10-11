@@ -49,7 +49,7 @@ export default function NewScan({ onLaunched }) {
   };
 
   return (
-    <form className="fade" onSubmit={launch} style={{ maxWidth: 920 }}>
+    <form className="fade" onSubmit={launch}>
       <div className="card">
         <div className="card-title">Target</div>
         <input

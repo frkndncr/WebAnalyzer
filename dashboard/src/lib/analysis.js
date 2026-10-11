@@ -108,3 +108,22 @@ export function localize(value) {
 
 /** True when a threat-intel / network-map payload has finished data to render. */
 export const isReady = (payload) => Boolean(payload && payload.has_data && !payload.is_scanning);
+
+const DB_REASONS = {
+  too_many_connections: 'the database has reached its connection limit',
+  pool_exhausted: 'all database connections are busy',
+  cannot_connect: 'the database server cannot be reached',
+  unknown_host: 'the database host name cannot be resolved',
+  access_denied: 'the database rejected the credentials',
+  unknown_database: 'the configured database does not exist',
+  host_blocked: 'the database blocked this server',
+  connection_lost: 'the database connection was lost',
+  timeout: 'the database connection timed out',
+};
+
+/** null when the database is fine (or unknown); otherwise { reason, retryIn }. */
+export function dbProblem(health) {
+  const db = health?.database;
+  if (!db || db.connected !== false) return null;
+  return { reason: DB_REASONS[db.error] || 'the database is unavailable', retryIn: db.retry_in || 0 };
+}

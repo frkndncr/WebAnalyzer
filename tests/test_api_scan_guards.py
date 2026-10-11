@@ -115,3 +115,29 @@ def test_post_scan_remains_guarded(client, monkeypatch):
     assert blocked.status_code == 403
     ok = client.post("/api/scan", json={"domain": PUBLIC, "modules": ["DNS Records"]})
     assert ok.status_code == 200
+
+
+# ─────────────────────────── database status in the health check ───────────────────────────
+
+def test_health_reports_database_status_without_a_host(client, monkeypatch):
+    pytest.importorskip("mysql.connector")
+    from database import db_manager as dbm
+
+    monkeypatch.setattr(dbm.db_manager, "status",
+                        lambda: {"connected": False, "error": "too_many_connections", "retry_in": 12})
+    body = client.get("/api/system-health").json()
+    assert body["api_status"] == "online"
+    assert body["database"] == {"connected": False, "error": "too_many_connections", "retry_in": 12}
+
+
+def test_health_stays_up_when_the_status_probe_itself_fails(client, monkeypatch):
+    pytest.importorskip("mysql.connector")
+    from database import db_manager as dbm
+
+    def boom():
+        raise RuntimeError("probe exploded")
+
+    monkeypatch.setattr(dbm.db_manager, "status", boom)
+    body = client.get("/api/system-health").json()
+    assert body["api_status"] == "online"
+    assert body["database"]["connected"] is False

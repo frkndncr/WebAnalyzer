@@ -144,7 +144,7 @@ def get_safe_wrapper(module_func):
 @app.get("/api/results/{domain}")
 async def get_results(domain: str):
     """Retrieve saved JSON results for a domain (checking local disk first, then MySQL DB fallback)"""
-    res = load_results_from_file_or_db(domain)
+    res = await asyncio.to_thread(load_results_from_file_or_db, domain)
     if res:
         return res
     raise HTTPException(status_code=404, detail="Results not found")
@@ -155,7 +155,7 @@ async def get_status(domain: str):
     if domain in ACTIVE_SCANS:
         return ACTIVE_SCANS[domain]
     
-    res = load_results_from_file_or_db(domain)
+    res = await asyncio.to_thread(load_results_from_file_or_db, domain)
     if res:
         completed_count = len([k for k, v in res.items() if isinstance(v, dict) and "error" not in v])
         return {
@@ -255,10 +255,10 @@ async def run_scan_background(domain: str, selected_modules: list[str], module_f
 
     ACTIVE_SCANS[domain]["current_module"] = "Writing to disk & database..."
     # Save logic directly to logs/domain/results.json
-    save_results_to_json(domain, results)
+    await asyncio.to_thread(save_results_to_json, domain, results)
     
     # Save logic directly to MySQL database as a permanent backup!
-    save_scan_results_to_db(domain, results)
+    await asyncio.to_thread(save_scan_results_to_db, domain, results)
     
     ACTIVE_SCANS[domain]["current_module"] = "Finished"
     executor.cleanup()
@@ -637,7 +637,7 @@ async def get_recent_scans():
     from datetime import datetime
 
     # ── Primary: database ──
-    db_rows = load_all_results_from_db(limit_domains=50)
+    db_rows = await asyncio.to_thread(load_all_results_from_db, limit_domains=50)
     if db_rows:
         scans = []
         for domain, scan_date, res in db_rows:
@@ -687,11 +687,11 @@ async def get_global_stats():
     try:
         from database.db_manager import db_manager
         # Raises (or returns nothing) when the database is offline.
-        jobs = db_manager.execute_query("SELECT COUNT(*) AS c FROM scan_jobs", commit=False)
+        jobs = await asyncio.to_thread(db_manager.execute_query, "SELECT COUNT(*) AS c FROM scan_jobs", commit=False)
         if not jobs:
             raise RuntimeError("database unavailable")
 
-        rows = load_all_results_from_db(limit_domains=500)
+        rows = await asyncio.to_thread(load_all_results_from_db, limit_domains=500)
         vuln = new_vuln_stats()
         scores = []
         for _domain, _date, res in rows:
@@ -747,7 +747,7 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, http_
 
     res = None
     if not force:
-        res = load_results_from_file_or_db(domain)
+        res = await asyncio.to_thread(load_results_from_file_or_db, domain)
 
     should_trigger = not res
 
@@ -1031,7 +1031,7 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, http_r
 
     res = None
     if not force:
-        res = load_results_from_file_or_db(domain)
+        res = await asyncio.to_thread(load_results_from_file_or_db, domain)
 
     should_trigger = not res
 
@@ -1176,7 +1176,7 @@ async def get_vulnerability_stats():
     stats = new_vuln_stats()
 
     # ── Primary: database ──
-    db_rows = load_all_results_from_db(limit_domains=200)
+    db_rows = await asyncio.to_thread(load_all_results_from_db, limit_domains=200)
     if db_rows:
         for _domain, _scan_date, res in db_rows:
             accumulate_vuln_stats(res, stats)
@@ -1223,7 +1223,7 @@ async def get_recent_alerts():
     alerts = []
 
     # ── Primary: database ──
-    db_rows = load_all_results_from_db(limit_domains=200)
+    db_rows = await asyncio.to_thread(load_all_results_from_db, limit_domains=200)
     if db_rows:
         for domain, _scan_date, res in db_rows:
             alerts.extend(extract_alerts(domain, res))
@@ -1250,8 +1250,14 @@ async def get_system_health():
     """Return current system health and runtime info"""
     import platform
     import sys
+    try:
+        from database.db_manager import db_manager
+        database = await asyncio.to_thread(db_manager.status)
+    except Exception:
+        database = {'connected': False, 'error': 'unavailable', 'retry_in': 0}
     return {
         'api_status': 'online',
+        'database': database,
         'python_version': sys.version.split()[0],
         'platform': platform.system(),
         'active_scans': len(ACTIVE_SCANS),
@@ -1265,7 +1271,7 @@ async def get_system_health():
 async def export_results(domain: str, fmt: str = 'html'):
     """Export scan results in JSON, CSV, or executive HTML/PDF report format with database fallback"""
     fmt_lower = fmt.lower()
-    data = load_results_from_file_or_db(domain)
+    data = await asyncio.to_thread(load_results_from_file_or_db, domain)
     if not data:
         raise HTTPException(status_code=404, detail=f'No scan results found for {domain}')
         

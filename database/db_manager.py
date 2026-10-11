@@ -7,6 +7,8 @@ from typing import List, Dict, Any, Optional
 import time
 import threading
 
+from utils.db_errors import classify_db_error
+
 class DatabaseManager:
     def __init__(self):
         import os
@@ -16,8 +18,11 @@ class DatabaseManager:
             'user': os.getenv('DB_USER', 'root'),
             'password': os.getenv('DB_PASSWORD', 'root'),
             'pool_name': 'webanalyzer_pool',
-            'pool_size': int(os.getenv('DB_POOL_SIZE', '20')),
-            'connection_timeout': 60,
+            # mysql-connector opens every pooled connection up front, so a large
+            # pool can exceed a hosted database's connection limit and fail to
+            # start at all (and doubles during zero-downtime deploys).
+            'pool_size': int(os.getenv('DB_POOL_SIZE', '5')),
+            'connection_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '10')),
             'pool_reset_session': False,
             'charset': 'utf8mb4',
             'use_unicode': True,
@@ -25,21 +30,60 @@ class DatabaseManager:
         }
         self.pool = None
         self.pool_lock = threading.Lock()
-        
+        # Circuit breaker: after a failed connect, fail fast for a while instead
+        # of making every request wait for another connection timeout.
+        self.retry_cooldown = int(os.getenv('DB_RETRY_COOLDOWN', '20'))
+        self._last_failure = 0.0
+        self._last_error_kind = None
+
+    def _cooldown_left(self) -> int:
+        """Seconds until the next connection attempt is allowed (0 = allowed now)."""
+        if not self._last_failure:
+            return 0
+        return max(0, int(self.retry_cooldown - (time.time() - self._last_failure)) + 1)
+
     def _init_pool(self):
-        """Lazy connection pool initialization with thread safety"""
+        """Lazy connection pool initialization with thread safety and a retry cooldown"""
         if self.pool is not None:
             return
-        
+
         with self.pool_lock:
-            if self.pool is None:
-                try:
-                    self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
-                    logging.info("Database connection pool created successfully")
-                    self._initialize_schema()
-                except Error as e:
-                    logging.error(f"Error creating connection pool: {e}")
-                    raise RuntimeError(f"Database connection pool initialization failed: {e}") from e
+            if self.pool is not None:
+                return
+            wait = self._cooldown_left()
+            if wait:
+                raise RuntimeError(
+                    f"Database unavailable ({self._last_error_kind or 'unavailable'}); retrying in {wait}s"
+                )
+            try:
+                self.pool = mysql.connector.pooling.MySQLConnectionPool(**self.config)
+                self._last_failure = 0.0
+                self._last_error_kind = None
+                logging.info("Database connection pool created successfully")
+                self._initialize_schema()
+            except Exception as e:
+                if self.pool is None:
+                    self._last_failure = time.time()
+                    self._last_error_kind = classify_db_error(e)
+                logging.error(f"Error creating connection pool: {e}")
+                raise RuntimeError(f"Database connection pool initialization failed: {e}") from e
+
+    def status(self) -> dict:
+        """Cheap health probe for the API. Never raises and never exposes host names."""
+        try:
+            self._init_pool()
+            connection = self.get_connection()
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchall()
+                cursor.close()
+            finally:
+                connection.close()
+            return {"connected": True, "error": None, "retry_in": 0}
+        except Exception as e:
+            kind = self._last_error_kind if self.pool is None and self._last_error_kind else classify_db_error(e)
+            return {"connected": False, "error": kind, "retry_in": self._cooldown_left() if self.pool is None else 0}
 
     def _initialize_schema(self):
         """Initializes database schema from schema.sql if tables do not exist"""

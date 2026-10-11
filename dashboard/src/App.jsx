@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import CookieConsent from './components/CookieConsent';
+import DbBanner from './components/DbBanner';
+import { HealthContext } from './context/health';
 import Overview from './pages/Overview';
 import NewScan from './pages/NewScan';
 import Results from './pages/Results';
@@ -68,6 +70,7 @@ export default function App() {
   const contextDomain = ['results', 'threat', 'network', 'attack'].includes(page) && domain;
 
   return (
+    <HealthContext.Provider value={health}>
     <div className="app">
       <Sidebar active={page} onNav={setPage} health={health} />
       <main className="main">
@@ -78,6 +81,7 @@ export default function App() {
           </div>
         </div>
         <div className="content">
+          <DbBanner />
           {page === 'overview' && <Overview onOpenDomain={openDomain} />}
           {page === 'scan' && <NewScan onLaunched={openDomain} />}
           {page === 'results' && <Results key={domain} domain={domain} setDomain={setDomain} />}
@@ -90,5 +94,6 @@ export default function App() {
       </main>
       <CookieConsent onNav={setPage} />
     </div>
+    </HealthContext.Provider>
   );
 }
