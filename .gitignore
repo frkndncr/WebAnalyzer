@@ -17,6 +17,9 @@ eggs/
 .eggs/
 lib/
 lib64/
+# ...but not the dashboard's source folder of the same name
+!dashboard/src/lib/
+!dashboard/src/lib/**
 parts/
 sdist/
 var/

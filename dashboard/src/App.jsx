@@ -1,52 +1,53 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
-import ScanForm from './components/ScanForm';
-import ResultsPanel from './components/ResultsPanel';
-import AdvancedScannerPanel from './components/AdvancedScannerPanel';
-import DashboardOverview from './components/DashboardOverview';
-import ThreatIntelPage from './components/ThreatIntelPage';
-import NetworkMapPage from './components/NetworkMapPage';
-import SettingsPage from './components/SettingsPage';
-import AttackPathPage from './components/AttackPathPage';
+import Overview from './pages/Overview';
+import NewScan from './pages/NewScan';
+import Results from './pages/Results';
+import { apiRequest } from './api/client';
+import { usePolling } from './hooks/useApi';
 
-function App() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [currentDomain, setCurrentDomain] = useState('example.com');
+const TITLES = {
+  overview: ['Overview', 'Security posture across all scans'],
+  scan: ['New Scan', 'Configure and launch reconnaissance'],
+  results: ['Results', 'Per-module findings and report export'],
+};
 
-  const renderPage = () => {
-    switch (activeTab) {
-      case 'overview':
-        return <DashboardOverview setActiveTab={setActiveTab} setCurrentDomain={setCurrentDomain} />;
-      case 'new_scan':
-        return <ScanForm setCurrentDomain={setCurrentDomain} setActiveTab={setActiveTab} />;
-      case 'results':
-        return <ResultsPanel key={currentDomain} domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
-      case 'advanced_scanner':
-        return <AdvancedScannerPanel domain={currentDomain} />;
-      case 'attack_path':
-        return <AttackPathPage domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
-      case 'threat_intel':
-        return <ThreatIntelPage domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
-      case 'network_map':
-        return <NetworkMapPage domain={currentDomain} setCurrentDomain={setCurrentDomain} />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <DashboardOverview setActiveTab={setActiveTab} setCurrentDomain={setCurrentDomain} />;
+export default function App() {
+  const [page, setPage] = useState('overview');
+  const [domain, setDomain] = useState('');
+  const [health, setHealth] = useState(null);
+
+  usePolling(async (signal) => {
+    try {
+      const h = await apiRequest('/api/system-health', { signal });
+      if (!signal.aborted) setHealth(h);
+    } catch {
+      if (!signal.aborted) setHealth({ api_status: 'offline' });
     }
-  };
+  }, 15000);
+
+  // Clear health poll dependency note: usePolling handles mount + interval.
+  useEffect(() => { document.title = `WebAnalyzer · ${TITLES[page][0]}`; }, [page]);
+
+  const openDomain = (d) => { setDomain(d); setPage('results'); };
+  const [title, sub] = TITLES[page];
 
   return (
-    <div className="app-container">
-      <div className="cyber-scanline"></div>
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="main-content">
-        <div key={activeTab} className="animate-fade-in">
-          {renderPage()}
+    <div className="app">
+      <Sidebar active={page} onNav={setPage} health={health} />
+      <main className="main">
+        <div className="topbar">
+          <div>
+            <h1>{title}</h1>
+            <div className="sub">{page === 'results' && domain ? domain : sub}</div>
+          </div>
         </div>
-      </div>
+        <div className="content">
+          {page === 'overview' && <Overview onOpenDomain={openDomain} />}
+          {page === 'scan' && <NewScan onLaunched={openDomain} />}
+          {page === 'results' && <Results key={domain} domain={domain} />}
+        </div>
+      </main>
     </div>
   );
 }
-
-export default App;
