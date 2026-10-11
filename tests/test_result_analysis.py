@@ -70,8 +70,8 @@ def test_accumulate_counts_both_modules():
     }
     stats = accumulate_vuln_stats(res, new_vuln_stats())
     assert stats["critical"] == 1
-    assert stats["high"] == 3
-    assert stats["medium"] == 2  # one explicit + one defaulted
+    assert stats["high"] == 4    # 3 explicit + the SSRF entry (defaults to high)
+    assert stats["medium"] == 1
     assert stats["low"] == 1
     assert stats["total"] == 7
 
@@ -89,12 +89,12 @@ def test_accumulate_ignores_malformed():
     assert stats["total"] == 0
 
 
-def test_unknown_severity_still_counts_total():
+def test_unknown_severity_is_counted_as_info():
     stats = accumulate_vuln_stats(
         {"Security Analysis": {"vulnerabilities": [{"severity": "catastrophic"}]}}, new_vuln_stats()
     )
     assert stats["total"] == 1
-    assert sum(stats[k] for k in ("critical", "high", "medium", "low", "info")) == 0
+    assert stats["info"] == 1
 
 
 # ─────────────────────────── alerts ───────────────────────────
@@ -240,3 +240,79 @@ def test_average_score():
     assert average_score([50, 70, None, "x"]) == 60
     assert average_score([]) is None
     assert average_score([True]) is None
+
+
+# ─────────────── findings beyond explicit vulnerabilities (parity with the dashboard) ───────────────
+
+from utils.result_analysis import severity_bucket  # noqa: E402
+
+REAL_SHAPE = {
+    "Security Analysis": {
+        "security_headers": {"headers": {
+            "Strict-Transport-Security": {"present": False, "importance": "Critical"},
+            "X-Frame-Options": {"present": False, "importance": "High"},
+            "X-Content-Type-Options": {"present": True, "importance": "Medium"},
+            "Referrer-Policy": {"present": False, "importance": "Low"},
+        }},
+        "server_information": {"information_disclosure": ["Web server version disclosed"]},
+        "http_methods": {"dangerous_methods": ["TRACE"]},
+        "cors_policy": {"issues": ["Wildcard origin"]},
+        "ssl_analysis": {"ssl_available": False},
+    },
+    "Advanced Content Scan": {
+        "exposed_endpoints": [{"endpoint_type": "Robots File", "status_code": 200, "severity": "Info"}],
+    },
+    "Subdomain Takeover": {"vulnerable_subdomains": [{"subdomain": "old.x.com"}]},
+    "Phishing Domain Protection": {"phishing_domains": [{"domain": "x-c0m.com", "severity": "High"}]},
+    "Web Archive Spy": {"secrets": [{"type": "aws_key"}]},
+    "CloudFlare Bypass": {"cloudflare_protected": True, "real_ips": [{"ip": "9.9.9.9", "source": "history"}]},
+}
+
+
+def test_security_signals_are_findings():
+    titles = [alert["title"] for alert in extract_alerts("x.com", REAL_SHAPE)]
+    assert "Missing security header: Strict-Transport-Security" in titles
+    assert "Missing security header: X-Frame-Options" in titles
+    assert not any("X-Content-Type-Options" in t for t in titles)   # present, so not a finding
+    assert "Information disclosure" in titles
+    assert "Dangerous HTTP method enabled: TRACE" in titles
+    assert "CORS misconfiguration" in titles
+    assert "TLS is not available" in titles
+
+
+def test_other_modules_contribute_findings():
+    titles = [alert["title"] for alert in extract_alerts("x.com", REAL_SHAPE)]
+    assert "Robots File exposed" in titles
+    assert "Subdomain takeover: old.x.com" in titles
+    assert "Look-alike domain: x-c0m.com" in titles
+    assert "Historical secret: aws_key" in titles
+    assert "Origin IP exposed behind CloudFlare" in titles
+
+
+def test_header_importance_maps_to_severity():
+    stats = accumulate_vuln_stats(
+        {"Security Analysis": {"security_headers": {"headers": {
+            "A": {"present": False, "importance": "Critical"},
+            "B": {"present": False, "importance": "High"},
+            "C": {"present": False, "importance": "Medium"},
+            "D": {"present": False, "importance": "Low"},
+        }}}}, new_vuln_stats())
+    assert (stats["critical"], stats["high"], stats["medium"], stats["low"]) == (1, 1, 1, 1)
+
+
+def test_cloudflare_direct_dns_is_not_a_finding():
+    res = {"CloudFlare Bypass": {"cloudflare_protected": True, "real_ips": [{"ip": "1.1.1.1", "source": "direct_dns"}]}}
+    assert count_findings(res) == 0
+    assert count_findings({"CloudFlare Bypass": {"cloudflare_protected": False, "real_ips": [{"ip": "1.1.1.1", "source": "history"}]}}) == 0
+
+
+def test_count_findings_matches_total_stats():
+    assert count_findings(REAL_SHAPE) == accumulate_vuln_stats(REAL_SHAPE, new_vuln_stats())["total"]
+
+
+@pytest.mark.parametrize("raw,bucket", [
+    ("Critical", "critical"), ("HIGH", "high"), ("moderate", "info"), ("Medium", "medium"),
+    ("low", "low"), ("Informational", "info"), (None, "info"), ("", "info"),
+])
+def test_severity_bucket(raw, bucket):
+    assert severity_bucket(raw) == bucket

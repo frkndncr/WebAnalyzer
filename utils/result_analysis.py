@@ -46,32 +46,130 @@ def summarize_security_result(res) -> Tuple[Optional[int], Optional[str], int]:
     return score, grade, vuln_count
 
 
-def iter_findings(res):
-    """Yield ``(finding_dict, module_name, acs_key)`` for every finding in res.
+def severity_bucket(sev) -> str:
+    """Map any severity label to one of SEVERITY_KEYS (mirrors the dashboard)."""
+    s = str(sev or "").lower()
+    if s.startswith("crit"):
+        return "critical"
+    if s.startswith("high"):
+        return "high"
+    if s.startswith("med"):
+        return "medium"
+    if s.startswith("low"):
+        return "low"
+    return "info"
 
-    ``acs_key`` is the sub-list name for Advanced Content Scan findings, or
-    ``None`` for Security Analysis vulnerabilities.
+
+def _synth(title, severity, description="", **extra):
+    """A normalised finding built from a non-vulnerability signal."""
+    return {"type": title, "title": title, "severity": severity, "description": description, **extra}
+
+
+_HEADER_LEVEL = {"critical": "critical", "high": "high", "medium": "medium"}
+
+# Advanced Content Scan lists and the severity assumed when an entry has none.
+_ACS_DEFAULT_SEVERITY = {
+    "secrets": "high",
+    "js_vulnerabilities": "medium",
+    "active_vulnerabilities": "high",
+    "ssrf_vulnerabilities": "high",
+}
+
+
+def _as_list(value):
+    return value if isinstance(value, list) else []
+
+
+def _security_findings(sec):
+    module = "Security Analysis"
+    scan = sec.get("vulnerability_scan")
+    scan_vulns = scan.get("vulnerabilities") if isinstance(scan, dict) else None
+    for source in (scan_vulns, sec.get("vulnerabilities")):
+        for v in _as_list(source):
+            if isinstance(v, dict):
+                yield (v if v.get("severity") else {**v, "severity": "medium"}), module, None
+
+    headers = sec.get("security_headers")
+    headers = headers.get("headers") if isinstance(headers, dict) else None
+    if isinstance(headers, dict):
+        for name, h in headers.items():
+            if isinstance(h, dict) and h.get("present") is False:
+                level = str(h.get("importance") or h.get("security_level") or "").lower()
+                yield _synth(
+                    f"Missing security header: {name}", _HEADER_LEVEL.get(level, "low"),
+                    f"The {name} response header is not set.",
+                ), module, None
+
+    server = sec.get("server_information")
+    for note in _as_list(server.get("information_disclosure") if isinstance(server, dict) else None):
+        yield _synth("Information disclosure", "low", str(note)), module, None
+
+    methods = sec.get("http_methods")
+    for m in _as_list(methods.get("dangerous_methods") if isinstance(methods, dict) else None):
+        yield _synth(f"Dangerous HTTP method enabled: {m}", "high"), module, None
+
+    cors = sec.get("cors_policy")
+    for issue in _as_list(cors.get("issues") if isinstance(cors, dict) else None):
+        text = (issue.get("issue") or issue.get("description") or str(issue)) if isinstance(issue, dict) else str(issue)
+        yield _synth("CORS misconfiguration", "medium", text), module, None
+
+    ssl = sec.get("ssl_analysis")
+    if isinstance(ssl, dict) and ssl.get("ssl_available") is False:
+        yield _synth("TLS is not available", "high", "The target does not serve a valid HTTPS/TLS endpoint."), module, None
+
+
+def iter_findings(res):
+    """Yield ``(finding_dict, module_name, key)`` for every finding in res.
+
+    This is the single backend definition of a "finding"; the dashboard's
+    ``lib/findings.js`` applies the same rules so counts match everywhere.
+    ``key`` is the Advanced Content Scan sub-list name, otherwise ``None``.
     """
     if not isinstance(res, dict):
         return
 
-    sec = res.get("Security Analysis", {})
+    sec = res.get("Security Analysis")
     if isinstance(sec, dict):
-        # Current scanner output keeps findings under vulnerability_scan; older
-        # results stored them directly on the module.
-        scan = sec.get("vulnerability_scan")
-        scan_vulns = scan.get("vulnerabilities") if isinstance(scan, dict) else None
-        for source in (scan_vulns, sec.get("vulnerabilities")):
-            for v in source or []:
-                if isinstance(v, dict):
-                    yield v, "Security Analysis", None
+        yield from _security_findings(sec)
 
-    acs = res.get("Advanced Content Scan", {})
+    acs = res.get("Advanced Content Scan")
     if isinstance(acs, dict):
         for key in ACS_FINDING_KEYS:
-            for f in acs.get(key, []) or []:
+            for f in _as_list(acs.get(key)):
                 if isinstance(f, dict):
-                    yield f, "Advanced Content Scan", key
+                    yield (f if f.get("severity") else {**f, "severity": _ACS_DEFAULT_SEVERITY[key]}), "Advanced Content Scan", key
+        for e in _as_list(acs.get("exposed_endpoints")):
+            if isinstance(e, dict):
+                yield _synth(
+                    f"{e.get('endpoint_type') or 'Endpoint'} exposed", e.get("severity") or "medium",
+                    f"Responds with HTTP {e['status_code']}." if e.get("status_code") else "",
+                ), "Advanced Content Scan", "exposed_endpoints"
+
+    takeover = res.get("Subdomain Takeover")
+    if isinstance(takeover, dict):
+        for t in _as_list(takeover.get("vulnerable_subdomains")) + _as_list(takeover.get("vulnerabilities")):
+            name = (t.get("subdomain") or t.get("domain") or t.get("host")) if isinstance(t, dict) else t
+            sev = (t.get("severity") if isinstance(t, dict) else None) or "high"
+            yield _synth(f"Subdomain takeover: {name}", sev), "Subdomain Takeover", None
+
+    phishing = res.get("Phishing Domain Protection")
+    if isinstance(phishing, dict):
+        for d in _as_list(phishing.get("phishing_domains")):
+            if isinstance(d, dict):
+                yield _synth(f"Look-alike domain: {d.get('domain')}", d.get("severity") or "medium"), "Phishing Domain Protection", None
+
+    archive = res.get("Web Archive Spy")
+    if isinstance(archive, dict):
+        for item in _as_list(archive.get("secrets")):
+            kind = (item.get("type") or item.get("secret_type") or "secret") if isinstance(item, dict) else "secret"
+            sev = (item.get("severity") if isinstance(item, dict) else None) or "high"
+            yield _synth(f"Historical secret: {kind}", sev), "Web Archive Spy", None
+
+    cf = res.get("CloudFlare Bypass")
+    if isinstance(cf, dict) and cf.get("cloudflare_protected"):
+        exposed = [r for r in _as_list(cf.get("real_ips")) if isinstance(r, dict) and r.get("source") and r.get("source") != "direct_dns"]
+        if exposed:
+            yield _synth("Origin IP exposed behind CloudFlare", "high"), "CloudFlare Bypass", None
 
 
 def new_vuln_stats() -> dict:
@@ -82,9 +180,7 @@ def new_vuln_stats() -> dict:
 def accumulate_vuln_stats(res, stats: dict) -> dict:
     """Add severity counts from ``res`` into ``stats`` in place, returning it."""
     for finding, _module, _key in iter_findings(res):
-        sev = (finding.get("severity", "medium") or "medium").lower()
-        if sev in stats:
-            stats[sev] += 1
+        stats[severity_bucket(finding.get("severity"))] += 1
         stats["total"] += 1
     return stats
 
@@ -103,7 +199,7 @@ def extract_alerts(domain: str, res) -> list:
         alerts.append({
             "domain": domain,
             "title": title,
-            "severity": (finding.get("severity", "Medium") or "Medium").upper(),
+            "severity": severity_bucket(finding.get("severity")).upper(),
             "description": (desc or "")[:120],
             "module": module,
         })
