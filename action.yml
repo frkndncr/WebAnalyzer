@@ -1,4 +1,4 @@
-name: WebAnalyzer scan
+name: WebAnalyzer
 description: Security recon for your domains - SARIF for Code Scanning, a job summary and a severity gate.
 author: Furkan Dincer
 branding:
