@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.7.3] - 2026-10-12
+
+### Changed
+- The GitHub Action is named `WebAnalyzer Security Scan` (the plain name is taken on the Marketplace). No code changes.
+
 ## [3.7.2] - 2026-10-12
 
 ### Changed

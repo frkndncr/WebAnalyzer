@@ -2,4 +2,4 @@
 
 pyproject.toml reads it (dynamic version); the API, CLI, banner and reports import it.
 """
-VERSION = "3.7.2"
+VERSION = "3.7.3"

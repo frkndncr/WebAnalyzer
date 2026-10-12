@@ -120,7 +120,7 @@ webanalyzer scan -l domains.txt -f jsonl | jq .   # one JSON object per domain
 webanalyzer modules                               # list the modules
 ```
 
-Output as `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) or `markdown`; exit code `1` when a finding reaches `--fail-on`, so a scan can gate a pipeline. There is also a [**GitHub Action**](https://github.com/marketplace/actions/webanalyzer):
+Output as `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) or `markdown`; exit code `1` when a finding reaches `--fail-on`, so a scan can gate a pipeline. There is also a [**GitHub Action**](https://github.com/marketplace/actions/webanalyzer-security-scan):
 
 ```yaml
 - uses: frkndncr/WebAnalyzer@v3
