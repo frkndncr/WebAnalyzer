@@ -122,10 +122,10 @@ webanalyzer scan -l domains.txt -f jsonl | jq .   # domain başına bir JSON nes
 webanalyzer modules                               # modülleri listele
 ```
 
-Çıktı `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) veya `markdown` olabilir; bir bulgu `--fail-on` eşiğine ulaşırsa çıkış kodu `1` olur, böylece tarama bir pipeline'ı durdurabilir. Bir de **GitHub Action** var:
+Çıktı `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) veya `markdown` olabilir; bir bulgu `--fail-on` eşiğine ulaşırsa çıkış kodu `1` olur, böylece tarama bir pipeline'ı durdurabilir. Bir de [**GitHub Action**](https://github.com/marketplace/actions/webanalyzer) var:
 
 ```yaml
-- uses: frkndncr/WebAnalyzer@v3.7.0
+- uses: frkndncr/WebAnalyzer@v3
   with:
     target: example.com
     upload-sarif: "true"     # bulgular deponun Security sekmesinde görünür

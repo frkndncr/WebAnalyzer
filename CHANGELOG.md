@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.7.2] - 2026-10-12
+
+### Changed
+- The GitHub Action is now named `WebAnalyzer` (was `WebAnalyzer scan`). No code changes.
+
 ## [3.7.1] - 2026-10-12
 
 ### Added
