@@ -8,7 +8,7 @@
 
 WebAnalyzer pasif OSINT keşfi ile aktif zafiyet değerlendirmesi arasında köprü kurar, bunu gerçek bir panele sarar ve sonunda size yönetici düzeyinde bir rapor verir. Sızma testi uzmanları, bug bounty avcıları ve güvenlik araştırmacıları için tasarlandı.
 
-[![Version](https://img.shields.io/badge/version-3.6.5-blue)](https://github.com/frkndncr/WebAnalyzer/releases)
+[![Version](https://img.shields.io/pypi/v/webanalyzer-security?color=blue)](https://pypi.org/project/webanalyzer-security/)
 [![Python](https://img.shields.io/badge/python-3.8+-green?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-red)](LICENSE)
 [![PyPI](https://img.shields.io/badge/pip-webanalyzer--security-yellow?logo=pypi&logoColor=white)](https://pypi.org/project/webanalyzer-security/)
@@ -110,6 +110,29 @@ Tekil taramalar için veritabanı opsiyoneldir (sonuçlar `logs/<domain>/results
 | **API Güvenlik Tarayıcı** | API endpoint keşfi & zafiyet testi | 🟣 |
 
 Ayrıca bulguları mantıksal bir istismar yol haritasına dönüştüren bir **Saldırı Yolu Planlayıcı** vardır. Ayrıntılar için [`docs/Modules.md`](docs/Modules.md).
+
+### Komut satırı ve CI
+
+```bash
+pip install webanalyzer-security
+
+webanalyzer scan example.com                      # standart preset
+webanalyzer scan example.com --passive -f sarif -o out.sarif --fail-on high
+webanalyzer scan -l domains.txt -f jsonl | jq .   # domain başına bir JSON nesnesi
+webanalyzer modules                               # modülleri listele
+```
+
+Çıktı `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) veya `markdown` olabilir; bir bulgu `--fail-on` eşiğine ulaşırsa çıkış kodu `1` olur, böylece tarama bir pipeline'ı durdurabilir. Bir de **GitHub Action** var:
+
+```yaml
+- uses: frkndncr/WebAnalyzer@main
+  with:
+    target: example.com
+    upload-sarif: "true"     # bulgular deponun Security sekmesinde görünür
+    fail-on: high
+```
+
+Tüm seçenekler, çıkış kodları ve diğer CI sistemleri için [docs/CI.md](docs/CI.md).
 
 ### Bulk (toplu) işleme
 

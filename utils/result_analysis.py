@@ -270,3 +270,51 @@ def average_score(scores):
     if not nums:
         return None
     return round(sum(nums) / len(nums))
+
+
+# Fallback titles for Advanced Content Scan entries that carry no type (mirrors the dashboard).
+_ACS_FALLBACK_TITLE = {
+    "secrets": "Exposed secret",
+    "js_vulnerabilities": "JavaScript issue",
+    "active_vulnerabilities": "Active vulnerability",
+    "ssrf_vulnerabilities": "SSRF",
+}
+
+_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+
+def severity_rank(sev) -> int:
+    """0 (critical) .. 4 (info); lower is more severe."""
+    return _SEVERITY_RANK[severity_bucket(sev)]
+
+
+def _text(value) -> str:
+    if value is None:
+        return ""
+    return value if isinstance(value, str) else str(value)
+
+
+def list_findings(res) -> list:
+    """Every finding in a domain's results as a flat, normalised list.
+
+    Same definition of a finding as ``iter_findings`` (so the counts match the
+    dashboard), with the fields reports need, most severe first.
+    """
+    out = []
+    for finding, module, key in iter_findings(res):
+        title = (finding.get("type") or finding.get("title") or finding.get("name")
+                 or finding.get("vuln_type") or _ACS_FALLBACK_TITLE.get(key) or "Finding")
+        url = finding.get("source_url") or finding.get("url") or finding.get("endpoint") or finding.get("target") or ""
+        line = finding.get("line")
+        out.append({
+            "severity": severity_bucket(finding.get("severity")),
+            "title": _text(title),
+            "module": module,
+            "description": _text(finding.get("description") or finding.get("detail")),
+            "location": f"{url}:{line}" if url and line else _text(url),
+            "evidence": _text(finding.get("evidence") or finding.get("matched_code") or finding.get("value"))[:500],
+            "recommendation": _text(finding.get("recommendation") or finding.get("remediation")),
+        })
+    out.sort(key=lambda f: (_SEVERITY_RANK[f["severity"]], f["module"], f["title"]))
+    return out
+

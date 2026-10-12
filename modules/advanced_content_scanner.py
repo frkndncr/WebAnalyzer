@@ -3,7 +3,7 @@
 Advanced Content Scanner v4.0  ★ NIRVANA EDITION ★
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Author      : Furkan DINCER @f3rrkan
-Project     : Analysis Tool v3.0.0 — Open Source
+Project     : Analysis Tool — Open Source
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 L1 — Passive recon (v3.0 base)
@@ -788,7 +788,7 @@ class WAFDetector:
 class AdvancedContentScanner:
     """
     Advanced Content Scanner v4.0 — Nirvana Edition
-    Full L1-L5 security scanner for Analysis Tool v3.0.0
+    Full L1-L5 security scanner for Analysis Tool
     """
 
     VERSION = "4.0.0"

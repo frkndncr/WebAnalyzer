@@ -8,7 +8,7 @@
 
 WebAnalyzer bridges passive OSINT enumeration and active vulnerability assessment, wraps it in a real dashboard, and gives you an executive report at the end. Built for penetration testers, bug bounty hunters, and security researchers.
 
-[![Version](https://img.shields.io/badge/version-3.6.5-blue)](https://github.com/frkndncr/WebAnalyzer/releases)
+[![Version](https://img.shields.io/pypi/v/webanalyzer-security?color=blue)](https://pypi.org/project/webanalyzer-security/)
 [![Python](https://img.shields.io/badge/python-3.8+-green?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-red)](LICENSE)
 [![PyPI](https://img.shields.io/badge/pip-webanalyzer--security-yellow?logo=pypi&logoColor=white)](https://pypi.org/project/webanalyzer-security/)
@@ -108,6 +108,29 @@ The database is optional for single scans (results also persist to `logs/<domain
 | **API Security Scanner** | API endpoint discovery & vulnerability testing | 🟣 |
 
 Plus an **Attack Path Planner** that chains findings into a logical exploit roadmap. See [`docs/Modules.md`](docs/Modules.md) for details.
+
+### Command line and CI
+
+```bash
+pip install webanalyzer-security
+
+webanalyzer scan example.com                      # standard preset
+webanalyzer scan example.com --passive -f sarif -o out.sarif --fail-on high
+webanalyzer scan -l domains.txt -f jsonl | jq .   # one JSON object per domain
+webanalyzer modules                               # list the modules
+```
+
+Output as `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) or `markdown`; exit code `1` when a finding reaches `--fail-on`, so a scan can gate a pipeline. There is also a **GitHub Action**:
+
+```yaml
+- uses: frkndncr/WebAnalyzer@main
+  with:
+    target: example.com
+    upload-sarif: "true"     # findings appear in the repository's Security tab
+    fail-on: high
+```
+
+See [docs/CI.md](docs/CI.md) for every option, exit codes and other CI systems.
 
 ### Bulk processing
 

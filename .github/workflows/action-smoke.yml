@@ -1,0 +1,81 @@
+name: Action smoke test
+
+# Runs the GitHub Action from this repository against a harmless, reserved
+# example domain and checks that its SARIF output is valid. Kept separate from
+# the main CI so that a network hiccup here never blocks a merge.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - action.yml
+      - cli.py
+      - utils/formats.py
+      - modules/**
+      - .github/workflows/action-smoke.yml
+  pull_request:
+    paths:
+      - action.yml
+      - cli.py
+      - utils/formats.py
+      - .github/workflows/action-smoke.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run the action against itself
+        id: scan
+        uses: ./
+        with:
+          target: example.com
+          modules: DNS Records,Security Analysis,Security.txt
+          fail-on: none
+
+      - name: Check the outputs
+        env:
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+          EXIT_CODE: ${{ steps.scan.outputs.exit-code }}
+        run: |
+          echo "findings=$FINDINGS exit-code=$EXIT_CODE"
+          test "$EXIT_CODE" = "0"
+          test -s webanalyzer.sarif
+          test "$FINDINGS" -ge 1
+
+      - name: Validate the SARIF against the official schema
+        run: |
+          python -m pip install --quiet jsonschema
+          curl -fsSL https://json.schemastore.org/sarif-2.1.0.json -o sarif.schema.json
+          python - <<'EOF'
+          import json
+          from jsonschema import Draft7Validator
+          schema = json.load(open("sarif.schema.json", encoding="utf-8"))
+          doc = json.load(open("webanalyzer.sarif", encoding="utf-8"))
+          errors = list(Draft7Validator(schema).iter_errors(doc))
+          for e in errors[:10]:
+              print("schema error:", list(e.path), e.message[:200])
+          assert not errors, f"{len(errors)} SARIF schema errors"
+          print("SARIF is valid:", len(doc["runs"][0]["results"]), "results")
+          EOF
+
+      - name: The severity gate fails the job
+        id: gate
+        uses: ./
+        continue-on-error: true
+        with:
+          target: example.com
+          modules: Security Analysis
+          fail-on: high
+
+      - name: Confirm the gate fired
+        env:
+          GATE: ${{ steps.gate.outcome }}
+        run: test "$GATE" = "failure"

@@ -5,6 +5,8 @@ import platform
 from datetime import datetime
 from dataclasses import is_dataclass, asdict
 
+from utils.version import VERSION
+
 def clear_terminal():
     """Clear the terminal screen"""
     os.system('cls' if platform.system() == 'Windows' else 'clear')
@@ -26,15 +28,15 @@ def display_banner():
         banner_text.append(" ██║███╗██║██╔══╝  ██╔══██╗██╔══██║██║╚██╗██║██╔══██║╚════██║ ███╔╝  ██╔══╝  ██╔══██╗\n", style="bold magenta")
         banner_text.append(" ╚███╔███╔╝███████╗██████╔╝██║  ██║██║ ╚████║██║  ██║      ██║███████╗███████╗██║  ██║\n", style="bold blue")
         banner_text.append("  ╚══╝╚══╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝      ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝\n", style="bold blue")
-        banner_text.append("\n          🚀 Enterprise Domain Security & OSINT Analysis Platform v3.6.2\n", style="bold yellow")
+        banner_text.append(f"\n          🚀 Enterprise Domain Security & OSINT Analysis Platform v{VERSION}\n", style="bold yellow")
         banner_text.append("              Created by Furkan Dinçer & Course Contributors\n", style="italic white")
         
-        console.print(Panel(banner_text, border_style="bright_blue", title="[bold white]WebAnalyzer v3.6.2[/bold white]", subtitle="[bold yellow]System Initialized[/bold yellow]"))
+        console.print(Panel(banner_text, border_style="bright_blue", title=f"[bold white]WebAnalyzer v{VERSION}[/bold white]", subtitle="[bold yellow]System Initialized[/bold yellow]"))
     except ImportError:
-        banner = """
+        banner = f"""
         \033[92m
         ╔══════════════════════════════════════════════════════╗
-        ║     [-] WebAnalyzer     V3.6.2                       ║ 
+        ║     [-] WebAnalyzer     V{VERSION}                       ║ 
         ║         Analyze domains with precision and style!    ║
         ╠══════════════════════════════════════════════════════╣
         ║         Coder: Furkan DINCER @f3rrkan                ║

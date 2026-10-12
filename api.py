@@ -34,6 +34,7 @@ from utils.result_analysis import (
     latest_per_domain,
     average_score,
 )
+from utils.version import VERSION
 from utils.safety import classify_target, RateLimiter, demo_mode_enabled, normalize_target
 from utils.ownership import active_modules, split_modules, is_verified
 from utils.ownership import instructions as ownership_instructions
@@ -1247,7 +1248,7 @@ async def get_system_health():
         'platform': platform.system(),
         'active_scans': len(ACTIVE_SCANS),
         'pending_tasks': len(ACS_SECTION_TASKS),
-        'version': '3.6.2'
+        'version': VERSION
     }
 
 
@@ -1282,6 +1283,6 @@ async def root():
     return {
         "status": "online",
         "name": "WebAnalyzer API",
-        "version": "3.6.2",
+        "version": VERSION,
         "docs_url": "/docs"
     }

@@ -3,6 +3,7 @@ import os
 import sys
 from database.db_manager import db_manager
 from tabulate import tabulate
+from utils.version import VERSION
 
 def monitor_job(job_id):
     """Job'ı real-time monitör et"""
@@ -41,7 +42,7 @@ def monitor_job(job_id):
                 
                 # Display
                 print("=" * 60)
-                print(f"WebAnalyzer v3.6.2 - Job #{job_id} Monitor")
+                print(f"WebAnalyzer v{VERSION} - Job #{job_id} Monitor")
                 print("=" * 60)
                 
                 print(f"\n📊 Job: {job_info['job_name']}")

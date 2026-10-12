@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webanalyzer-security"
-version = "3.6.5"
+dynamic = ["version"]
 description = "Enterprise Domain Security & OSINT Analysis Platform"
 readme = "README.md"
 authors = [
@@ -53,11 +53,14 @@ dependencies = [
 "Bug Tracker" = "https://github.com/frkndncr/WebAnalyzer/issues"
 
 [project.scripts]
-webanalyzer = "main:run_cli"
+webanalyzer = "cli:entry"
+
+[tool.setuptools.dynamic]
+version = { attr = "utils.version.VERSION" }
 
 [tool.setuptools]
 packages = ["bulk", "modules", "modules.plugins", "database", "utils"]
-py-modules = ["main", "config", "api", "bulk_scan", "monitor", "check_progress", "domains-check"]
+py-modules = ["main", "cli", "config", "api", "bulk_scan", "monitor", "check_progress", "domains-check"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.sql", "*.json"]

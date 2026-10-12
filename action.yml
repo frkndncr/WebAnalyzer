@@ -1,0 +1,115 @@
+name: WebAnalyzer scan
+description: >-
+  Scan a domain with WebAnalyzer: findings as SARIF for GitHub Code Scanning, a
+  Markdown job summary, and an optional severity gate for your pipeline.
+author: Furkan Dincer
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  target:
+    description: Domain(s) to scan, separated by spaces or newlines. Only scan systems you own or are authorized to test.
+    required: true
+  modules:
+    description: Comma-separated module names (see `webanalyzer modules`). Overrides `preset`.
+    required: false
+    default: ""
+  preset:
+    description: Module set when `modules` is empty - quick, standard or full.
+    required: false
+    default: standard
+  passive:
+    description: Run only passive modules (no port scans, active tests or probing). Keep this on for domains you do not control.
+    required: false
+    default: "true"
+  fail-on:
+    description: Fail the job if a finding is at least this severe - none, info, low, medium, high or critical.
+    required: false
+    default: high
+  timeout:
+    description: Per-module time limit in seconds.
+    required: false
+    default: "120"
+  sarif-file:
+    description: Where to write the SARIF report.
+    required: false
+    default: webanalyzer.sarif
+  upload-sarif:
+    description: "Upload the SARIF report to GitHub Code Scanning (the job needs the permission `security-events: write`)."
+    required: false
+    default: "false"
+  python-version:
+    description: Python version to run WebAnalyzer with.
+    required: false
+    default: "3.11"
+
+outputs:
+  sarif-file:
+    description: Path of the SARIF report.
+    value: ${{ inputs.sarif-file }}
+  findings:
+    description: Number of findings reported.
+    value: ${{ steps.scan.outputs.findings }}
+  exit-code:
+    description: "0 clean, 1 findings at or above `fail-on`, 2 usage error, 3 nothing could be scanned."
+    value: ${{ steps.scan.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install WebAnalyzer
+      shell: bash
+      run: python -m pip install --disable-pip-version-check --quiet "$GITHUB_ACTION_PATH"
+
+    - name: Scan
+      id: scan
+      shell: bash
+      env:
+        TARGETS: ${{ inputs.target }}
+        MODULES: ${{ inputs.modules }}
+        PRESET: ${{ inputs.preset }}
+        PASSIVE: ${{ inputs.passive }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        TIMEOUT: ${{ inputs.timeout }}
+        SARIF_FILE: ${{ inputs.sarif-file }}
+      run: |
+        set +e
+        read -r -a targets <<< "$(printf '%s' "$TARGETS" | tr '\n' ' ')"
+        args=(scan "${targets[@]}")
+        if [ -n "$MODULES" ]; then args+=(--modules "$MODULES"); else args+=(--preset "$PRESET"); fi
+        if [ "$PASSIVE" = "true" ]; then args+=(--passive); fi
+        args+=(--format sarif --output "$SARIF_FILE" --fail-on "$FAIL_ON" --timeout "$TIMEOUT")
+        if [ -n "$GITHUB_STEP_SUMMARY" ]; then args+=(--summary "$GITHUB_STEP_SUMMARY"); fi
+
+        webanalyzer "${args[@]}"
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        if [ -f "$SARIF_FILE" ]; then
+          count=$(python -c "import json,sys; print(sum(len(r['results']) for r in json.load(open(sys.argv[1]))['runs']))" "$SARIF_FILE")
+          echo "findings=$count" >> "$GITHUB_OUTPUT"
+        fi
+        # A usage error or a scan that produced nothing fails right away. Findings at
+        # or above fail-on are enforced after the optional upload, so they still reach
+        # Code Scanning.
+        if [ "$code" -ge 2 ]; then exit "$code"; fi
+        exit 0
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: ${{ inputs.upload-sarif == 'true' && (steps.scan.outputs.exit-code == '0' || steps.scan.outputs.exit-code == '1') }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+
+    - name: Enforce the severity gate
+      if: ${{ steps.scan.outputs.exit-code == '1' }}
+      shell: bash
+      env:
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        echo "::error title=WebAnalyzer::Findings at or above '$FAIL_ON' were found. See the job summary."
+        exit 1
