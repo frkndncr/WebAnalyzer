@@ -25,7 +25,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: frkndncr/WebAnalyzer@main
+      - uses: frkndncr/WebAnalyzer@v3.7.0
         with:
           target: example.com
           upload-sarif: "true"

@@ -125,7 +125,7 @@ webanalyzer modules                               # modülleri listele
 Çıktı `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) veya `markdown` olabilir; bir bulgu `--fail-on` eşiğine ulaşırsa çıkış kodu `1` olur, böylece tarama bir pipeline'ı durdurabilir. Bir de **GitHub Action** var:
 
 ```yaml
-- uses: frkndncr/WebAnalyzer@main
+- uses: frkndncr/WebAnalyzer@v3.7.0
   with:
     target: example.com
     upload-sarif: "true"     # bulgular deponun Security sekmesinde görünür

@@ -1,7 +1,5 @@
 name: WebAnalyzer scan
-description: >-
-  Scan a domain with WebAnalyzer: findings as SARIF for GitHub Code Scanning, a
-  Markdown job summary, and an optional severity gate for your pipeline.
+description: Security recon for your domains - SARIF for Code Scanning, a job summary and a severity gate.
 author: Furkan Dincer
 branding:
   icon: shield
