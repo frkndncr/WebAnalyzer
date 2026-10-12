@@ -3,6 +3,7 @@ import { apiPost, ApiError } from '../api/client';
 import { PRESETS, dbProblem } from '../lib/analysis';
 import { useHealth } from '../context/health';
 import { Empty, Spinner } from './ui';
+import VerifyPanel from './VerifyPanel';
 
 /**
  * Shown by the analysis pages instead of an empty (all-zero) view. While a scan
@@ -60,6 +61,7 @@ export default function ScanGate({ domain, data, reload }) {
         {busy ? 'Starting…' : `Scan ${domain}`}
       </button>
       {error && <div className="muted" style={{ marginTop: 12, color: 'var(--critical)' }}>{error}</div>}
+      <div style={{ maxWidth: 560, margin: '18px auto 0', textAlign: 'left' }}><VerifyPanel domain={domain} compact /></div>
     </Empty>
   );
 }

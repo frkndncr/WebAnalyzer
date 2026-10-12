@@ -11,9 +11,10 @@ import { getApiUrl } from '../config';
 
 /** Error thrown for any non-ok HTTP response or network/timeout failure. */
 export class ApiError extends Error {
-  constructor(message, { status = null, url = null, cause = null } = {}) {
+  constructor(message, { status = null, url = null, cause = null, detail = null } = {}) {
     super(message);
     this.name = 'ApiError';
+    this.detail = detail;       // the backend's `detail` field (string or object), when present
     this.status = status;
     this.url = url;
     this.cause = cause;
@@ -80,7 +81,9 @@ export async function apiRequest(path, { method = 'GET', body, headers, signal, 
   }
 
   if (!response.ok) {
-    throw new ApiError(`Request to ${path} failed (${response.status})`, { status: response.status, url });
+    let detail = null;
+    try { detail = (await response.json())?.detail ?? null; } catch { /* body is not JSON */ }
+    throw new ApiError(`Request to ${path} failed (${response.status})`, { status: response.status, url, detail });
   }
 
   const contentType = response.headers.get('content-type') || '';

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiPost, ApiError } from '../api/client';
-import { MODULES, PRESETS, cleanDomain } from '../lib/analysis';
+import { MODULES, PRESETS, ACTIVE_MODULE_NAMES, cleanDomain } from '../lib/analysis';
+import VerifyPanel from '../components/VerifyPanel';
 import { Icon } from '../components/ui';
 
 const PRESET_BTNS = [
@@ -36,7 +37,9 @@ export default function NewScan({ onLaunched }) {
       await apiPost('/api/scan', { domain: d, modules: [...selected] });
       onLaunched(d);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError && err.detail?.code === 'verification_required') {
+        setError('Only active modules were selected. Verify ownership below, or add a passive module such as DNS Records.');
+      } else if (err instanceof ApiError && err.status === 403) {
         setError('That target is not allowed on this instance (internal/private addresses are blocked).');
       } else if (err instanceof ApiError && err.status === 429) {
         setError('Rate limit reached — please wait a moment and try again.');
@@ -93,6 +96,10 @@ export default function NewScan({ onLaunched }) {
           })}
         </div>
       </div>
+
+      {cleanDomain(domain) && ACTIVE_MODULE_NAMES.some((n) => selected.has(n)) && (
+        <VerifyPanel key={cleanDomain(domain)} domain={cleanDomain(domain)} />
+      )}
 
       {error && <div className="toast err">{error}</div>}
 

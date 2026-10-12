@@ -77,6 +77,8 @@ cd dashboard && npm install && npm run dev   # http://localhost:5173
 Tekil taramalar için veritabanı opsiyoneldir (sonuçlar `logs/<domain>/results.json`'a da yazılır). Kalıcı depolama için `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` ayarlayın — şema ilk bağlantıda otomatik oluşturulur.
 
 > **Herkese açık bir sunucu mu barındırıyorsunuz?** `DEMO_MODE=true` ayarlayın; tarama isteklerini istemci başına sınırlar ve iç/özel/ayrılmış hedefleri reddeder (SSRF koruması). Varsayılan kapalıdır, böylece self-host kullanıcıları kendi altyapılarını tarayabilir. Bkz. [`.env.example`](.env.example).
+>
+> Demo modunda **müdahaleci modüller** (Nmap, aktif içerik testleri, subdomain takeover ve origin yoklama) yalnızca sahibinin DNS TXT kaydı (`_webanalyzer.<domain>`) yayınlayarak kontrolünü kanıtladığı domainlerde çalışır. Pasif modüller (WHOIS, DNS, header'lar, sertifikalar, arşiv sorguları ...) herkese açık kalır; böylece herkese açık bir sunucu üçüncü kişilere port taraması veya saldırı için kullanılamaz.
 
 ---
 

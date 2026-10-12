@@ -75,6 +75,8 @@ cd dashboard && npm install && npm run dev   # http://localhost:5173
 The database is optional for single scans (results also persist to `logs/<domain>/results.json`). To enable durable storage, set `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — the schema auto-initializes on first connect.
 
 > **Hosting a public instance?** Set `DEMO_MODE=true` to rate-limit scan requests per client and refuse internal/private/reserved targets (SSRF protection). It's off by default so self-hosted users can scan their own infrastructure. See [`.env.example`](.env.example).
+>
+> In demo mode the **intrusive modules** (Nmap, active content testing, subdomain-takeover and origin probing) only run on domains whose owner has proven control by publishing a DNS TXT record (`_webanalyzer.<domain>`, shown by the dashboard or `GET /api/verify/<domain>`). Passive modules (WHOIS, DNS, headers, certificates, archive lookups, ...) stay open to everyone, so a public instance can't be used to port-scan or attack third parties.
 
 ---
 

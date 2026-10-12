@@ -442,3 +442,11 @@ pre.code {
 }
 .banner b { color: var(--high); }
 .banner svg { color: var(--high); flex: none; margin-top: 2px; }
+
+/* ---- Ownership verification ------------------------------------------------ */
+.verify { border: 1px solid var(--border); background: var(--bg-elev); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 14px; font-size: 13px; }
+.verify-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.verify-head > div { flex: 1; min-width: 220px; }
+.record { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border-soft); }
+.record > span { width: 48px; flex: none; }
+.record code { flex: 1; font-family: var(--mono); font-size: 12.5px; word-break: break-all; color: var(--text); }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, dbProblem, MODULES, PRESETS } from './analysis';
+import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, dbProblem, ACTIVE_MODULE_NAMES, MODULES, PRESETS } from './analysis';
 
 describe('extractScore', () => {
   it('handles a plain integer', () => {
@@ -90,5 +90,12 @@ describe('dbProblem', () => {
   });
   it('falls back to a generic reason for unknown errors', () => {
     expect(dbProblem({ database: { connected: false, error: 'weird' } }).reason).toBe('the database is unavailable');
+  });
+});
+
+describe('ACTIVE_MODULE_NAMES', () => {
+  it('lists the intrusive modules', () => {
+    expect([...ACTIVE_MODULE_NAMES].sort()).toEqual(
+      ['Advanced Content Scan', 'CloudFlare Bypass', 'Nmap Zero Day Scan', 'Subdomain Takeover']);
   });
 });

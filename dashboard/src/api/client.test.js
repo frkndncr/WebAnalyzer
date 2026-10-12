@@ -47,4 +47,17 @@ describe('api client', () => {
     });
     await expect(apiGet('/api/x')).resolves.toBe('plain body');
   });
+
+  it('keeps the backend detail on a failed request', async () => {
+    const detail = { code: 'verification_required', skipped: ['Nmap Zero Day Scan'] };
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ detail }, { ok: false, status: 403 }));
+    await expect(apiGet('/api/scan')).rejects.toMatchObject({ status: 403, detail });
+  });
+
+  it('still throws when an error body is not JSON', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false, status: 502, headers: { get: () => 'text/html' }, json: async () => { throw new Error('not json'); },
+    });
+    await expect(apiGet('/api/x')).rejects.toMatchObject({ status: 502, detail: null });
+  });
 });
