@@ -65,6 +65,13 @@ def _synth(title, severity, description="", **extra):
     return {"type": title, "title": title, "severity": severity, "description": description, **extra}
 
 
+# Modules with dedicated extraction above. Every other module (notably plugins) can
+# report findings itself by returning {"findings": [{"title", "severity", ...}]}.
+_DEDICATED = frozenset({
+    "Security Analysis", "Advanced Content Scan", "Subdomain Takeover",
+    "Phishing Domain Protection", "Web Archive Spy", "CloudFlare Bypass",
+})
+
 _HEADER_LEVEL = {"critical": "critical", "high": "high", "medium": "medium"}
 
 # Advanced Content Scan lists and the severity assumed when an entry has none.
@@ -170,6 +177,14 @@ def iter_findings(res):
         exposed = [r for r in _as_list(cf.get("real_ips")) if isinstance(r, dict) and r.get("source") and r.get("source") != "direct_dns"]
         if exposed:
             yield _synth("Origin IP exposed behind CloudFlare", "high"), "CloudFlare Bypass", None
+
+    # Findings reported by the module itself (the plugin contract).
+    for name, data in res.items():
+        if name in _DEDICATED or not isinstance(data, dict):
+            continue
+        for f in _as_list(data.get("findings")):
+            if isinstance(f, dict) and (f.get("title") or f.get("type")):
+                yield {**f, "type": f.get("type") or f.get("title"), "severity": f.get("severity") or "info"}, name, "plugin"
 
 
 def new_vuln_stats() -> dict:
@@ -304,6 +319,7 @@ def list_findings(res) -> list:
     for finding, module, key in iter_findings(res):
         title = (finding.get("type") or finding.get("title") or finding.get("name")
                  or finding.get("vuln_type") or _ACS_FALLBACK_TITLE.get(key) or "Finding")
+        explicit = _text(finding.get("location"))        # plugins may state the location outright
         url = finding.get("source_url") or finding.get("url") or finding.get("endpoint") or finding.get("target") or ""
         line = finding.get("line")
         out.append({
@@ -311,7 +327,7 @@ def list_findings(res) -> list:
             "title": _text(title),
             "module": module,
             "description": _text(finding.get("description") or finding.get("detail")),
-            "location": f"{url}:{line}" if url and line else _text(url),
+            "location": explicit or (f"{url}:{line}" if url and line else _text(url)),
             "evidence": _text(finding.get("evidence") or finding.get("matched_code") or finding.get("value"))[:500],
             "recommendation": _text(finding.get("recommendation") or finding.get("remediation")),
         })

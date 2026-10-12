@@ -16,6 +16,7 @@ const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const text = (v) => (v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v));
 
 function locationOf(f) {
+  if (f.location) return text(f.location);      // plugins may state the location outright
   const url = f.source_url || f.url || f.endpoint || f.target || '';
   return url && f.line ? `${url}:${f.line}` : url;
 }
@@ -34,6 +35,13 @@ function make(module, f, over = {}) {
     confidence: raw.confidence ?? null,
   };
 }
+
+// Modules with dedicated extraction below. Every other module (notably plugins) can
+// report findings itself by returning { findings: [{ title, severity, ... }] }.
+const DEDICATED = new Set([
+  'Security Analysis', 'Advanced Content Scan', 'Subdomain Takeover',
+  'Phishing Domain Protection', 'Web Archive Spy', 'CloudFlare Bypass',
+]);
 
 const HEADER_SEVERITY = { critical: 'critical', high: 'high', medium: 'medium' };
 
@@ -166,6 +174,13 @@ export function extractFindings(results) {
         description: `Possible origin address(es): ${exposed.map((r) => r.ip).join(', ')}.`,
         recommendation: 'Restrict the origin to CloudFlare IP ranges so it cannot be reached directly.',
       }));
+    }
+  }
+
+  for (const [name, data] of Object.entries(results)) {
+    if (DEDICATED.has(name) || !isObj(data)) continue;
+    for (const f of list(data.findings)) {
+      if (isObj(f) && (f.title || f.type)) out.push(make(name, f, { severity: f.severity || 'info' }));
     }
   }
 

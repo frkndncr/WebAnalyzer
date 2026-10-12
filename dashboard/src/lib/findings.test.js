@@ -236,3 +236,42 @@ describe('listTechnologies', () => {
     expect(listTechnologies('x')).toEqual([]);
   });
 });
+
+describe('findings reported by plugins', () => {
+  const plugin = {
+    'My Plugin': {
+      findings: [
+        { title: 'Open admin panel', severity: 'High', description: 'Reachable without login', location: 'https://x.org/admin', recommendation: 'Restrict access' },
+        { type: 'Old library', severity: 'low' },
+        { title: 'Needs a look' },
+      ],
+    },
+  };
+
+  it('counts them with their severity, defaulting to info', () => {
+    const c = countBySeverity(extractFindings(plugin));
+    expect([c.high, c.low, c.info]).toEqual([1, 1, 1]);
+  });
+
+  it('attributes them to the plugin and keeps the details', () => {
+    const admin = extractFindings(plugin).find((f) => f.title === 'Open admin panel');
+    expect(admin.module).toBe('My Plugin');
+    expect(admin.location).toBe('https://x.org/admin');
+    expect(admin.recommendation).toBe('Restrict access');
+  });
+
+  it('accepts `type` as the title', () => {
+    expect(extractFindings(plugin).map((f) => f.title)).toContain('Old library');
+  });
+
+  it('ignores malformed entries', () => {
+    expect(extractFindings({ P: { findings: ['x', null, { severity: 'high' }, { title: '' }, 5] } })).toEqual([]);
+    expect(extractFindings({ P: { findings: 'nope' } })).toEqual([]);
+  });
+
+  it('does not double count modules that already have dedicated handling', () => {
+    const res = { 'Security Analysis': { findings: [{ title: 'X', severity: 'high' }], vulnerability_scan: { vulnerabilities: [{ type: 'Real', severity: 'high' }] } } };
+    expect(extractFindings(res).map((f) => f.title)).toEqual(['Real']);
+  });
+});
+

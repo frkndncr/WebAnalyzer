@@ -54,6 +54,24 @@ def parse_security_txt(text, now=None):
     }
 
 
+def findings_for(found, url, issues):
+    """The findings this module reports (the plugin contract: a "findings" list in the result)."""
+    if not found:
+        return [{
+            "title": "No security.txt published",
+            "severity": "info",
+            "description": "No vulnerability-disclosure contact file was found at /.well-known/security.txt.",
+            "recommendation": "Publish a security.txt (RFC 9116) so researchers know how to report a vulnerability.",
+        }]
+    return [{
+        "title": "security.txt problem",
+        "severity": "low",
+        "description": issue,
+        "location": url,
+        "recommendation": "Fix the security.txt so it follows RFC 9116 (Contact and a future Expires date are required).",
+    } for issue in issues]
+
+
 def _same_site(host, other):
     strip = lambda h: (h or "").lower().removeprefix("www.")  # noqa: E731
     return strip(host) == strip(other)
@@ -95,6 +113,8 @@ def security_txt(domain, get=None):
         text = body.decode("utf-8", "replace") if isinstance(body, bytes) else str(body)
         if "contact:" not in text.lower():     # an HTML error page served with 200 is not a security.txt
             continue
-        return {"found": True, "url": url, **parse_security_txt(text)}
+        parsed = parse_security_txt(text)
+        return {"found": True, "url": url, **parsed, "findings": findings_for(True, url, parsed["issues"])}
     return {"found": False, "url": None, "contact": [], "expires": None, "expired": None, "fields": {},
-            "issues": ["No security.txt was found at /.well-known/security.txt"]}
+            "issues": ["No security.txt was found at /.well-known/security.txt"],
+            "findings": findings_for(False, None, [])}

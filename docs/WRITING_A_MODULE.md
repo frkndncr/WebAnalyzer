@@ -46,6 +46,24 @@ Functions may be `async def`. Blocking functions run in a worker thread, so
 they cannot stall the API. If your module raises, only its own result becomes
 `{"error": "..."}` and the rest of the scan continues.
 
+## Reporting findings
+
+Return a `findings` list and the platform counts, ranks and displays them like
+any built-in finding (Overview totals, Findings tab, SARIF, `--fail-on`):
+
+```python
+return {"found": True, "findings": [
+    {"title": "Open admin panel",            # required (or "type")
+     "severity": "high",                      # critical|high|medium|low|info, default info
+     "description": "Reachable without login",
+     "location": "https://example.com/admin", # optional
+     "recommendation": "Restrict access"},
+]}
+```
+
+Entries without a `title`/`type` are ignored. Return an empty list when there is
+nothing to report. Informational findings are counted separately from risk.
+
 ## Passive vs active - please get this right
 
 On the public demo, **active** modules only run for domains whose owner has
