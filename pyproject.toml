@@ -56,7 +56,7 @@ dependencies = [
 webanalyzer = "main:run_cli"
 
 [tool.setuptools]
-packages = ["bulk", "modules", "database", "utils"]
+packages = ["bulk", "modules", "modules.plugins", "database", "utils"]
 py-modules = ["main", "config", "api", "bulk_scan", "monitor", "check_progress", "domains-check"]
 
 [tool.setuptools.package-data]

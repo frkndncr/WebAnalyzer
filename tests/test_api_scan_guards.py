@@ -24,7 +24,7 @@ def client(monkeypatch):
     started = []
     runs = []
 
-    async def fake_runner(domain, modules, functions):
+    async def fake_runner(domain, modules, *_ignored):
         started.append(domain)
         runs.append((domain, list(modules)))
 
@@ -148,7 +148,10 @@ def test_health_stays_up_when_the_status_probe_itself_fails(client, monkeypatch)
 
 # ─────────────────────────── ownership verification for the active modules ───────────────────────────
 
-from utils.ownership import ACTIVE_MODULES  # noqa: E402
+from modules import registry  # noqa: E402
+from utils.ownership import active_modules  # noqa: E402
+
+ACTIVE_MODULES = active_modules()
 
 PASSIVE_ONLY = ["DNS Records", "SEO Analysis"]
 MIXED = ["DNS Records", "Nmap Zero Day Scan", "SEO Analysis", "Subdomain Takeover"]
@@ -217,14 +220,14 @@ def test_the_get_scan_paths_skip_active_modules_when_unverified(demo, template):
     assert demo.get(template.format(d=PUBLIC) + "?scan=true").status_code == 200
     _domain, modules = demo.runs[0]
     assert not set(modules) & ACTIVE_MODULES
-    assert len(modules) == len(api.MODULE_NAMES) - len(ACTIVE_MODULES)
+    assert len(modules) == len(registry.names()) - len(ACTIVE_MODULES)
 
 
 @pytest.mark.parametrize("template", READ_ENDPOINTS)
 def test_the_get_scan_paths_run_everything_when_verified(demo, monkeypatch, template):
     monkeypatch.setattr(api, "is_verified", lambda d: True)
     demo.get(template.format(d=PUBLIC) + "?scan=true")
-    assert demo.runs[0][1] == list(api.MODULE_NAMES)
+    assert demo.runs[0][1] == list(registry.names())
 
 
 @pytest.mark.parametrize("url,body", [
@@ -283,3 +286,29 @@ def test_health_says_whether_this_is_a_demo(client, monkeypatch):
     assert client.get("/api/system-health").json()["demo_mode"] is True
     monkeypatch.setenv("DEMO_MODE", "false")
     assert client.get("/api/system-health").json()["demo_mode"] is False
+
+
+# ─────────────────────────── module catalogue endpoint ───────────────────────────
+
+def test_modules_endpoint_lists_the_registry(client):
+    body = client.get("/api/modules").json()
+    names = [m["name"] for m in body["modules"]]
+    assert names == list(registry.names())
+    assert "Security.txt" in names                                  # the shipped plugin
+    assert {m["name"] for m in body["modules"] if m["active"]} == set(active_modules())
+    assert body["presets"]["full"] == names
+    assert set(body["presets"]["quick"]) <= set(names)
+
+
+def test_a_module_dropped_into_the_registry_shows_up_everywhere(client, monkeypatch):
+    registry.register(registry.ModuleSpec(name="Contributed", run=lambda d: {"ok": True}, description="from a PR"), replace=True)
+    try:
+        listed = [m["name"] for m in client.get("/api/modules").json()["modules"]]
+        assert "Contributed" in listed
+        monkeypatch.setenv("DEMO_MODE", "false")
+        r = client.post("/api/scan", json={"domain": PUBLIC, "modules": ["Contributed"]})
+        assert r.status_code == 200 and r.json()["modules"] == ["Contributed"]
+        assert client.runs[-1] == (PUBLIC, ["Contributed"])
+    finally:
+        registry.unregister("Contributed")
+

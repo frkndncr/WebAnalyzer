@@ -15,7 +15,7 @@ def fresh_cache():
 # ─────────────────────────── module classification ───────────────────────────
 
 def test_the_intrusive_modules_are_the_active_ones():
-    assert o.ACTIVE_MODULES == {
+    assert o.active_modules() == {
         "Advanced Content Scan", "Nmap Zero Day Scan", "Subdomain Takeover", "CloudFlare Bypass",
     }
 
@@ -28,14 +28,6 @@ def test_split_keeps_order_and_separates_active():
 
 def test_unknown_modules_are_treated_as_passive():
     assert o.split_modules(["Something New"]) == (["Something New"], [])
-
-
-def test_active_names_exist_in_the_scanner_catalogue():
-    """A typo here would silently turn a protection off."""
-    pytest.importorskip("fastapi")
-    import api
-    catalogue = set(api.MODULE_NAMES)
-    assert o.ACTIVE_MODULES <= catalogue
 
 
 # ─────────────────────────── token and instructions ───────────────────────────
@@ -138,12 +130,3 @@ def test_removing_the_record_revokes_verification_after_the_cache_expires():
     assert o.is_verified("example.com", resolver=resolver, now=1000)
     records.clear()
     assert not o.is_verified("example.com", resolver=resolver, now=1000 + 601)
-
-
-def test_frontend_and_backend_agree_on_which_modules_are_active():
-    """The dashboard flags active modules by hand; this keeps it from drifting."""
-    import pathlib
-    import re
-    source = pathlib.Path(__file__).resolve().parents[1].joinpath("dashboard/src/lib/analysis.js").read_text(encoding="utf-8")
-    flagged = set(re.findall(r"\{ name: '([^']+)',[^}]*?active: true", source))
-    assert flagged == set(o.ACTIVE_MODULES)

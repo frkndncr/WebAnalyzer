@@ -35,7 +35,7 @@ from utils.result_analysis import (
     average_score,
 )
 from utils.safety import classify_target, RateLimiter, demo_mode_enabled, normalize_target
-from utils.ownership import ACTIVE_MODULES, split_modules, is_verified
+from utils.ownership import active_modules, split_modules, is_verified
 from utils.ownership import instructions as ownership_instructions
 
 # Public-demo guardrails. Only enforced when DEMO_MODE is enabled, so
@@ -81,7 +81,7 @@ def verification_required(domain: str, skipped=None) -> HTTPException:
     return HTTPException(status_code=403, detail={
         "code": "verification_required",
         "message": "Active modules only run on domains whose ownership is verified.",
-        "skipped": list(skipped or sorted(ACTIVE_MODULES)),
+        "skipped": list(skipped or sorted(active_modules())),
         "verification": ownership_instructions(domain),
     })
 
@@ -89,7 +89,7 @@ def verification_required(domain: str, skipped=None) -> HTTPException:
 async def plan_scan_modules(domain: str, requested):
     """Decide what a scan may run: ``(modules_to_run, skipped_active_modules)``.
 
-    In DEMO_MODE the intrusive modules (utils.ownership.ACTIVE_MODULES) only run
+    In DEMO_MODE the intrusive modules (modules registered with active=True) only run
     for a domain whose owner has published the verification TXT record; the
     passive ones are open to everyone. Outside DEMO_MODE nothing is restricted.
     Every path that starts a scan goes through here.
@@ -111,23 +111,17 @@ async def require_verified(domain: str):
         raise verification_required(domain)
 
 # Modules
-from modules.domain_info import get_domain_info
-from modules.domain_dns import DNSAnalyzer
-from modules.subfinder_tool import run_subfinder
-from modules.seo_analysis import analyze_advanced_seo
-from modules.web_technologies import detect_web_technologies
-from modules.security_analysis import analyze_security
-from modules.contact_spy import GlobalDomainScraper
-from modules.subdomain_takeover import SubdomainTakeover
 from modules.advanced_content_scanner import AdvancedContentScanner
-from modules.cloudflare_bypass import CloudflareBypass
-from modules.nmap_zero_day import UltraAdvancedNetworkScanner
-from modules.geo_analysis import analyze_geo
-from modules.archive_spy import ArchiveSpy
-from modules.phishing_detector import PhishingDetector
-from modules.ssl_association import SSLAssociation
-from modules.attack_path_planner import AttackPathPlanner
 from modules.report_generator import generate_executive_report
+from modules import registry
+from modules import builtin as _builtin_modules  # noqa: F401 - registers the built-in modules
+from modules.runner import run_modules
+
+# Third-party / contributed modules (modules/plugins and WEBANALYZER_PLUGIN_DIRS).
+PLUGIN_LOAD_RESULTS = registry.discover_plugins()
+for _path, _error in PLUGIN_LOAD_RESULTS:
+    if _error:
+        logging.error("Plugin %s was not loaded: %s", os.path.basename(_path), _error)
 
 app = FastAPI(title="WebAnalyzer API", description="FastAPI Backend for WebAnalyzer React Panel")
 
@@ -207,31 +201,6 @@ async def get_status(domain: str):
         
     raise HTTPException(status_code=404, detail="Scan not found or not active")
 
-def build_module_functions() -> dict:
-    """The scan modules by name: the single catalogue every scan path uses."""
-    return {
-        "Domain Information": lambda d: get_domain_info(d),
-        "DNS Records": lambda d: DNSAnalyzer().get_dns_records(d),
-        "SEO Analysis": analyze_advanced_seo,
-        "Web Technologies": detect_web_technologies,
-        "Security Analysis": analyze_security,
-        "Advanced Content Scan": lambda d: AdvancedContentScanner(d).run(),
-        "Contact Spy": lambda d: GlobalDomainScraper(d).crawl(),
-        "Subdomain Discovery": lambda d: run_subfinder(d),
-        "Subdomain Takeover": lambda d: SubdomainTakeover(d).run(run_subfinder(d)),
-        "CloudFlare Bypass": lambda d: CloudflareBypass(d).run(),
-        "Nmap Zero Day Scan": lambda d: UltraAdvancedNetworkScanner(domain=d).run_comprehensive_scan(d),
-        "GEO Analysis": analyze_geo,
-        "Web Archive Spy": lambda d: ArchiveSpy(d).run(),
-        "Phishing Domain Protection": lambda d: PhishingDetector(d).run(),
-        "SSL SAN Association": lambda d: SSLAssociation(d).run(),
-        "Attack Path Planner": lambda d: AttackPathPlanner(d).run()
-    }
-
-
-MODULE_NAMES = tuple(build_module_functions())
-
-
 @app.post("/api/scan")
 async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, http_request: Request):
     """Starts a background scan and returns immediately"""
@@ -248,7 +217,7 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, ht
         "results": {},
         "skipped": skipped,
     }
-    background_tasks.add_task(run_scan_background, request.domain, modules, build_module_functions())
+    background_tasks.add_task(run_scan_background, request.domain, modules)
 
     return {
         "status": "Scan started via Background Task",
@@ -259,61 +228,28 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, ht
     }
 
 
-async def run_scan_background(domain: str, selected_modules: list[str], module_functions: dict):
-    """Background task function to avoid blocking the HTTP request"""
+async def run_scan_background(domain: str, selected_modules: list[str], *_unused):
+    """Run the selected modules in the background and persist the results."""
     executor = ModuleExecutor()
-    results = {}
-    
-    module_weights = {
-        'Domain Information': 'light', 'DNS Records': 'light', 
-        'SEO Analysis': 'medium', 'Web Technologies': 'medium',
-        'Security Analysis': 'heavy', 'Advanced Content Scan': 'heavy',
-        'Contact Spy': 'heavy', 'Subdomain Discovery': 'heavy',
-        'Subdomain Takeover': 'heavy', 'CloudFlare Bypass': 'heavy',
-        'Nmap Zero Day Scan': 'heavy', 'GEO Analysis': 'light',
-        'Web Archive Spy': 'heavy', 'Phishing Domain Protection': 'heavy',
-        'SSL SAN Association': 'medium', 'Attack Path Planner': 'medium'
-    }
-    
-    for module_name in selected_modules:
-        if module_name in module_functions:
-            ACTIVE_SCANS[domain]["current_module"] = module_name
-            func = module_functions[module_name]
-            if module_name == "AttackPathPlanner":
-                func = lambda d: AttackPathPlanner(d, findings=results).run()
-            delay_type = module_weights.get(module_name, 'medium')
-            
-            # Run blocking modules in a thread executor to keep the event loop responsive
-            try:
-                async_modules = {"Web Archive Spy", "Phishing Domain Protection", "SSL SAN Association", "Attack Path Planner"}
-                if module_name in async_modules or asyncio.iscoroutinefunction(func):
-                    res = func(domain)
-                    if asyncio.iscoroutine(res):
-                        res = await res
-                else:
-                    # Run synchronous function in a thread executor
-                    loop = asyncio.get_running_loop()
-                    def sync_wrapper():
-                        return func(domain)
-                    res = await loop.run_in_executor(None, sync_wrapper)
-                    if asyncio.iscoroutine(res):
-                        res = await res
-                results[module_name] = res
-                ACTIVE_SCANS[domain]["results"][module_name] = res
-            except Exception as e:
-                results[module_name] = {"error": str(e)}
-                ACTIVE_SCANS[domain]["results"][module_name] = {"error": str(e)}
-                
-            ACTIVE_SCANS[domain]["completed"] += 1
+    state = ACTIVE_SCANS[domain]
 
-    ACTIVE_SCANS[domain]["current_module"] = "Writing to disk & database..."
+    def started(name):
+        state["current_module"] = name
+
+    def finished(name, outcome):
+        state["results"][name] = outcome
+        state["completed"] += 1
+
+    results = await run_modules(domain, selected_modules, on_start=started, on_done=finished)
+
+    state["current_module"] = "Writing to disk & database..."
     # Save logic directly to logs/domain/results.json
     await asyncio.to_thread(save_results_to_json, domain, results)
-    
+
     # Save logic directly to MySQL database as a permanent backup!
     await asyncio.to_thread(save_scan_results_to_db, domain, results)
-    
-    ACTIVE_SCANS[domain]["current_module"] = "Finished"
+
+    state["current_module"] = "Finished"
     executor.cleanup()
 
 
@@ -832,8 +768,7 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, http_
                 pass
 
         if domain not in ACTIVE_SCANS:
-            modules_list, skipped = await plan_scan_modules(domain, MODULE_NAMES)
-            module_functions = build_module_functions()
+            modules_list, skipped = await plan_scan_modules(domain, registry.names())
             ACTIVE_SCANS[domain] = {
                 "total": len(modules_list),
                 "completed": 0,
@@ -841,7 +776,7 @@ async def get_threat_intel(domain: str, background_tasks: BackgroundTasks, http_
                 "results": {},
                 "skipped": skipped
             }
-            background_tasks.add_task(run_scan_background, domain, modules_list, module_functions)
+            background_tasks.add_task(run_scan_background, domain, modules_list)
             intel['is_scanning'] = True
             intel['scan_progress'] = {
                 'total': len(modules_list),
@@ -1095,8 +1030,7 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, http_r
                 pass
 
         if domain not in ACTIVE_SCANS:
-            modules_list, skipped = await plan_scan_modules(domain, MODULE_NAMES)
-            module_functions = build_module_functions()
+            modules_list, skipped = await plan_scan_modules(domain, registry.names())
             ACTIVE_SCANS[domain] = {
                 "total": len(modules_list),
                 "completed": 0,
@@ -1104,7 +1038,7 @@ async def get_network_map(domain: str, background_tasks: BackgroundTasks, http_r
                 "results": {},
                 "skipped": skipped
             }
-            background_tasks.add_task(run_scan_background, domain, modules_list, module_functions)
+            background_tasks.add_task(run_scan_background, domain, modules_list)
             network['is_scanning'] = True
             network['scan_progress'] = {
                 'total': len(modules_list),
@@ -1258,6 +1192,16 @@ async def get_recent_alerts():
     return sort_and_dedupe_alerts(alerts, limit=15)
 
 
+@app.get("/api/modules")
+async def list_modules():
+    """The analysis modules (built-in and plugins) and the scan presets."""
+    from modules.builtin import PRESETS
+    available = set(registry.names())
+    presets = {key: [n for n in names if n in available] for key, names in PRESETS.items()}
+    presets["full"] = list(registry.names())
+    return {"modules": registry.catalogue(), "presets": presets}
+
+
 @app.get("/api/verify/{domain}")
 async def verify_domain(domain: str, http_request: Request):
     """Has the owner of ``domain`` published the verification TXT record?
@@ -1281,7 +1225,7 @@ async def verify_domain(domain: str, http_request: Request):
         **ownership_instructions(host),
         "verified": verified,
         "required": demo_mode_enabled(),
-        "active_modules": sorted(ACTIVE_MODULES),
+        "active_modules": sorted(active_modules()),
     }
 
 

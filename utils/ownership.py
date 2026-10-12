@@ -24,14 +24,16 @@ from typing import Callable, Iterable, List, Optional, Tuple
 
 from utils.safety import normalize_target
 
-# Modules that send intrusive traffic to the target (or to hosts derived from
-# it). They require a verified domain in DEMO_MODE; everything else is passive.
-ACTIVE_MODULES = frozenset({
-    "Advanced Content Scan",   # aggressive crawl plus active injection tests
-    "Nmap Zero Day Scan",      # port and service scanning
-    "Subdomain Takeover",      # probes every discovered subdomain
-    "CloudFlare Bypass",       # probes candidate origin addresses
-})
+def active_modules() -> frozenset:
+    """Names of the intrusive modules: the registry specs flagged ``active=True``.
+
+    In DEMO_MODE these need a verified domain; everything else is passive.
+    (Port scanning, active injection tests, takeover and origin probing.)
+    """
+    from modules import builtin  # noqa: F401 - makes sure the built-in modules are registered
+    from modules import registry
+    return registry.active_names()
+
 
 RECORD_PREFIX = "webanalyzer-verify="
 RECORD_LABEL = "_webanalyzer"
@@ -45,12 +47,13 @@ def verification_token(domain: str, secret: Optional[str] = None) -> str:
     return hmac.new(key or b"webanalyzer", f"verify:{host}".encode(), hashlib.sha256).hexdigest()[:32]
 
 
-def split_modules(requested: Iterable[str]) -> Tuple[List[str], List[str]]:
+def split_modules(requested: Iterable[str], active: Optional[Iterable[str]] = None) -> Tuple[List[str], List[str]]:
     """``(passive, active)`` from the requested modules, keeping their order."""
-    passive, active = [], []
+    active_set = frozenset(active_modules() if active is None else active)
+    passive_names, active_names = [], []
     for name in requested:
-        (active if name in ACTIVE_MODULES else passive).append(name)
-    return passive, active
+        (active_names if name in active_set else passive_names).append(name)
+    return passive_names, active_names
 
 
 def txt_matches(records: Iterable[str], token: str) -> bool:

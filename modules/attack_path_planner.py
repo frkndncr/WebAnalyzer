@@ -25,7 +25,9 @@ class AttackPathPlanner:
             if os.path.exists(results_file):
                 try:
                     with open(results_file, "r", encoding="utf-8") as f:
-                        findings = json.load(f)
+                        loaded = json.load(f)
+                    # results.json wraps the modules as {"domain": ..., "results": {...}}
+                    findings = loaded.get("results", loaded) if isinstance(loaded, dict) else {}
                 except Exception as e:
                     logger.error(f"Error loading findings for attack planner: {e}")
 

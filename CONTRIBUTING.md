@@ -8,6 +8,9 @@ Please take a moment to review this document to make the contribution process sm
 
 ## 🗺️ How Can I Contribute?
 
+### 🧩 Adding an analysis module
+The easiest and most valuable contribution: a module is **one function in one file**. Drop it into `modules/plugins/` and it appears in the API, the dashboard and the scan presets automatically. Start from the 20-line example in [docs/WRITING_A_MODULE.md](docs/WRITING_A_MODULE.md); a complete, tested reference is [`modules/plugins/security_txt.py`](modules/plugins/security_txt.py). Mark a module `active=True` if it sends intrusive traffic.
+
 ### 🐛 Reporting Bugs
 * **Search first**: Check existing issues to see if the bug has already been reported.
 * **Open an issue**: If you find a new bug, open an issue using the Bug Report template.

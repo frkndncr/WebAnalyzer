@@ -168,7 +168,7 @@ Respect rate limits and terms of service, follow responsible disclosure, and com
 
 ## Contributing
 
-Contributions are welcome — issues, feature requests, and pull requests all help. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [issue templates](.github/ISSUE_TEMPLATE). Good places to start: a new analysis module, dashboard improvements, or test coverage.
+Contributions are welcome — issues, feature requests, and pull requests all help. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [issue templates](.github/ISSUE_TEMPLATE). Good places to start: a new analysis module (one file - see [Writing a module](docs/WRITING_A_MODULE.md)), dashboard improvements, or test coverage.
 
 ```bash
 # Run the backend test suite
