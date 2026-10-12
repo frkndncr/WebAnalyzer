@@ -1,5 +1,63 @@
 # Changelog
 
+## [3.7.0] - 2026-10-12
+
+A large release: a real command line and GitHub Action, a plugin system, a safer
+public demo, and a rebuilt dashboard. (Versions 3.6.3 - 3.6.5 were not recorded
+in this file.)
+
+### Added
+- **Command line**: `webanalyzer scan | modules | verify | version`. Output as
+  `text`, `json`, `jsonl`, **SARIF 2.1.0** (GitHub Code Scanning) or `markdown`;
+  `--fail-on` makes a scan gate a pipeline (exit codes 0/1/2/3), `--passive`
+  never runs intrusive modules, `--timeout`, `--list`, stdin and `-c` for
+  parallel domains. The interactive mode and the older `-u/-l/-m` flags still work.
+- **GitHub Action** (`uses: frkndncr/WebAnalyzer@...`): scans, writes SARIF, adds
+  a Markdown job summary, optionally uploads to Code Scanning and enforces a
+  severity gate. See `docs/CI.md`.
+- **Module registry and plugins**: a module is one function in one file. Drop it
+  into `modules/plugins/` (or a directory in `WEBANALYZER_PLUGIN_DIRS`) and it
+  appears in the API, the dashboard and the CLI. See `docs/WRITING_A_MODULE.md`.
+  Ships with a `Security.txt` (RFC 9116) check as a reference plugin.
+- **Domain ownership verification** for the public demo: in `DEMO_MODE` the
+  intrusive modules (Nmap, active content tests, takeover and origin probing)
+  only run on domains whose owner has published a DNS TXT record. New
+  `GET /api/verify/<domain>` and `GET /api/modules`.
+- Dashboard: Threat Intelligence (MITRE ATT&CK), Network Map and Attack Path
+  pages; a Results page with Summary / Findings / Modules tabs; shareable URLs
+  (`#/results/example.com`); a "Database offline" banner; privacy, KVKK/GDPR,
+  terms and cookie pages; SEO metadata.
+- `/api/system-health` reports the database state and `demo_mode`.
+- Test suites: ~370 backend tests and a Vitest suite for the dashboard.
+
+### Changed
+- The dashboard was rebuilt from scratch with a lighter design and a smaller
+  bundle (about 460 KB to 250 KB); the module list now comes from the API.
+- The database pool defaults to 5 connections (was 20), the connect timeout to
+  10 s, and a failed connection is not retried for 20 s, so a database outage no
+  longer freezes the whole API. Blocking database calls run in worker threads.
+- One definition of a "finding" is used by the API, the CLI and the dashboard, so
+  counts agree everywhere (missing security headers, information disclosure,
+  dangerous HTTP methods, CORS issues, exposed endpoints, ... are included).
+- The version number lives in `utils/version.py` and `pyproject.toml` reads it.
+
+### Fixed
+- **Security:** `GET /api/network-map/<domain>` and `GET /api/threat-intel/<domain>`
+  started full scans and bypassed the demo's SSRF block and rate limit. Reads no
+  longer start scans.
+- Attack Path Planner never received the other modules' findings (a name
+  mismatch), so every domain got the same generic path.
+- The XSS "safe context" check treated reflected payloads as safe when no quote
+  character was involved, hiding real findings.
+- `is_json_response` raised on whitespace-only bodies.
+- Overview numbers: the domain count was always 1, per-scan finding counts were
+  always 0, scans stored as `https://x/` and `x` were listed twice.
+- Modules that outlived `--timeout` kept the process alive.
+- Network Map listed nested objects as technologies.
+
+### Security notes
+- Public instances should set `DEMO_MODE=true`; see the README.
+
 ## [3.6.2] - 2026-06-25
 
 ### Fixed
