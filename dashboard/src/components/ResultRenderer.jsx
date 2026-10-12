@@ -1,13 +1,13 @@
 import React from 'react';
 import { Icon, Badge } from './ui';
-import { MODULES, severityClass, localize } from '../lib/analysis';
+import { severityClass, localize } from '../lib/analysis';
+import { useCatalogue } from '../context/catalogue';
 import { moduleStatus } from '../lib/findings';
 
 const isPrimitive = (v) => v === null || v === undefined || ['string', 'number', 'boolean'].includes(typeof v);
 const isUrl = (s) => /^https?:\/\/\S+$/i.test(s);
 
 const GROUP_ICON = { recon: 'globe', security: 'shield', offensive: 'bug' };
-const MODULE_META = Object.fromEntries(MODULES.map((m) => [m.name, m]));
 
 /* ---- recursive value renderer --------------------------------------------- */
 
@@ -76,7 +76,8 @@ function moduleSignal(data) {
 /* ---- module card ---------------------------------------------------------- */
 
 function ModuleCard({ name, data, open, onToggle }) {
-  const meta = MODULE_META[name];
+  const { byName } = useCatalogue();
+  const meta = byName[name];
   const status = moduleStatus(data);
   const sig = status === 'ok' ? moduleSignal(data) : null;
   return (

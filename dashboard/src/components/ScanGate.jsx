@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiPost, ApiError } from '../api/client';
-import { PRESETS, dbProblem } from '../lib/analysis';
+import { dbProblem } from '../lib/analysis';
+import { useCatalogue } from '../context/catalogue';
 import { useHealth } from '../context/health';
 import { Empty, Spinner } from './ui';
 import VerifyPanel from './VerifyPanel';
@@ -14,12 +15,13 @@ export default function ScanGate({ domain, data, reload }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const dbDown = Boolean(dbProblem(useHealth()));
+  const { presets } = useCatalogue();
 
   const start = async () => {
     setBusy(true);
     setError(null);
     try {
-      await apiPost('/api/scan', { domain, modules: PRESETS.full });
+      await apiPost('/api/scan', { domain, modules: presets.full });
       reload();
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) setError('That target is not allowed on this instance.');

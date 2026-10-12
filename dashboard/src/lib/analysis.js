@@ -4,33 +4,6 @@
  * analysis.test.js.
  */
 
-/* The 16 analysis modules. `name` must match the backend's module keys exactly
- * (they are sent verbatim in POST /api/scan). */
-export const MODULES = [
-  { name: 'Domain Information', desc: 'WHOIS, registrar, dates', tier: 'low', group: 'recon' },
-  { name: 'DNS Records', desc: 'A, MX, TXT, CNAME records', tier: 'low', group: 'recon' },
-  { name: 'GEO Analysis', desc: 'Geolocation & AI directives', tier: 'low', group: 'recon' },
-  { name: 'SEO Analysis', desc: 'Meta tags, Open Graph', tier: 'low', group: 'recon' },
-  { name: 'Web Technologies', desc: 'Frameworks, CMS, stack', tier: 'low', group: 'recon' },
-  { name: 'Contact Spy', desc: 'Emails, phones, socials', tier: 'medium', group: 'recon' },
-  { name: 'Subdomain Discovery', desc: 'Subdomain enumeration', tier: 'medium', group: 'recon' },
-  { name: 'Security Analysis', desc: 'Headers, SSL/TLS, WAF', tier: 'medium', group: 'security' },
-  { name: 'Advanced Content Scan', desc: 'Secrets, JS taint, SSRF', tier: 'medium', group: 'security', active: true },
-  { name: 'Web Archive Spy', desc: 'Wayback secret scraping', tier: 'medium', group: 'security' },
-  { name: 'SSL SAN Association', desc: 'Certificate asset mapping', tier: 'medium', group: 'security' },
-  { name: 'Subdomain Takeover', desc: 'Dangling CNAME checks', tier: 'high', group: 'offensive', active: true },
-  { name: 'CloudFlare Bypass', desc: 'Origin IP unmasking', tier: 'high', group: 'offensive', active: true },
-  { name: 'Nmap Zero Day Scan', desc: 'Ports & service scan', tier: 'high', group: 'offensive', active: true },
-  { name: 'Phishing Domain Protection', desc: 'Typosquat detection', tier: 'high', group: 'offensive' },
-  { name: 'Attack Path Planner', desc: 'Exploit chain roadmap', tier: 'high', group: 'offensive' },
-];
-
-export const PRESETS = {
-  quick: ['Domain Information', 'DNS Records', 'GEO Analysis'],
-  standard: ['Domain Information', 'DNS Records', 'GEO Analysis', 'SEO Analysis', 'Web Technologies', 'Security Analysis'],
-  full: MODULES.map((m) => m.name),
-};
-
 /** Normalise any score shape (int, "50/100", {overall_score|score|Score}) to
  *  { score:number|null, grade:string|null }. */
 export function extractScore(raw) {
@@ -127,6 +100,3 @@ export function dbProblem(health) {
   if (!db || db.connected !== false) return null;
   return { reason: DB_REASONS[db.error] || 'the database is unavailable', retryIn: db.retry_in || 0 };
 }
-
-/** Intrusive modules: in the public demo they only run on domains whose ownership is verified. */
-export const ACTIVE_MODULE_NAMES = MODULES.filter((m) => m.active).map((m) => m.name);

@@ -1,0 +1,157 @@
+{
+  "modules": [
+    {
+      "name": "Domain Information",
+      "description": "WHOIS, registrar, dates",
+      "group": "recon",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "DNS Records",
+      "description": "A, MX, TXT, CNAME records",
+      "group": "recon",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "GEO Analysis",
+      "description": "Geolocation & AI directives",
+      "group": "recon",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "SEO Analysis",
+      "description": "Meta tags, Open Graph",
+      "group": "recon",
+      "weight": "medium",
+      "active": false
+    },
+    {
+      "name": "Web Technologies",
+      "description": "Frameworks, CMS, stack",
+      "group": "recon",
+      "weight": "medium",
+      "active": false
+    },
+    {
+      "name": "Contact Spy",
+      "description": "Emails, phones, socials",
+      "group": "recon",
+      "weight": "heavy",
+      "active": false
+    },
+    {
+      "name": "Subdomain Discovery",
+      "description": "Subdomain enumeration",
+      "group": "recon",
+      "weight": "heavy",
+      "active": false
+    },
+    {
+      "name": "Security Analysis",
+      "description": "Headers, SSL/TLS, WAF",
+      "group": "security",
+      "weight": "heavy",
+      "active": false
+    },
+    {
+      "name": "Advanced Content Scan",
+      "description": "Secrets, JS taint, SSRF",
+      "group": "security",
+      "weight": "heavy",
+      "active": true
+    },
+    {
+      "name": "Web Archive Spy",
+      "description": "Wayback secret scraping",
+      "group": "security",
+      "weight": "heavy",
+      "active": false
+    },
+    {
+      "name": "SSL SAN Association",
+      "description": "Certificate asset mapping",
+      "group": "security",
+      "weight": "medium",
+      "active": false
+    },
+    {
+      "name": "Subdomain Takeover",
+      "description": "Dangling CNAME checks",
+      "group": "offensive",
+      "weight": "heavy",
+      "active": true
+    },
+    {
+      "name": "CloudFlare Bypass",
+      "description": "Origin IP unmasking",
+      "group": "offensive",
+      "weight": "heavy",
+      "active": true
+    },
+    {
+      "name": "Nmap Zero Day Scan",
+      "description": "Ports & service scan",
+      "group": "offensive",
+      "weight": "heavy",
+      "active": true
+    },
+    {
+      "name": "Phishing Domain Protection",
+      "description": "Typosquat detection",
+      "group": "offensive",
+      "weight": "heavy",
+      "active": false
+    },
+    {
+      "name": "Attack Path Planner",
+      "description": "Exploit chain roadmap",
+      "group": "offensive",
+      "weight": "medium",
+      "active": false
+    },
+    {
+      "name": "Security.txt",
+      "description": "RFC 9116 vulnerability-disclosure contact",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    }
+  ],
+  "presets": {
+    "quick": [
+      "Domain Information",
+      "DNS Records",
+      "GEO Analysis"
+    ],
+    "standard": [
+      "Domain Information",
+      "DNS Records",
+      "GEO Analysis",
+      "SEO Analysis",
+      "Web Technologies",
+      "Security Analysis"
+    ],
+    "full": [
+      "Domain Information",
+      "DNS Records",
+      "GEO Analysis",
+      "SEO Analysis",
+      "Web Technologies",
+      "Contact Spy",
+      "Subdomain Discovery",
+      "Security Analysis",
+      "Advanced Content Scan",
+      "Web Archive Spy",
+      "SSL SAN Association",
+      "Subdomain Takeover",
+      "CloudFlare Bypass",
+      "Nmap Zero Day Scan",
+      "Phishing Domain Protection",
+      "Attack Path Planner",
+      "Security.txt"
+    ]
+  }
+}

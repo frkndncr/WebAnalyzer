@@ -4,6 +4,8 @@ import Footer from './components/Footer';
 import CookieConsent from './components/CookieConsent';
 import DbBanner from './components/DbBanner';
 import { HealthContext } from './context/health';
+import { CatalogueContext } from './context/catalogue';
+import { buildCatalogue, DEFAULT_CATALOGUE } from './lib/catalogue';
 import Overview from './pages/Overview';
 import NewScan from './pages/NewScan';
 import Results from './pages/Results';
@@ -36,6 +38,7 @@ function readHash() {
 export default function App() {
   const [{ page, domain }, setRoute] = useState(readHash);
   const [health, setHealth] = useState(null);
+  const [catalogue, setCatalogue] = useState(DEFAULT_CATALOGUE);
 
   const setPage = (p) => setRoute((r) => ({ ...r, page: p }));
   const setDomain = (d) => setRoute((r) => ({ ...r, domain: d }));
@@ -54,6 +57,15 @@ export default function App() {
     if (window.location.hash !== hash) window.history.replaceState(null, '', hash);
   }, [page, domain]);
 
+  // The live module list: modules added on the backend show up without a frontend change.
+  useEffect(() => {
+    const controller = new AbortController();
+    apiRequest('/api/modules', { signal: controller.signal })
+      .then((payload) => setCatalogue(buildCatalogue(payload)))
+      .catch(() => { /* keep the bundled snapshot */ });
+    return () => controller.abort();
+  }, []);
+
   usePolling(async (signal) => {
     try {
       const h = await apiRequest('/api/system-health', { signal });
@@ -71,6 +83,7 @@ export default function App() {
 
   return (
     <HealthContext.Provider value={health}>
+    <CatalogueContext.Provider value={catalogue}>
     <div className="app">
       <Sidebar active={page} onNav={setPage} health={health} />
       <main className="main">
@@ -94,6 +107,7 @@ export default function App() {
       </main>
       <CookieConsent onNav={setPage} />
     </div>
+    </CatalogueContext.Provider>
     </HealthContext.Provider>
   );
 }

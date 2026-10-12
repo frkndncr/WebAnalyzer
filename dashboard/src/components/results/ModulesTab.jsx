@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import ResultRenderer from '../ResultRenderer';
-import { MODULES } from '../../lib/analysis';
+import { useCatalogue } from '../../context/catalogue';
 import { moduleStatus } from '../../lib/findings';
 
-const ORDER = MODULES.map((m) => m.name);
-
 export default function ModulesTab({ results, onCopy }) {
+  const { names: ORDER } = useCatalogue();
   const [query, setQuery] = useState('');
   const [openMap, setOpenMap] = useState({});
 
@@ -17,7 +16,7 @@ export default function ModulesTab({ results, onCopy }) {
         const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
         return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       });
-  }, [results, query]);
+  }, [results, query, ORDER]);
 
   const toggle = (name, open) => setOpenMap((m) => (m[name] === open ? m : { ...m, [name]: open }));
   const setAll = (open) => setOpenMap(Object.fromEntries(names.map((n) => [n, open])));

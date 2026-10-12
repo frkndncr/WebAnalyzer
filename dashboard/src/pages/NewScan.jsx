@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { apiPost, ApiError } from '../api/client';
-import { MODULES, PRESETS, ACTIVE_MODULE_NAMES, cleanDomain } from '../lib/analysis';
+import { cleanDomain } from '../lib/analysis';
+import { useCatalogue } from '../context/catalogue';
 import VerifyPanel from '../components/VerifyPanel';
 import { Icon } from '../components/ui';
 
@@ -11,8 +12,9 @@ const PRESET_BTNS = [
 ];
 
 export default function NewScan({ onLaunched }) {
+  const { modules, presets, activeNames } = useCatalogue();
   const [domain, setDomain] = useState('');
-  const [selected, setSelected] = useState(() => new Set(PRESETS.standard));
+  const [selected, setSelected] = useState(() => new Set(presets.standard));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -23,7 +25,7 @@ export default function NewScan({ onLaunched }) {
       return next;
     });
   };
-  const applyPreset = (id) => setSelected(new Set(PRESETS[id]));
+  const applyPreset = (id) => setSelected(new Set(presets[id]));
 
   const launch = async (e) => {
     e.preventDefault();
@@ -77,19 +79,19 @@ export default function NewScan({ onLaunched }) {
         <div className="card-title">
           Modules
           <span className="flex" style={{ gap: 6 }}>
-            <button type="button" className="btn ghost sm" onClick={() => setSelected(new Set(PRESETS.full))}>All</button>
+            <button type="button" className="btn ghost sm" onClick={() => setSelected(new Set(presets.full))}>All</button>
             <button type="button" className="btn ghost sm" onClick={() => setSelected(new Set())}>None</button>
           </span>
         </div>
         <div className="mod-grid">
-          {MODULES.map((m) => {
+          {modules.map((m) => {
             const on = selected.has(m.name);
             return (
               <div key={m.name} className={`mod ${on ? 'on' : ''}`} onClick={() => toggle(m.name)}>
                 <span className="box">{on ? '✓' : ''}</span>
                 <div>
                   <div className="nm">{m.name}</div>
-                  <div className="ds">{m.desc}</div>
+                  <div className="ds">{m.description}</div>
                 </div>
               </div>
             );
@@ -97,7 +99,7 @@ export default function NewScan({ onLaunched }) {
         </div>
       </div>
 
-      {cleanDomain(domain) && ACTIVE_MODULE_NAMES.some((n) => selected.has(n)) && (
+      {cleanDomain(domain) && activeNames.some((n) => selected.has(n)) && (
         <VerifyPanel key={cleanDomain(domain)} domain={cleanDomain(domain)} />
       )}
 

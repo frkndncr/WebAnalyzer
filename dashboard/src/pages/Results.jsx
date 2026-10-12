@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest, apiPost, ApiError } from '../api/client';
-import { extractScore, scoreSeverity, MODULES, PRESETS } from '../lib/analysis';
+import { extractScore, scoreSeverity } from '../lib/analysis';
+import { useCatalogue } from '../context/catalogue';
 import { extractFindings, countBySeverity, moduleStatus } from '../lib/findings';
 import { Empty, Spinner } from '../components/ui';
 import DomainBar from '../components/DomainBar';
@@ -9,9 +10,8 @@ import SummaryTab from '../components/results/SummaryTab';
 import FindingsTab from '../components/results/FindingsTab';
 import ModulesTab from '../components/results/ModulesTab';
 
-const KNOWN_MODULES = new Set(MODULES.map((m) => m.name));
-
 export default function Results({ domain, setDomain }) {
+  const { names, presets } = useCatalogue();
   const [tab, setTab] = useState('summary');
   const [severity, setSeverity] = useState('all');
   const [reload, setReload] = useState(0);
@@ -83,8 +83,9 @@ export default function Results({ domain, setDomain }) {
   };
 
   const rescan = () => {
-    const previous = Object.keys(results || {}).filter((n) => KNOWN_MODULES.has(n));
-    startScan(previous.length ? previous : PRESETS.standard);
+    const known = new Set(names);
+    const previous = Object.keys(results || {}).filter((n) => known.has(n));
+    startScan(previous.length ? previous : presets.standard);
   };
 
   const { score, grade } = extractScore(results?.['Security Analysis']?.security_score);
@@ -103,7 +104,7 @@ export default function Results({ domain, setDomain }) {
       return (
         <Empty title={`No results for ${domain} yet`}>
           <div style={{ marginBottom: 14 }}>It has not been scanned. Run a standard scan to get started.</div>
-          <button className="btn primary" type="button" disabled={busy} onClick={() => startScan(PRESETS.standard)}>
+          <button className="btn primary" type="button" disabled={busy} onClick={() => startScan(presets.standard)}>
             {busy ? 'Starting…' : `Scan ${domain}`}
           </button>
         </Empty>

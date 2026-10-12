@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { apiGet } from '../api/client';
 import { useHealth } from '../context/health';
-import { ACTIVE_MODULE_NAMES } from '../lib/analysis';
+import { useCatalogue } from '../context/catalogue';
 import { Badge, Spinner } from './ui';
 
 /**
@@ -11,6 +11,7 @@ import { Badge, Spinner } from './ui';
  */
 export default function VerifyPanel({ domain, compact = false }) {
   const demo = Boolean(useHealth()?.demo_mode);
+  const { activeNames } = useCatalogue();
   const [info, setInfo] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -44,7 +45,7 @@ export default function VerifyPanel({ domain, compact = false }) {
           <b>Active modules need ownership verification</b>
           {!compact && (
             <div className="muted" style={{ marginTop: 3 }}>
-              {ACTIVE_MODULE_NAMES.join(', ')} send intrusive traffic, so on this public demo they only run on
+              {activeNames.join(', ')} send intrusive traffic, so on this public demo they only run on
               domains you control. Everything else works without verification.
             </div>
           )}

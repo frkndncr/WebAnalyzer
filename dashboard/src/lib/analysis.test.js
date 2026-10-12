@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, dbProblem, ACTIVE_MODULE_NAMES, MODULES, PRESETS } from './analysis';
+import { extractScore, scoreSeverity, severityClass, cleanDomain, timeAgo, isReady, dbProblem } from './analysis';
 
 describe('extractScore', () => {
   it('handles a plain integer', () => {
@@ -59,15 +59,6 @@ describe('timeAgo', () => {
   });
 });
 
-describe('catalogue', () => {
-  it('exposes 16 modules and presets that reference real module names', () => {
-    expect(MODULES).toHaveLength(16);
-    const names = new Set(MODULES.map((m) => m.name));
-    for (const preset of Object.values(PRESETS)) {
-      for (const n of preset) expect(names.has(n)).toBe(true);
-    }
-  });
-});
 
 describe('isReady', () => {
   it('needs data and no scan in flight', () => {
@@ -90,12 +81,5 @@ describe('dbProblem', () => {
   });
   it('falls back to a generic reason for unknown errors', () => {
     expect(dbProblem({ database: { connected: false, error: 'weird' } }).reason).toBe('the database is unavailable');
-  });
-});
-
-describe('ACTIVE_MODULE_NAMES', () => {
-  it('lists the intrusive modules', () => {
-    expect([...ACTIVE_MODULE_NAMES].sort()).toEqual(
-      ['Advanced Content Scan', 'CloudFlare Bypass', 'Nmap Zero Day Scan', 'Subdomain Takeover']);
   });
 });
