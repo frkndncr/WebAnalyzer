@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.7.1] - 2026-10-12
+
+### Added
+- Modules and plugins can report findings by returning `{"findings": [...]}`; they are counted in the Overview, Findings tab, SARIF and `--fail-on`. The Security.txt plugin uses it. See docs/WRITING_A_MODULE.md.
+- `docs/RELEASING.md` and a test guarding the GitHub Action metadata.
+
+### Changed
+- The Action description now fits the GitHub Marketplace limit; documented examples pin `@v3.7.0`.
+
 ## [3.7.0] - 2026-10-12
 
 A large release: a real command line and GitHub Action, a plugin system, a safer
