@@ -34,6 +34,7 @@ from utils.result_analysis import (
     latest_per_domain,
     average_score,
 )
+from utils import notify
 from utils.version import VERSION
 from utils.safety import classify_target, RateLimiter, demo_mode_enabled, normalize_target
 from utils.ownership import active_modules, split_modules, is_verified
@@ -219,6 +220,8 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, ht
         "skipped": skipped,
     }
     background_tasks.add_task(run_scan_background, request.domain, modules)
+    if notify.enabled():
+        background_tasks.add_task(notify.send, notify.scan_started(request.domain, len(modules)))
 
     return {
         "status": "Scan started via Background Task",
@@ -241,6 +244,7 @@ async def run_scan_background(domain: str, selected_modules: list[str], *_unused
         state["results"][name] = outcome
         state["completed"] += 1
 
+    began = time.time()
     results = await run_modules(domain, selected_modules, on_start=started, on_done=finished)
 
     state["current_module"] = "Writing to disk & database..."
@@ -252,6 +256,9 @@ async def run_scan_background(domain: str, selected_modules: list[str], *_unused
 
     state["current_module"] = "Finished"
     executor.cleanup()
+    if notify.enabled():
+        stats = accumulate_vuln_stats(results, new_vuln_stats())
+        await asyncio.to_thread(notify.send, notify.scan_finished(domain, stats, time.time() - began))
 
 
 def save_scan_results_to_db(domain: str, results: dict):
