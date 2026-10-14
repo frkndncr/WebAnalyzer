@@ -220,8 +220,6 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, ht
         "skipped": skipped,
     }
     background_tasks.add_task(run_scan_background, request.domain, modules)
-    if notify.enabled():
-        background_tasks.add_task(notify.send, notify.scan_started(request.domain, len(modules)))
 
     return {
         "status": "Scan started via Background Task",
@@ -244,6 +242,8 @@ async def run_scan_background(domain: str, selected_modules: list[str], *_unused
         state["results"][name] = outcome
         state["completed"] += 1
 
+    if notify.enabled():
+        await asyncio.to_thread(notify.send, notify.scan_started(domain, len(selected_modules)))
     began = time.time()
     results = await run_modules(domain, selected_modules, on_start=started, on_done=finished)
 
