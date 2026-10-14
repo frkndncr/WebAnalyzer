@@ -10,6 +10,7 @@ import os
 import urllib.request
 
 logger = logging.getLogger("webanalyzer.notify")
+audit_log = logging.getLogger("uvicorn.error")      # uvicorn shows INFO for this logger, so the line reaches the host log
 
 TIMEOUT = 5
 
@@ -36,11 +37,17 @@ def send(text: str) -> bool:
         return False
 
 
-def scan_started(domain: str, modules: int) -> str:
-    return f"WebAnalyzer: scan started\n{domain} ({modules} modules)"
-
-
-def scan_finished(domain: str, stats: dict, seconds: float) -> str:
+def scan_report(domain: str, client: dict, outcomes: dict, stats: dict, seconds: float) -> str:
+    """One short message per scan: who asked, what was scanned, which modules worked."""
+    failed = sorted(name for name, out in outcomes.items() if isinstance(out, dict) and out.get("error"))
+    ran = len(outcomes)
+    modules = f"{ran - len(failed)}/{ran} ok" + (f" (failed: {', '.join(failed)})" if failed else "")
     counts = ", ".join(f"{stats.get(k, 0)} {k}" for k in ("critical", "high", "medium", "low") if stats.get(k, 0))
-    return (f"WebAnalyzer: scan finished\n{domain}\n"
-            f"{stats.get('total', 0)} findings" + (f" ({counts})" if counts else "") + f" in {seconds:.0f}s")
+    return (f"WebAnalyzer scan\nSite: {domain}\nIP: {client.get('ip') or '?'}\n"
+            f"Browser: {client.get('agent') or '?'}\nModules: {modules}\n"
+            f"Findings: {stats.get('total', 0)}" + (f" ({counts})" if counts else "") + f" - {seconds:.0f}s")
+
+
+def audit(domain: str, client: dict, modules: list) -> None:
+    """A durable line in the server log for every accepted scan (who, what, when)."""
+    audit_log.info("scan accepted: %s", json.dumps({"domain": domain, "modules": len(modules), **client}))

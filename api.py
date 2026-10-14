@@ -56,6 +56,21 @@ def _client_key(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+# Who started each running scan. Kept apart from ACTIVE_SCANS, which /api/status returns to anyone.
+SCAN_CLIENTS: Dict[str, dict] = {}
+
+
+def client_info(request: Request) -> dict:
+    """The few facts kept about who asked for a scan: IP, the proxy chain and the browser string."""
+    def clean(value, limit):
+        return "".join(ch for ch in (value or "") if ch.isprintable())[:limit]
+    return {
+        "ip": clean(_client_key(request), 64),
+        "forwarded": clean(request.headers.get("x-forwarded-for"), 200),
+        "agent": clean(request.headers.get("user-agent"), 120),
+    }
+
+
 def enforce_demo_guards(request: Request, domain: str):
     """Rate-limit and block internal scan targets when DEMO_MODE is on.
 
@@ -219,6 +234,8 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks, ht
         "results": {},
         "skipped": skipped,
     }
+    SCAN_CLIENTS[request.domain] = client_info(http_request)
+    notify.audit(request.domain, SCAN_CLIENTS[request.domain], modules)
     background_tasks.add_task(run_scan_background, request.domain, modules)
 
     return {
@@ -242,8 +259,6 @@ async def run_scan_background(domain: str, selected_modules: list[str], *_unused
         state["results"][name] = outcome
         state["completed"] += 1
 
-    if notify.enabled():
-        await asyncio.to_thread(notify.send, notify.scan_started(domain, len(selected_modules)))
     began = time.time()
     results = await run_modules(domain, selected_modules, on_start=started, on_done=finished)
 
@@ -258,7 +273,10 @@ async def run_scan_background(domain: str, selected_modules: list[str], *_unused
     executor.cleanup()
     if notify.enabled():
         stats = accumulate_vuln_stats(results, new_vuln_stats())
-        await asyncio.to_thread(notify.send, notify.scan_finished(domain, stats, time.time() - began))
+        report = notify.scan_report(domain, SCAN_CLIENTS.pop(domain, {}), results, stats, time.time() - began)
+        await asyncio.to_thread(notify.send, report)
+    else:
+        SCAN_CLIENTS.pop(domain, None)
 
 
 def save_scan_results_to_db(domain: str, results: dict):
