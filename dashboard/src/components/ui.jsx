@@ -38,9 +38,10 @@ export function Badge({ sev, children }) {
   return <span className={`badge ${sev}`}>{children}</span>;
 }
 
-export function Stat({ label, value, suffix, accent }) {
+export function Stat({ label, value, suffix, accent, icon }) {
   return (
-    <div className="stat">
+    <div className="stat" style={accent ? { '--tone': `var(--${accent})` } : undefined}>
+      {icon && <span className="stat-ico"><Icon name={icon} size={17} /></span>}
       <div className="label">{label}</div>
       <div className="value" style={accent ? { color: `var(--${accent})` } : undefined}>
         {value}{suffix ? <small> {suffix}</small> : null}

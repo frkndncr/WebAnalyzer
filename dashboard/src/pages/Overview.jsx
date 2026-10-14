@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../api/client';
 import { usePolling } from '../hooks/useApi';
-import { Stat, Badge, Empty, Icon } from '../components/ui';
+import { Stat, Badge, Empty, Icon, ScoreRing } from '../components/ui';
 import { timeAgo, severityClass, extractScore, scoreSeverity } from '../lib/analysis';
 
 const SEV_ROWS = [
@@ -11,7 +11,7 @@ const SEV_ROWS = [
 
 const asList = (v) => (Array.isArray(v) ? v : []);
 
-export default function Overview({ onOpenDomain }) {
+export default function Overview({ onOpenDomain, onNewScan }) {
   const [stats, setStats] = useState(null);
   const [vuln, setVuln] = useState(null);
   const [recent, setRecent] = useState([]);
@@ -61,13 +61,37 @@ export default function Overview({ onOpenDomain }) {
   const avg = stats?.average_score;
   const findingsTotal = vuln?.total ?? stats?.total_vulnerabilities ?? 0;
 
+  const sevTotal = SEV_ROWS.reduce((n, [k]) => n + (vuln?.[k] ?? 0), 0);
+  const avgNumber = typeof avg === 'number' ? Math.round(avg) : null;
+
   return (
     <div className="fade">
-      <div className="grid cols-4">
-        <Stat label="Domains scanned" value={stats?.total_domains ?? 0} />
-        <Stat label="Total findings" value={findingsTotal} accent={findingsTotal > 0 ? 'high' : 'ok'} />
-        <Stat label="Average score" value={avg ?? '—'} suffix={avg != null ? '/ 100' : undefined} accent={avg != null ? scoreSeverity(avg) : undefined} />
-        <Stat label="Scans running" value={active.length} accent={active.length ? 'low' : undefined} />
+      <section className="hero">
+        <div className="hero-copy">
+          <span className="eyebrow"><Icon name="shield" size={14} /> Open-source attack-surface scanner</span>
+          <h2>Know what an attacker can see.</h2>
+          <p>
+            Subdomains, DNS, technologies, exposed files and vulnerabilities for any domain you own,
+            scored and ranked in one place.
+          </p>
+          <div className="flex wrap">
+            <button className="btn primary" onClick={onNewScan}><Icon name="scan" size={16} /> Start a scan</button>
+            <a className="btn" href="https://github.com/frkndncr/WebAnalyzer" target="_blank" rel="noreferrer">
+              <Icon name="github" size={16} /> Star on GitHub
+            </a>
+          </div>
+        </div>
+        <div className="hero-ring">
+          <ScoreRing value={avgNumber} sev={avgNumber != null ? scoreSeverity(avgNumber) : 'info'} size={150} />
+          <div className="muted">Average security score</div>
+        </div>
+      </section>
+
+      <div className="grid cols-4 mt">
+        <Stat icon="globe" label="Domains scanned" value={stats?.total_domains ?? 0} />
+        <Stat icon="bug" label="Total findings" value={findingsTotal} accent={findingsTotal > 0 ? 'high' : 'ok'} />
+        <Stat icon="shield" label="Average score" value={avg ?? '—'} suffix={avg != null ? '/ 100' : undefined} accent={avg != null ? scoreSeverity(avg) : undefined} />
+        <Stat icon="clock" label="Scans running" value={active.length} accent={active.length ? 'low' : undefined} />
       </div>
 
       {active.length > 0 && (
@@ -89,9 +113,12 @@ export default function Overview({ onOpenDomain }) {
             const { score, grade } = extractScore(r.score);
             return (
               <div className="row linklike" key={r.domain} onClick={() => onOpenDomain(r.domain)}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="dom">{r.domain}</div>
-                  <div className="meta">{timeAgo(r.scan_date)}</div>
+                <div className="flex" style={{ minWidth: 0 }}>
+                  <span className="avatar" aria-hidden="true">{(r.domain || '?')[0].toUpperCase()}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="dom">{r.domain}</div>
+                    <div className="meta">{timeAgo(r.scan_date)}</div>
+                  </div>
                 </div>
                 <div className="flex">
                   {r.vulnerabilities > 0 && <Badge sev="high">{r.vulnerabilities} finding{r.vulnerabilities === 1 ? '' : 's'}</Badge>}
@@ -105,12 +132,21 @@ export default function Overview({ onOpenDomain }) {
         <div className="grid" style={{ gap: 16 }}>
           <div className="card">
             <div className="card-title">Findings by severity</div>
-            {SEV_ROWS.map(([k, label]) => (
-              <div className="row" key={k}>
-                <span className="flex"><Badge sev={k}>{label}</Badge></span>
-                <b className="dom">{vuln?.[k] ?? 0}</b>
-              </div>
-            ))}
+            <div className="sevbar-stack" role="img" aria-label="Share of findings by severity">
+              {sevTotal > 0 && SEV_ROWS.map(([k]) => (vuln?.[k] ?? 0) > 0 && (
+                <i key={k} style={{ width: `${((vuln[k] ?? 0) / sevTotal) * 100}%`, background: `var(--${k})` }} />
+              ))}
+            </div>
+            {SEV_ROWS.map(([k, label]) => {
+              const n = vuln?.[k] ?? 0;
+              return (
+                <div className="sevrow" key={k}>
+                  <span className="flex"><Badge sev={k}>{label}</Badge></span>
+                  <div className="meter"><i style={{ width: `${sevTotal ? (n / sevTotal) * 100 : 0}%`, background: `var(--${k})` }} /></div>
+                  <b className="dom">{n}</b>
+                </div>
+              );
+            })}
           </div>
 
           <div className="card">

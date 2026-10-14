@@ -95,7 +95,7 @@ export default function App() {
         </div>
         <div className="content">
           <DbBanner />
-          {page === 'overview' && <Overview onOpenDomain={openDomain} />}
+          {page === 'overview' && <Overview onOpenDomain={openDomain} onNewScan={() => setPage('scan')} />}
           {page === 'scan' && <NewScan onLaunched={openDomain} />}
           {page === 'results' && <Results key={domain} domain={domain} setDomain={setDomain} />}
           {page === 'threat' && <ThreatIntel key={domain} domain={domain} setDomain={setDomain} />}
