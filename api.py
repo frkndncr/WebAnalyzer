@@ -274,7 +274,7 @@ async def run_scan_background(domain: str, selected_modules: list[str], *_unused
     if notify.enabled():
         stats = accumulate_vuln_stats(results, new_vuln_stats())
         report = notify.scan_report(domain, SCAN_CLIENTS.pop(domain, {}), results, stats, time.time() - began)
-        await asyncio.to_thread(notify.send, report)
+        await asyncio.to_thread(notify.deliver, report)
     else:
         SCAN_CLIENTS.pop(domain, None)
 

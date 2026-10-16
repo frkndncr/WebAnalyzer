@@ -69,3 +69,36 @@ def test_audit_line_is_json_with_the_client(caplog):
     with caplog.at_level(logging.INFO, logger="uvicorn.error"):
         notify.audit("example.org", {**CLIENT, "forwarded": "203.0.113.9, 10.0.0.1"}, ["a", "b"])
     assert '"domain": "example.org"' in caplog.text and '"modules": 2' in caplog.text and "203.0.113.9" in caplog.text
+
+
+def test_webhooks_are_https_only_and_deliver_reaches_every_channel(monkeypatch):
+    for name in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "http://insecure.example/hook")      # refused: not https
+    assert notify.enabled() is False
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.test/T/secret")
+    monkeypatch.setenv("WEBHOOK_URL", "https://example.test/hook")
+    assert notify.enabled() is True
+    posted = []
+
+    class Resp:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    monkeypatch.setattr(notify.urllib.request, "urlopen", lambda req, timeout: posted.append((req.full_url, req.data)) or Resp())
+    assert notify.deliver("hello") == 2
+    assert (posted[0][0], posted[0][1]) == ("https://hooks.slack.test/T/secret", b'{"text": "hello"}')
+    assert b'"event": "scan_finished"' in posted[1][1]
+
+
+def test_a_failing_webhook_does_not_raise_or_leak_its_url(monkeypatch, caplog):
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.test/T/very-secret")
+
+    def boom(*a, **k):
+        raise urllib.error.URLError("https://hooks.slack.test/T/very-secret down")
+
+    monkeypatch.setattr(notify.urllib.request, "urlopen", boom)
+    assert notify.deliver("x") == 0
+    assert "very-secret" not in caplog.text

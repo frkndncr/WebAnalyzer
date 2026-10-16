@@ -1,8 +1,13 @@
-"""Optional Telegram notifications for the operator of a WebAnalyzer instance.
+"""Optional scan notifications for the operator of a WebAnalyzer instance.
 
-Disabled unless both TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set. Messages are
-plain text and contain only the scanned domain and counts - never client IPs.
-Failures never affect a scan.
+Channels (each off unless configured):
+  TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID   a Telegram bot message
+  SLACK_WEBHOOK_URL                       a Slack incoming webhook
+  WEBHOOK_URL                             any https endpoint, JSON {"event", "text"}
+
+One short plain-text message per scan: the site, who asked (IP and browser), how many
+modules worked and the finding counts. Failures never affect a scan, and the secret
+in a URL is never logged.
 """
 import json
 import logging
@@ -15,27 +20,43 @@ audit_log = logging.getLogger("uvicorn.error")      # uvicorn shows INFO for thi
 TIMEOUT = 5
 
 
+def _webhooks() -> dict:
+    """Configured webhook URLs by kind. Only https is accepted."""
+    urls = {"slack": os.getenv("SLACK_WEBHOOK_URL", ""), "generic": os.getenv("WEBHOOK_URL", "")}
+    return {kind: url for kind, url in urls.items() if url.startswith("https://")}
+
+
 def enabled() -> bool:
-    return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
+    return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")) or bool(_webhooks())
+
+
+def _post(url: str, payload: dict, label: str) -> bool:
+    request = urllib.request.Request(
+        url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # nosec - operator-configured https URL
+            return 200 <= response.status < 300
+    except Exception as exc:                                 # the secret is in the URL: log only the type
+        logger.warning("%s notification failed (%s)", label, type(exc).__name__)
+        return False
 
 
 def send(text: str) -> bool:
-    """Send a plain-text message. Returns True on success; never raises."""
+    """Send a plain-text Telegram message. Returns True on success; never raises."""
     token, chat = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
     if not (token and chat):
         return False
-    body = json.dumps({"chat_id": chat, "text": text[:3500], "disable_web_page_preview": True}).encode()
-    request = urllib.request.Request(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        data=body, headers={"Content-Type": "application/json"}, method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # nosec - fixed https host
-            return 200 <= response.status < 300
-    except Exception as exc:                                 # the token is in the URL: log only the type
-        logger.warning("Telegram notification failed (%s)", type(exc).__name__)
-        return False
+    return _post(f"https://api.telegram.org/bot{token}/sendMessage",
+                 {"chat_id": chat, "text": text[:3500], "disable_web_page_preview": True}, "Telegram")
 
+
+def deliver(text: str) -> int:
+    """Send ``text`` on every configured channel. Returns how many succeeded; never raises."""
+    sent = int(send(text))
+    for kind, url in _webhooks().items():
+        payload = {"text": text[:3500]} if kind == "slack" else {"event": "scan_finished", "text": text[:3500]}
+        sent += int(_post(url, payload, kind.title() + " webhook"))
+    return sent
 
 def scan_report(domain: str, client: dict, outcomes: dict, stats: dict, seconds: float) -> str:
     """One short message per scan: who asked, what was scanned, which modules worked."""

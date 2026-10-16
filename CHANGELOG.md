@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Client report**: `webanalyzer scan -f html` and `/api/report/<domain>` now produce a cover page, executive summary, findings with IDs, CWE and OWASP Top 10 references, remediation and a module appendix, styled to print as PDF. It is built from the same data as the dashboard, so the numbers match.
+- **Change detection**: `webanalyzer diff old.json new.json` and `scan --baseline` (fail only on new findings; new subdomains and ports are listed).
+- Slack and generic webhook notifications next to Telegram, with the client IP and browser in each scan message.
+- Docker image published to ghcr.io on release, `docs/DOCKER.md`, a `.dockerignore`; the compose file no longer exposes MySQL on every interface.
+- Dashboard refresh: hero, score ring, severity bars, a phone-friendly menu.
+
 ## [3.7.3] - 2026-10-12
 
 ### Changed

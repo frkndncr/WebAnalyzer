@@ -107,3 +107,31 @@ webanalyzer:
 A module is one function in one file. See [Writing a module](WRITING_A_MODULE.md);
 modules in `modules/plugins/` (or in directories listed in
 `WEBANALYZER_PLUGIN_DIRS`) are picked up by the CLI and the Action automatically.
+
+
+## Only alert on what changed
+
+Keep the last result, scan again, and fail the job only for **new** findings.
+Old, accepted findings stay quiet, which is what makes a scheduled scan usable.
+
+```bash
+webanalyzer scan example.com --passive -f json -o today.json --baseline last.json --fail-on high
+webanalyzer diff last.json today.json -f markdown        # what is new, what was fixed, new subdomains/ports
+webanalyzer diff last.json today.json --fail-on-new medium
+cp today.json last.json
+```
+
+`--baseline` takes a file written by an earlier `-f json` scan. A finding is
+the same finding when its domain, module, title and location match. Recon
+changes (new subdomains, newly open ports) are listed by `diff` too.
+
+## A report for your client
+
+```bash
+webanalyzer scan example.com --passive -f html -o report.html \
+  --client "Acme Corp" --author "Your Team" --title "External assessment Q4"
+```
+
+Open `report.html` in a browser and choose **Save as PDF**. The report has a cover
+page, an executive summary, every finding with its CWE and OWASP Top 10 reference
+and remediation, and an appendix with the status of each module.

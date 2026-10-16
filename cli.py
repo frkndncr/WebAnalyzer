@@ -26,7 +26,7 @@ from utils import formats
 from utils.safety import normalize_target
 from utils.version import VERSION
 
-COMMANDS = {"scan", "modules", "verify", "version"}
+COMMANDS = {"scan", "modules", "verify", "version", "diff"}
 FORMATS = ("text", "json", "jsonl", "sarif", "markdown", "html")
 THRESHOLDS = ("none", "info", "low", "medium", "high", "critical")
 NOTICE = "Only scan systems you own or are authorized to test."
@@ -75,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog="Run `webanalyzer` with no arguments for the interactive mode.",
     )
     parser.add_argument("--version", action="version", version=f"WebAnalyzer {VERSION}")
-    sub = parser.add_subparsers(dest="command", metavar="{scan,modules,verify,version}")
+    sub = parser.add_subparsers(dest="command", metavar="{scan,diff,modules,verify,version}")
 
     scan = sub.add_parser("scan", help="scan one or more domains", description="Scan domains and report findings. " + NOTICE)
     scan.add_argument("targets", nargs="*", help="domains or URLs; '-' reads them from stdin")
@@ -92,10 +92,20 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--summary", metavar="FILE", help="also write a Markdown summary to FILE (e.g. $GITHUB_STEP_SUMMARY)")
     scan.add_argument("--fail-on", choices=THRESHOLDS, default="none", metavar="LEVEL",
                       help="exit 1 if a finding is at least this severe: " + ", ".join(THRESHOLDS) + " (default: none)")
+    scan.add_argument("--baseline", metavar="FILE",
+                      help="a previous `-f json` result: --fail-on then only counts findings that are new since then")
     scan.add_argument("--timeout", type=float, default=120.0, metavar="SECONDS", help="per-module time limit (default: 120)")
     scan.add_argument("-c", "--concurrency", type=int, default=1, metavar="N", help="domains scanned in parallel (default: 1)")
     scan.add_argument("--no-results", action="store_true", help="leave the raw module output out of json/jsonl")
     scan.add_argument("-q", "--quiet", action="store_true", help="no progress or notices on stderr")
+
+    diff = sub.add_parser("diff", help="show what changed between two `-f json` scan results",
+                          description="Compare two results written by `webanalyzer scan -f json`.")
+    diff.add_argument("old", help="the earlier result (JSON)")
+    diff.add_argument("new", help="the later result (JSON)")
+    diff.add_argument("-f", "--format", choices=("text", "markdown", "json"), default="text")
+    diff.add_argument("--fail-on-new", choices=THRESHOLDS, default="none", metavar="LEVEL",
+                      help="exit 1 if a NEW finding is at least this severe (default: none)")
 
     mods = sub.add_parser("modules", help="list the available modules")
     mods.add_argument("--json", action="store_true", help="machine-readable output")
@@ -232,6 +242,10 @@ def cmd_scan(args, out, err, stdin) -> int:
     if not args.quiet:
         print(f"{NOTICE}\nScanning {len(targets)} target(s) with {len(names)} module(s)...", file=err)
 
+    baseline = _load_document(args.baseline, err) if args.baseline else None
+    if args.baseline and baseline is None:
+        return EXIT_USAGE                              # fail before spending time on the scan
+
     scans = asyncio.run(_scan_all(targets, names, args, err))
     doc = formats.build_document(scans, include_results=not args.no_results)
 
@@ -272,7 +286,42 @@ def cmd_scan(args, out, err, stdin) -> int:
     if produced == 0:
         print("error: every module failed - nothing was scanned (is the network reachable?)", file=err)
         return EXIT_NOTHING
+    if baseline is not None:
+        from utils import diff as changes
+        new = changes.new_findings(baseline, doc)
+        if not args.quiet:
+            print(f"{len(new)} new finding(s) since the baseline", file=err)
+        return EXIT_FINDINGS if changes.exceeds_new(baseline, doc, args.fail_on) else EXIT_OK
     return EXIT_FINDINGS if formats.exceeds(doc, args.fail_on) else EXIT_OK
+
+
+def _load_document(path: str, err) -> Optional[dict]:
+    """A scan document written by `-f json`, or None (with a message) when it cannot be used."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            doc = json.load(handle)
+    except (OSError, ValueError) as exc:
+        print(f"error: cannot read {path}: {exc}", file=err)
+        return None
+    if not isinstance(doc, dict) or not isinstance(doc.get("targets"), list):
+        print(f"error: {path} is not a `webanalyzer scan -f json` result", file=err)
+        return None
+    return doc
+
+
+def cmd_diff(args, out, err) -> int:
+    from utils import diff as changes
+    old, new = _load_document(args.old, err), _load_document(args.new, err)
+    if old is None or new is None:
+        return EXIT_USAGE
+    result = changes.diff_documents(old, new)
+    if args.format == "json":
+        out.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+    elif args.format == "markdown":
+        out.write(changes.to_markdown(result))
+    else:
+        out.write(changes.to_text(result))
+    return EXIT_FINDINGS if changes.exceeds_new(old, new, args.fail_on_new) else EXIT_OK
 
 
 def main(argv=None, stdout=None, stderr=None, stdin=None) -> int:
@@ -284,6 +333,8 @@ def main(argv=None, stdout=None, stderr=None, stdin=None) -> int:
         return EXIT_OK if exc.code in (0, None) else EXIT_USAGE
     if args.command == "scan":
         return cmd_scan(args, out, err, stdin)
+    if args.command == "diff":
+        return cmd_diff(args, out, err)
     if args.command == "modules":
         return cmd_modules(args, out, err)
     if args.command == "verify":
