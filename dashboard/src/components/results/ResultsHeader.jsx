@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScoreRing, Spinner, Icon } from '../ui';
 import { SEVERITIES } from '../../lib/findings';
 import { getApiUrl } from '../../config';
@@ -11,6 +11,12 @@ export default function ResultsHeader({
 }) {
   const scanning = status && status.current_module && status.current_module !== 'Finished';
   const enc = encodeURIComponent(domain);
+  const [client, setClient] = useState('');
+  const [author, setAuthor] = useState('');
+  const params = new URLSearchParams();
+  if (client.trim()) params.set('client', client.trim());
+  if (author.trim()) params.set('author', author.trim());
+  const reportUrl = getApiUrl(`/api/report/${enc}${params.toString() ? `?${params}` : ''}`);
 
   return (
     <div className="card">
@@ -51,9 +57,15 @@ export default function ResultsHeader({
         </div>
 
         <div className="res-actions">
-          <a className="btn sm" href={getApiUrl(`/api/report/${enc}`)} target="_blank" rel="noreferrer">
-            <Icon name="external" size={15} /> Report
-          </a>
+          <details className="report-menu">
+            <summary className="btn sm"><Icon name="external" size={15} /> Report</summary>
+            <div className="report-pop">
+              <label>Client name<input className="input" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Acme Corp" maxLength={120} /></label>
+              <label>Prepared by<input className="input" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your team" maxLength={120} /></label>
+              <a className="btn sm primary" href={reportUrl} target="_blank" rel="noreferrer">Open report</a>
+              <span className="muted" style={{ fontSize: 11.5 }}>Opens a printable page: choose Save as PDF.</span>
+            </div>
+          </details>
           <a className="btn sm" href={getApiUrl(`/api/export/${enc}/json`)} target="_blank" rel="noreferrer">JSON</a>
           <a className="btn sm" href={getApiUrl(`/api/export/${enc}/csv`)} target="_blank" rel="noreferrer">CSV</a>
           <button className="btn sm" type="button" onClick={onCopyLink}>Copy link</button>
