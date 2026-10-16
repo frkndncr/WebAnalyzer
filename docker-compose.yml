@@ -9,7 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: webanalyzer
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"   # local only: the database must not be reachable from the network
     volumes:
       - db_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql

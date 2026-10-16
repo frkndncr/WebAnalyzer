@@ -1,0 +1,12 @@
+.git
+.github
+**/node_modules
+dashboard/dist
+**/__pycache__
+*.pyc
+venv
+.venv
+logs
+.env
+tests
+docs
