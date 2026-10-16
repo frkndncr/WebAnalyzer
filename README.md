@@ -17,7 +17,7 @@ WebAnalyzer bridges passive OSINT enumeration and active vulnerability assessmen
 
 **[🖥️ Live Dashboard](https://webanalyzer.c4softwarestudio.com/) · [⚡ API & Docs](https://webanalyzer-api.onrender.com/docs) · [📝 Deep-dive Article](https://medium.com/@frkndncr/webanalyzer-next-gen-domain-reconnaissance-vulnerability-scanner-94fe899a64d1)**
 
-<img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer dashboard" width="820" />
+<img src="docs/assets/demo.gif" alt="WebAnalyzer scanning a domain: pick modules, watch results arrive, read the findings" width="820" />
 
 </div>
 
