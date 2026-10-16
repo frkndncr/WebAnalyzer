@@ -118,9 +118,16 @@ webanalyzer scan example.com                      # standard preset
 webanalyzer scan example.com --passive -f sarif -o out.sarif --fail-on high
 webanalyzer scan -l domains.txt -f jsonl | jq .   # one JSON object per domain
 webanalyzer modules                               # list the modules
+
+# a report for your client (open it, then Save as PDF)
+webanalyzer scan example.com --passive -f html -o report.html --client "Acme Corp" --author "Your Team"
+
+# only alert on what is new since the last scan
+webanalyzer scan example.com -f json -o today.json --baseline last.json --fail-on high
+webanalyzer diff last.json today.json -f markdown
 ```
 
-Output as `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning) or `markdown`; exit code `1` when a finding reaches `--fail-on`, so a scan can gate a pipeline. There is also a [**GitHub Action**](https://github.com/marketplace/actions/webanalyzer-security-scan):
+Output as `text`, `json`, `jsonl`, **SARIF** (GitHub Code Scanning), `markdown` or a printable `html` report; exit code `1` when a finding reaches `--fail-on`, so a scan can gate a pipeline. There is also a [**GitHub Action**](https://github.com/marketplace/actions/webanalyzer-security-scan):
 
 ```yaml
 - uses: frkndncr/WebAnalyzer@v3

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [3.8.0] - 2026-10-16
 
 ### Added
 - **Client report**: `webanalyzer scan -f html` and `/api/report/<domain>` now produce a cover page, executive summary, findings with IDs, CWE and OWASP Top 10 references, remediation and a module appendix, styled to print as PDF. It is built from the same data as the dashboard, so the numbers match.
