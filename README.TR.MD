@@ -17,7 +17,7 @@ WebAnalyzer pasif OSINT keşfi ile aktif zafiyet değerlendirmesi arasında köp
 
 **[🖥️ Canlı Panel](https://webanalyzer.c4softwarestudio.com/) · [⚡ API & Dokümanlar](https://webanalyzer-api.onrender.com/docs) · [📝 Detaylı Makale](https://medium.com/@frkndncr/webanalyzer-next-gen-domain-reconnaissance-vulnerability-scanner-94fe899a64d1)**
 
-<img src="docs/assets/webanalyzer_dashboard.png" alt="WebAnalyzer paneli" width="820" />
+<img src="docs/assets/demo.gif" alt="WebAnalyzer bir alan adını tarıyor: modülleri seç, sonuçları izle, bulguları oku" width="820" />
 
 *(English README: [README.md](README.md))*
 
