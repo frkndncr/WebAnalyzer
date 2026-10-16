@@ -1279,7 +1279,7 @@ async def get_system_health():
 
 @app.get('/api/report/{domain}')
 @app.get('/api/export/{domain}/{fmt}')
-async def export_results(domain: str, fmt: str = 'html'):
+async def export_results(domain: str, fmt: str = 'html', client: str = '', author: str = '', title: str = ''):
     """Export scan results in JSON, CSV, or executive HTML/PDF report format with database fallback"""
     fmt_lower = fmt.lower()
     data = await asyncio.to_thread(load_results_from_file_or_db, domain)
@@ -1297,7 +1297,7 @@ async def export_results(domain: str, fmt: str = 'html'):
             lines.append(f'{module},completed,{count}')
         return PlainTextResponse(content='\n'.join(lines), media_type='text/csv')
     elif fmt_lower in ['html', 'pdf', 'report']:
-        report_html = generate_executive_report(domain, data)
+        report_html = generate_executive_report(domain, data, client=client, author=author, title=title)
         return HTMLResponse(content=report_html, media_type='text/html')
     else:
         raise HTTPException(status_code=400, detail=f'Unsupported format: {fmt}. Supported: json, csv, html, pdf')

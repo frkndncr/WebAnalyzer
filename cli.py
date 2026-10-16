@@ -27,7 +27,7 @@ from utils.safety import normalize_target
 from utils.version import VERSION
 
 COMMANDS = {"scan", "modules", "verify", "version"}
-FORMATS = ("text", "json", "jsonl", "sarif", "markdown")
+FORMATS = ("text", "json", "jsonl", "sarif", "markdown", "html")
 THRESHOLDS = ("none", "info", "low", "medium", "high", "critical")
 NOTICE = "Only scan systems you own or are authorized to test."
 
@@ -86,6 +86,9 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--passive", action="store_true", help="never run the intrusive modules (port scans, active tests, probing)")
     scan.add_argument("-f", "--format", choices=FORMATS, default="text", help="output format (default: text)")
     scan.add_argument("-o", "--output", metavar="FILE", help="write the output to FILE instead of stdout")
+    scan.add_argument("--client", metavar="NAME", default="", help="client name on the html report cover")
+    scan.add_argument("--author", metavar="NAME", default="", help="who prepared the html report")
+    scan.add_argument("--title", metavar="TEXT", default="", help="html report title (default: Security Assessment Report)")
     scan.add_argument("--summary", metavar="FILE", help="also write a Markdown summary to FILE (e.g. $GITHUB_STEP_SUMMARY)")
     scan.add_argument("--fail-on", choices=THRESHOLDS, default="none", metavar="LEVEL",
                       help="exit 1 if a finding is at least this severe: " + ", ".join(THRESHOLDS) + " (default: none)")
@@ -245,6 +248,9 @@ def cmd_scan(args, out, err, stdin) -> int:
         text = json.dumps(formats.to_sarif(doc), indent=2, ensure_ascii=False) + "\n"
     elif args.format == "markdown":
         text = formats.to_markdown(doc)
+    elif args.format == "html":
+        from utils.report import to_html_report
+        text = to_html_report(doc, client=args.client, author=args.author, title=args.title)
     else:
         text = formats.to_text(doc)
 
