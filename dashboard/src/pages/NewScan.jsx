@@ -6,9 +6,9 @@ import VerifyPanel from '../components/VerifyPanel';
 import { Icon } from '../components/ui';
 
 const PRESET_BTNS = [
-  { id: 'quick', label: 'Quick', hint: '3 modules' },
-  { id: 'standard', label: 'Standard', hint: '6 modules' },
-  { id: 'full', label: 'Full', hint: 'all 16' },
+  { id: 'quick', label: 'Quick' },
+  { id: 'standard', label: 'Standard' },
+  { id: 'full', label: 'Full' },
 ];
 
 export default function NewScan({ onLaunched }) {
@@ -68,7 +68,7 @@ export default function NewScan({ onLaunched }) {
         <div className="flex wrap mt">
           {PRESET_BTNS.map((p) => (
             <button type="button" key={p.id} className="btn sm" onClick={() => applyPreset(p.id)}>
-              {p.label} <span className="muted">· {p.hint}</span>
+              {p.label} <span className="muted">· {p.id === 'full' ? 'all ' : ''}{presets[p.id].length}{p.id === 'full' ? '' : ' modules'}</span>
             </button>
           ))}
           <span className="muted" style={{ marginLeft: 'auto' }}>{selected.size} selected</span>

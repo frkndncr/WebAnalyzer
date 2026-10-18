@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **11 new modules** (28 in total), each one file under `modules/plugins/`: **Email Security** (SPF, DKIM, DMARC, MTA-STS), **TLS Health**, **DNS Health**, **Cookies & CORS**, **HTTP Methods & Redirects**, **Privacy & Trackers** (KVKK/GDPR signals), **JS Library Vulnerabilities** (OSV), **Asset Inventory** (ASN, certificate-transparency names), and three intrusive ones that need a verified domain on the public demo: **Exposed Files**, **Cloud Storage**, **DNS Zone Transfer**.
+- The `standard` preset now includes the light passive checks.
+- `utils/webprobe.py`: shared, safe request helpers (no cross-site redirects, size and time limits).
+
 ## [3.8.0] - 2026-10-16
 
 ### Added

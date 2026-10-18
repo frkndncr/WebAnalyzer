@@ -45,16 +45,18 @@ describe('buildCatalogue', () => {
 
 describe('bundled snapshot', () => {
   it('contains the built-in modules, the shipped plugin and the intrusive flags', () => {
-    expect(DEFAULT_CATALOGUE.names).toHaveLength(17);
+    expect(DEFAULT_CATALOGUE.names).toHaveLength(28);
     expect(DEFAULT_CATALOGUE.names).toContain('Security.txt');
+    expect(DEFAULT_CATALOGUE.names).toContain('Email Security');
     expect([...DEFAULT_CATALOGUE.activeNames].sort()).toEqual(
-      ['Advanced Content Scan', 'CloudFlare Bypass', 'Nmap Zero Day Scan', 'Subdomain Takeover']);
+      ['Advanced Content Scan', 'Cloud Storage', 'CloudFlare Bypass', 'DNS Zone Transfer', 'Exposed Files',
+        'Nmap Zero Day Scan', 'Subdomain Takeover']);
   });
 
   it('has presets that only reference real modules', () => {
     for (const list of Object.values(DEFAULT_CATALOGUE.presets)) {
       for (const n of list) expect(DEFAULT_CATALOGUE.byName[n]).toBeDefined();
     }
-    expect(DEFAULT_CATALOGUE.presets.full).toHaveLength(17);
+    expect(DEFAULT_CATALOGUE.presets.full).toHaveLength(28);
   });
 });

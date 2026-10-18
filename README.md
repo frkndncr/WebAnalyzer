@@ -4,7 +4,7 @@
 
 ### The open-source reconnaissance dashboard
 
-**Run 16 recon & security modules against a domain from one interface — then turn the results into a shareable report.**
+**Run 28 recon & security modules against a domain from one interface — then turn the results into a shareable report.**
 
 WebAnalyzer bridges passive OSINT enumeration and active vulnerability assessment, wraps it in a real dashboard, and gives you an executive report at the end. Built for penetration testers, bug bounty hunters, and security researchers.
 
@@ -76,7 +76,7 @@ The database is optional for single scans (results also persist to `logs/<domain
 
 > **Hosting a public instance?** Set `DEMO_MODE=true` to rate-limit scan requests per client and refuse internal/private/reserved targets (SSRF protection). It's off by default so self-hosted users can scan their own infrastructure. See [`.env.example`](.env.example).
 >
-> In demo mode the **intrusive modules** (Nmap, active content testing, subdomain-takeover and origin probing) only run on domains whose owner has proven control by publishing a DNS TXT record (`_webanalyzer.<domain>`, shown by the dashboard or `GET /api/verify/<domain>`). Passive modules (WHOIS, DNS, headers, certificates, archive lookups, ...) stay open to everyone, so a public instance can't be used to port-scan or attack third parties.
+> In demo mode the **intrusive modules** (Nmap, active content testing, subdomain-takeover and origin probing, exposed-file, cloud-bucket and zone-transfer checks) only run on domains whose owner has proven control by publishing a DNS TXT record (`_webanalyzer.<domain>`, shown by the dashboard or `GET /api/verify/<domain>`). Passive modules (WHOIS, DNS, headers, certificates, archive lookups, ...) stay open to everyone, so a public instance can't be used to port-scan or attack third parties.
 
 ---
 
@@ -106,6 +106,18 @@ The database is optional for single scans (results also persist to `logs/<domain
 | **Nmap Zero-Day Scan** | Port scanning & service fingerprinting | 🔴 |
 | **Phishing Detection** | Typosquatted / look-alike domain resolver | 🔴 |
 | **API Security Scanner** | API endpoint discovery & vulnerability testing | 🟣 |
+| **Email Security** | SPF, DKIM, DMARC and MTA-STS | 🟢 |
+| **TLS Health** | Certificate expiry & trust, key strength, legacy protocols | 🟢 |
+| **DNS Health** | Single/dangling nameservers, CAA, DNSSEC | 🟢 |
+| **Cookies & CORS** | Cookie flags, permissive cross-origin policy | 🟢 |
+| **HTTP Methods & Redirects** | HTTP→HTTPS redirect, risky methods, TRACE | 🟢 |
+| **Privacy & Trackers** | Third-party trackers, consent and privacy-policy signals (KVKK/GDPR) | 🟢 |
+| **JS Library Vulnerabilities** | Known CVEs in the JavaScript libraries a page loads (OSV) | 🟢 |
+| **Asset Inventory** | Addresses, owning networks (ASN), certificate-transparency host names | 🟡 |
+| **Security.txt** | RFC 9116 vulnerability-disclosure contact | 🟢 |
+| **Exposed Files** | `.git`, `.env`, backups, phpinfo, actuator, debug consoles | 🔴 |
+| **Cloud Storage** | Publicly listable S3 / GCS buckets named after the domain | 🔴 |
+| **DNS Zone Transfer** | Open AXFR on the domain's nameservers | 🔴 |
 
 Plus an **Attack Path Planner** that chains findings into a logical exploit roadmap. See [`docs/Modules.md`](docs/Modules.md) for details.
 
@@ -170,7 +182,7 @@ graph LR
     API[FastAPI backend - api.py]
     ENG[Module engine + bulk processor]
     DB[(MySQL)]
-    MODS[16 analysis modules]
+    MODS[28 analysis modules]
 
     CLI --> ENG
     UI --> API --> ENG --> MODS

@@ -29,6 +29,13 @@
       "active": false
     },
     {
+      "name": "Asset Inventory",
+      "description": "Addresses, owning networks and certificate-transparency host names",
+      "group": "recon",
+      "weight": "medium",
+      "active": false
+    },
+    {
       "name": "Web Technologies",
       "description": "Frameworks, CMS, stack",
       "group": "recon",
@@ -118,6 +125,76 @@
       "group": "security",
       "weight": "light",
       "active": false
+    },
+    {
+      "name": "Email Security",
+      "description": "SPF, DKIM, DMARC and MTA-STS",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "DNS Health",
+      "description": "Nameserver redundancy, dangling NS, CAA and DNSSEC",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "TLS Health",
+      "description": "Certificate expiry and trust, key strength, legacy protocols",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "Cookies & CORS",
+      "description": "Cookie flags and cross-origin policy",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "Privacy & Trackers",
+      "description": "Third-party trackers, consent and privacy-policy signals",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "JS Library Vulnerabilities",
+      "description": "Known CVEs in the JavaScript libraries a page loads (OSV)",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "HTTP Methods & Redirects",
+      "description": "HTTP to HTTPS redirect, risky methods, TRACE",
+      "group": "security",
+      "weight": "light",
+      "active": false
+    },
+    {
+      "name": "Exposed Files",
+      "description": "Sensitive files and consoles left on the web server",
+      "group": "security",
+      "weight": "medium",
+      "active": true
+    },
+    {
+      "name": "Cloud Storage",
+      "description": "Publicly listable S3 / GCS buckets named after the domain",
+      "group": "security",
+      "weight": "light",
+      "active": true
+    },
+    {
+      "name": "DNS Zone Transfer",
+      "description": "Open AXFR zone transfers on the nameservers",
+      "group": "offensive",
+      "weight": "light",
+      "active": true
     }
   ],
   "presets": {
@@ -132,13 +209,22 @@
       "GEO Analysis",
       "SEO Analysis",
       "Web Technologies",
-      "Security Analysis"
+      "Security Analysis",
+      "Email Security",
+      "DNS Health",
+      "TLS Health",
+      "Cookies & CORS",
+      "HTTP Methods & Redirects",
+      "Privacy & Trackers",
+      "JS Library Vulnerabilities",
+      "Security.txt"
     ],
     "full": [
       "Domain Information",
       "DNS Records",
       "GEO Analysis",
       "SEO Analysis",
+      "Asset Inventory",
       "Web Technologies",
       "Contact Spy",
       "Subdomain Discovery",
@@ -151,7 +237,17 @@
       "Nmap Zero Day Scan",
       "Phishing Domain Protection",
       "Attack Path Planner",
-      "Security.txt"
+      "Security.txt",
+      "Email Security",
+      "DNS Health",
+      "TLS Health",
+      "Cookies & CORS",
+      "Privacy & Trackers",
+      "JS Library Vulnerabilities",
+      "HTTP Methods & Redirects",
+      "Exposed Files",
+      "Cloud Storage",
+      "DNS Zone Transfer"
     ]
   }
 }

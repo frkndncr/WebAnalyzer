@@ -4,7 +4,7 @@
 
 ### Açık kaynak keşif (reconnaissance) paneli
 
-**Bir alan adına 16 keşif ve güvenlik modülünü tek arayüzden çalıştırın — sonucu paylaşılabilir bir rapora dönüştürün.**
+**Bir alan adına 28 keşif ve güvenlik modülünü tek arayüzden çalıştırın — sonucu paylaşılabilir bir rapora dönüştürün.**
 
 WebAnalyzer pasif OSINT keşfi ile aktif zafiyet değerlendirmesi arasında köprü kurar, bunu gerçek bir panele sarar ve sonunda size yönetici düzeyinde bir rapor verir. Sızma testi uzmanları, bug bounty avcıları ve güvenlik araştırmacıları için tasarlandı.
 
@@ -158,7 +158,7 @@ graph LR
     API[FastAPI backend - api.py]
     ENG[Modül motoru + bulk işleyici]
     DB[(MySQL)]
-    MODS[16 analiz modülü]
+    MODS[28 analiz modülü]
 
     CLI --> ENG
     UI --> API --> ENG --> MODS

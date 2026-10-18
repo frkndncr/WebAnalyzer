@@ -17,6 +17,7 @@ def fresh_cache():
 def test_the_intrusive_modules_are_the_active_ones():
     assert o.active_modules() == {
         "Advanced Content Scan", "Nmap Zero Day Scan", "Subdomain Takeover", "CloudFlare Bypass",
+        "Exposed Files", "Cloud Storage", "DNS Zone Transfer",
     }
 
 

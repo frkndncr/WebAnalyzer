@@ -127,5 +127,8 @@ register_builtin_modules()
 PRESETS = {
     "quick": ["Domain Information", "DNS Records", "GEO Analysis"],
     "standard": ["Domain Information", "DNS Records", "GEO Analysis", "SEO Analysis",
-                 "Web Technologies", "Security Analysis"],
+                 "Web Technologies", "Security Analysis",
+                 # light, passive checks shipped as plugins
+                 "Email Security", "DNS Health", "TLS Health", "Cookies & CORS", "HTTP Methods & Redirects",
+                 "Privacy & Trackers", "JS Library Vulnerabilities", "Security.txt"],
 }
