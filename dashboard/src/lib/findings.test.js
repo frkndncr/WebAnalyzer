@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   extractFindings, countBySeverity, filterFindings, groupFindings,
-  parseRecommendations, scoreBreakdown, extractFacts, daysUntil, countTechnologies, listTechnologies,
+  parseRecommendations, scoreBreakdown, extractFacts, daysUntil, countTechnologies, listTechnologies, postureScore, gradeFor,
 } from './findings';
 
 const sample = {
@@ -275,3 +275,54 @@ describe('findings reported by plugins', () => {
   });
 });
 
+
+
+describe('posture score', () => {
+  const base = (score, grade, extra = {}) => ({ 'Security Analysis': { security_score: { overall_score: score, grade } }, ...extra });
+  const plugin = (...sevs) => ({ findings: sevs.map((severity, i) => ({ title: `issue ${i}`, severity })) });
+
+  it('keeps the module score and grade when nothing else was found', () => {
+    expect(postureScore(base(83, 'B'))).toEqual({ score: 83, grade: 'B', base: 83, penalty: 0 });
+  });
+
+  it('subtracts findings from the other modules and re-grades', () => {
+    expect(postureScore(base(90, 'A', { 'Email Security': plugin('high', 'medium') })))
+      .toEqual({ score: 80, grade: 'B', base: 90, penalty: 10 });
+  });
+
+  it('never counts Security Analysis findings again, and info costs nothing', () => {
+    const res = base(90, 'A', { 'Security.txt': plugin('info', 'info') });
+    res['Security Analysis'].vulnerability_scan = { vulnerabilities: [{ type: 'X', severity: 'Critical' }] };
+    expect(postureScore(res).penalty).toBe(0);
+  });
+
+  it('caps one module at 15 and all modules at 40', () => {
+    expect(postureScore(base(100, 'A+', { 'Exposed Files': plugin(...Array(10).fill('critical')) })).penalty).toBe(15);
+    const many = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`M${i}`, plugin('critical', 'critical')]));
+    expect(postureScore(base(100, 'A+', many)).penalty).toBe(40);
+    expect(postureScore(base(10, 'F', many)).score).toBe(0);
+  });
+
+  it('has no score without Security Analysis', () => {
+    expect(postureScore({ 'Email Security': plugin('high') })).toEqual({ score: null, grade: null, base: null, penalty: 0 });
+  });
+
+  it('uses the same grade bands as the backend', () => {
+    expect([100, 95, 94, 90, 89, 80, 79, 70, 69, 60, 59, 0].map(gradeFor))
+      .toEqual(['A+', 'A+', 'A', 'A', 'B', 'B', 'C', 'C', 'D', 'D', 'F', 'F']);
+  });
+});
+
+describe('takeover severity', () => {
+  it('follows the confidence when no severity is given', () => {
+    const found = extractFindings({ 'Subdomain Takeover': { vulnerable_subdomains: [
+      { subdomain: 'a.x.org', confidence: 'High' }, { subdomain: 'b.x.org', confidence: 'Medium' },
+      { subdomain: 'c.x.org', confidence: 'Low' }, { subdomain: 'd.x.org' },
+      { subdomain: 'e.x.org', confidence: 'Low', severity: 'Critical' },
+    ] } });
+    expect(Object.fromEntries(found.map((f) => [f.title, f.severity]))).toEqual({
+      'Subdomain takeover: a.x.org': 'high', 'Subdomain takeover: b.x.org': 'medium', 'Subdomain takeover: c.x.org': 'low',
+      'Subdomain takeover: d.x.org': 'high', 'Subdomain takeover: e.x.org': 'critical',
+    });
+  });
+});

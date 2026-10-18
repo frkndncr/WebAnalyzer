@@ -4,7 +4,7 @@
  * facts and the score breakdown. Pure functions only (no React), unit tested in
  * findings.test.js.
  */
-import { severityClass } from './analysis';
+import { severityClass, extractScore } from './analysis';
 
 export const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 
@@ -44,6 +44,8 @@ const DEDICATED = new Set([
 ]);
 
 const HEADER_SEVERITY = { critical: 'critical', high: 'high', medium: 'medium' };
+
+const TAKEOVER_BY_CONFIDENCE = { high: 'high', medium: 'medium', low: 'low' };
 
 function securityFindings(sec) {
   const out = [];
@@ -130,8 +132,10 @@ export function extractFindings(results) {
   if (isObj(takeover)) {
     for (const t of [...list(takeover.vulnerable_subdomains), ...list(takeover.vulnerabilities)]) {
       const name = isObj(t) ? (t.subdomain || t.domain || t.host) : t;
+      // No explicit severity: follow the module's own confidence (mirrors utils/result_analysis.py).
+      const byConfidence = isObj(t) ? TAKEOVER_BY_CONFIDENCE[String(t.confidence || '').toLowerCase()] : undefined;
       out.push(make('Subdomain Takeover', isObj(t) ? t : {}, {
-        severity: isObj(t) ? (t.severity || 'high') : 'high',
+        severity: isObj(t) ? (t.severity || byConfidence || 'high') : 'high',
         title: `Subdomain takeover: ${text(name)}`,
         description: isObj(t) ? (t.description || t.service || '') : '',
       }));
@@ -226,6 +230,34 @@ export function parseRecommendations(items) {
       return m ? { severity: severityClass(m[1]), text: m[2] } : { severity: 'info', text: s };
     })
     .sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
+}
+
+// Mirrors utils/result_analysis.py (posture_score): points taken off the Security Analysis
+// score for findings from the other modules. Keep the two in step.
+const PENALTY_PER_FINDING = { critical: 12, high: 7, medium: 3, low: 1, info: 0 };
+const MODULE_PENALTY_CAP = 15;
+const TOTAL_PENALTY_CAP = 40;
+
+export function gradeFor(score) {
+  for (const [floor, grade] of [[95, 'A+'], [90, 'A'], [80, 'B'], [70, 'C'], [60, 'D']]) {
+    if (score >= floor) return grade;
+  }
+  return 'F';
+}
+
+/** { score, grade, base, penalty }: the Security Analysis score minus findings from the other modules. */
+export function postureScore(results) {
+  const { score: base, grade } = extractScore(results?.['Security Analysis']?.security_score);
+  if (base == null) return { score: null, grade, base: null, penalty: 0 };
+  const perModule = {};
+  for (const f of extractFindings(results)) {
+    if (f.module !== 'Security Analysis') perModule[f.module] = (perModule[f.module] || 0) + PENALTY_PER_FINDING[f.severity];
+  }
+  const penalty = Math.min(TOTAL_PENALTY_CAP,
+    Object.values(perModule).reduce((sum, points) => sum + Math.min(MODULE_PENALTY_CAP, points), 0));
+  if (penalty === 0) return { score: base, grade, base, penalty: 0 };
+  const score = Math.max(0, base - penalty);
+  return { score, grade: gradeFor(score), base, penalty };
 }
 
 const BREAKDOWN_LABELS = {

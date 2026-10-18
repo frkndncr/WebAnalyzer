@@ -74,10 +74,12 @@ except ImportError:
 try:
     from modules.content_analysis import (
         shannon_entropy, risk_score, mask_secret, short_hash, root_domain, js_vuln_severity,
+        js_pattern_severity, is_vendor_script, assess_exposure,
     )
 except ImportError:
     from content_analysis import (
         shannon_entropy, risk_score, mask_secret, short_hash, root_domain, js_vuln_severity,
+        js_pattern_severity, is_vendor_script, assess_exposure,
     )
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1403,9 +1405,13 @@ class AdvancedContentScanner:
                 )
                 if self._is_new(f.hash): self._add_finding("js_vulnerabilities", asdict(f))
 
-        # Pattern-based analysis
+        # Pattern-based analysis. Third-party library code (jQuery, WordPress core, ...) is skipped:
+        # a pattern hit inside it is not this site's bug (known library CVEs are the
+        # "JS Library Vulnerabilities" module's job). Taint flows above are still reported.
+        if is_vendor_script(source_url, content):
+            return
         for category, pat_list in self.patterns.JS_SECURITY.items():
-            sev = self._js_sev(category)
+            sev = js_pattern_severity(category)
             if not self._sev_passes(sev): continue
             for entry in pat_list:
                 pat, conf = entry["p"], entry["c"]
@@ -1627,18 +1633,21 @@ class AdvancedContentScanner:
     def _scan_sensitive_paths(self):
         self.logger.info(f"[L2] Scanning {len(PatternRegistry.SENSITIVE_PATHS)} sensitive paths…")
 
+        # What this server answers for a path that cannot exist: a catch-all "soft 404" page must not
+        # be mistaken for an exposed file.
+        probe = self._make_request("GET", urljoin(self.base_url, f"/webanalyzer-{self._shash(self.base_url)}-missing.txt"),
+                                   allow_redirects=False, timeout=8)
+        baseline = probe.text if probe is not None and probe.status_code == 200 else ""
+
         def check_path(entry: Dict):
             url  = urljoin(self.base_url, entry["path"])
             resp = self._make_request("GET", url, allow_redirects=False, timeout=8)
             if not resp: return
-            # Positive if 200/206, or 401/403 (exists but protected — still noteworthy)
-            if resp.status_code in (200, 206, 401, 403):
+            # A finding only when the response really is that file: 401/403 (access denied) are not
+            # exposures, and a 200 must contain what that kind of file normally contains.
+            if assess_exposure(entry, resp.status_code, resp.headers.get("Content-Type", ""), resp.text or "", baseline):
                 ct      = resp.headers.get("Content-Type", "")
                 sev     = entry["severity"]
-                # 401/403 downgrades severity
-                if resp.status_code in (401, 403) and sev == "Critical": sev = "High"
-                # Extra check: body must have content for 200s
-                if resp.status_code == 200 and len(resp.text.strip()) < 10: return
                 evidence = f"HTTP {resp.status_code}"
                 if resp.status_code == 200 and resp.text:
                     evidence += f" — {resp.text[:100].replace(chr(10), ' ').strip()}"

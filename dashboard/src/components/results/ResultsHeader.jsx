@@ -6,7 +6,7 @@ import { getApiUrl } from '../../config';
 const LABEL = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' };
 
 export default function ResultsHeader({
-  domain, score, grade, sev, status, moduleTotal, moduleOk, counts, totalFindings,
+  domain, score, grade, penalty, sev, status, moduleTotal, moduleOk, counts, totalFindings,
   onSeverity, onRescan, onCopyLink, busy,
 }) {
   const scanning = status && status.current_module && status.current_module !== 'Finished';
@@ -29,6 +29,11 @@ export default function ResultsHeader({
               ? 'Scan in progress — results appear as each module finishes.'
               : `${moduleOk} of ${moduleTotal} modules completed · ${totalFindings} finding${totalFindings === 1 ? '' : 's'}`}
           </div>
+          {!scanning && penalty > 0 && (
+            <div className="muted" style={{ marginTop: 3, fontSize: 12 }} title="Findings from modules other than Security Analysis lower the score">
+              Score includes −{penalty} for findings from other modules.
+            </div>
+          )}
 
           {scanning && (
             <div style={{ maxWidth: 460, marginTop: 12 }}>

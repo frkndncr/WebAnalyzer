@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [3.9.0] - 2026-10-18
+
+### Changed
+- **The score now reflects every module.** It used to come from Security Analysis alone, so an exposed `.env`, a takeover or a missing DMARC policy changed nothing. Findings from other modules now take points off (capped per module and in total); see `docs/SCORING.md`. Python and the dashboard compute it identically.
+- **Advanced Content Scan: fewer false positives.** Exposed-file checks now require the file's real content and ignore catch-all pages and 401/403 answers; pattern hits inside library code (jQuery, WordPress core, ...) are skipped; `eval(` and `__proto__` alone are low severity, not high.
+- **Phishing Domain Protection:** skips IP addresses, looks up IDN homoglyphs as punycode, and rates a look-alike by what it can do (own registrations are info, mail-capable or login-themed ones are high).
+- **Subdomain Takeover:** severity follows the module's confidence when none is given.
 
 ### Added
 - **11 new modules** (28 in total), each one file under `modules/plugins/`: **Email Security** (SPF, DKIM, DMARC, MTA-STS), **TLS Health**, **DNS Health**, **Cookies & CORS**, **HTTP Methods & Redirects**, **Privacy & Trackers** (KVKK/GDPR signals), **JS Library Vulnerabilities** (OSV), **Asset Inventory** (ASN, certificate-transparency names), and three intrusive ones that need a verified domain on the public demo: **Exposed Files**, **Cloud Storage**, **DNS Zone Transfer**.

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest, apiPost, ApiError } from '../api/client';
-import { extractScore, scoreSeverity } from '../lib/analysis';
+import { scoreSeverity } from '../lib/analysis';
 import { useCatalogue } from '../context/catalogue';
-import { extractFindings, countBySeverity, moduleStatus } from '../lib/findings';
+import { extractFindings, countBySeverity, moduleStatus, postureScore } from '../lib/findings';
 import { Empty, Spinner } from '../components/ui';
 import DomainBar from '../components/DomainBar';
 import ResultsHeader from '../components/results/ResultsHeader';
@@ -88,7 +88,7 @@ export default function Results({ domain, setDomain }) {
     startScan(previous.length ? previous : presets.standard);
   };
 
-  const { score, grade } = extractScore(results?.['Security Analysis']?.security_score);
+  const { score, grade, penalty } = postureScore(results);
   const moduleTotal = results ? Object.keys(results).length : 0;
   const moduleOk = results ? Object.values(results).filter((d) => moduleStatus(d) !== 'error').length : 0;
   const scanning = Boolean(data && data.current_module && data.current_module !== 'Finished');
@@ -125,6 +125,7 @@ export default function Results({ domain, setDomain }) {
           domain={domain}
           score={score}
           grade={grade}
+          penalty={penalty}
           sev={scoreSeverity(score)}
           status={data}
           moduleTotal={scanning ? data.total : moduleTotal}

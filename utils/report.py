@@ -138,7 +138,8 @@ def _target_html(target: dict, client: str, author: str, title: str, classificat
   <table><tr><th>Module</th><th>Status</th></tr>{module_rows}</table>
   <h2>Appendix B. Method</h2>
   <p>Severity is assigned by the module that reports a finding and normalised to critical, high, medium, low or info. The
-  score starts at 100 and drops for each issue found by the Security Analysis module. CWE and OWASP Top 10 (2021) references
+  score is the Security Analysis score (headers, TLS, WAF, vulnerabilities) minus points for findings from the other modules
+  (critical 12, high 7, medium 3, low 1, info 0; at most 15 per module and 40 in total). CWE and OWASP Top 10 (2021) references
   are suggested from the finding text and are indicative, not a formal classification. No CVSS vector is calculated.</p>
 </section>
 """

@@ -189,7 +189,7 @@ def test_summarize_counts_real_findings_across_modules():
         "Advanced Content Scan": {"js_vulnerabilities": [{"severity": "high"}, {"severity": "medium"}]},
     }
     score, grade, vulns = summarize_security_result(res)
-    assert (score, grade, vulns) == (54, "F", 3)
+    assert (score, grade, vulns) == (44, "F", 3)      # 54 minus 10 for the Advanced Content Scan findings
 
 
 def test_alerts_include_vulnerability_scan_findings():

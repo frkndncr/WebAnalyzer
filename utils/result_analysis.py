@@ -31,19 +31,59 @@ def summarize_security_result(res) -> Tuple[Optional[int], Optional[str], int]:
     if not isinstance(sec, dict):
         return None, None, 0
 
-    raw = sec.get("security_score")
-    grade = sec.get("security_grade")
+    posture = posture_score(res)
+    # Count real findings across modules; fall back to the legacy counter that
+    # some older results carried.
+    vuln_count = count_findings(res) or sec.get("vulnerabilities_found", 0)
+    return posture["score"], posture["grade"], vuln_count
+
+
+# Points taken off the Security Analysis score for findings reported by *other* modules
+# (secrets in JS, a takeover, an exposed .env, weak email authentication, ...). Security
+# Analysis findings are not counted again: its own score already reflects them.
+PENALTY_PER_FINDING = {"critical": 12, "high": 7, "medium": 3, "low": 1, "info": 0}
+MODULE_PENALTY_CAP = 15      # one noisy module cannot sink the score on its own
+TOTAL_PENALTY_CAP = 40       # and the other modules together can take at most this many points
+
+
+def grade_for(score: int) -> str:
+    """Letter grade for a 0-100 score (same bands as the Security Analysis module)."""
+    for floor, grade in ((95, "A+"), (90, "A"), (80, "B"), (70, "C"), (60, "D")):
+        if score >= floor:
+            return grade
+    return "F"
+
+
+def _base_score(sec):
+    raw = sec.get("security_score") if isinstance(sec, dict) else None
+    grade = sec.get("security_grade") if isinstance(sec, dict) else None
     score = None
     if isinstance(raw, dict):
         score = raw.get("overall_score")
         grade = raw.get("grade", grade)
     elif isinstance(raw, (int, float)) and not isinstance(raw, bool):
         score = int(raw)
+    return score, grade
 
-    # Count real findings across modules; fall back to the legacy counter that
-    # some older results carried.
-    vuln_count = count_findings(res) or sec.get("vulnerabilities_found", 0)
-    return score, grade, vuln_count
+
+def posture_score(res) -> dict:
+    """``{score, grade, base, penalty}``: the Security Analysis score minus findings from the other modules.
+
+    ``score`` is None when Security Analysis did not run (there is no honest base to adjust).
+    With no penalty the module's own score and grade are returned unchanged.
+    """
+    base, grade = _base_score(res.get("Security Analysis") if isinstance(res, dict) else None)
+    if base is None:
+        return {"score": None, "grade": grade, "base": None, "penalty": 0}
+    per_module = {}
+    for finding in list_findings(res):
+        if finding["module"] != "Security Analysis":
+            per_module[finding["module"]] = per_module.get(finding["module"], 0) + PENALTY_PER_FINDING[finding["severity"]]
+    penalty = min(TOTAL_PENALTY_CAP, sum(min(MODULE_PENALTY_CAP, points) for points in per_module.values()))
+    if penalty == 0:
+        return {"score": base, "grade": grade, "base": base, "penalty": 0}
+    score = max(0, base - penalty)
+    return {"score": score, "grade": grade_for(score), "base": base, "penalty": penalty}
 
 
 def severity_bucket(sev) -> str:
@@ -73,6 +113,8 @@ _DEDICATED = frozenset({
 })
 
 _HEADER_LEVEL = {"critical": "critical", "high": "high", "medium": "medium"}
+
+_TAKEOVER_BY_CONFIDENCE = {"high": "high", "medium": "medium", "low": "low"}
 
 # Advanced Content Scan lists and the severity assumed when an entry has none.
 _ACS_DEFAULT_SEVERITY = {
@@ -156,7 +198,10 @@ def iter_findings(res):
     if isinstance(takeover, dict):
         for t in _as_list(takeover.get("vulnerable_subdomains")) + _as_list(takeover.get("vulnerabilities")):
             name = (t.get("subdomain") or t.get("domain") or t.get("host")) if isinstance(t, dict) else t
-            sev = (t.get("severity") if isinstance(t, dict) else None) or "high"
+            # No explicit severity: follow the module's own confidence in the takeover (a confirmed
+            # fingerprint is high, a lone suspicious redirect is not).
+            confidence = str(t.get("confidence") or "").lower() if isinstance(t, dict) else ""
+            sev = (t.get("severity") if isinstance(t, dict) else None) or _TAKEOVER_BY_CONFIDENCE.get(confidence, "high")
             yield _synth(f"Subdomain takeover: {name}", sev), "Subdomain Takeover", None
 
     phishing = res.get("Phishing Domain Protection")

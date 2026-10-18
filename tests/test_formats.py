@@ -41,7 +41,7 @@ def doc():
 def test_document_summarises_each_target(doc):
     target = doc["targets"][0]
     assert doc["tool"]["name"] == "WebAnalyzer"
-    assert target["domain"] == "x.org" and target["score"] == 54 and target["grade"] == "F"
+    assert target["domain"] == "x.org" and target["score"] == 33 and target["grade"] == "F"   # 54 minus 21 for the other modules' findings
     assert target["summary"]["total"] == len(target["findings"]) == 5
     assert target["summary"]["critical"] == 1 and target["summary"]["high"] == 3 and target["summary"]["medium"] == 1
 
@@ -184,7 +184,7 @@ def test_markdown_has_a_table_and_escapes_pipes(doc):
     assert md.startswith("# WebAnalyzer report")
     assert "| Severity | Finding | Module | Location |" in md
     assert "| CRITICAL |" in md
-    assert "Security score: **54/100 (F)**" in md
+    assert "Security score: **33/100 (F)**" in md
     assert "Modules that failed: DNS Records" in md
 
 
@@ -201,6 +201,6 @@ def test_markdown_for_a_clean_scan():
 def test_text_summary_lists_findings_most_severe_first(doc):
     text = f.to_text(doc)
     lines = text.splitlines()
-    assert lines[0].startswith("x.org  score 54/100 (F)  findings 5")
+    assert lines[0].startswith("x.org  score 33/100 (F)  findings 5")
     assert lines[1].lstrip().startswith("CRITICAL")
     assert "modules that failed: DNS Records" in text
